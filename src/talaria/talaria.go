@@ -8,9 +8,9 @@ import (
 	"github.com/Comcast/webpa-common/service"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"os/signal"
 )
 
 const (
@@ -41,6 +41,28 @@ func talaria(arguments []string) int {
 	logger.Info("Using configuration file: %s", v.ConfigFileUsed())
 
 	//
+	// Initialize the manager first, as if it fails we don't want to advertise this service
+	//
+
+	deviceOptions, err := device.NewOptions(logger, v.Sub(device.DeviceManagerKey))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to read device management configuration: %s\n", err)
+		return 1
+	}
+
+	var (
+		manager        = device.NewManager(deviceOptions, nil)
+		connectHandler = device.NewConnectHandler(manager, nil, logger)
+		_, runnable    = webPA.Prepare(logger, connectHandler)
+	)
+
+	waitGroup, shutdown, err := concurrent.Execute(runnable)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to start device manager: %s\n", err)
+		return 1
+	}
+
+	//
 	// Now, initialize the service discovery infrastructure
 	//
 
@@ -59,26 +81,15 @@ func talaria(arguments []string) int {
 	}
 
 	var (
-		subscription    = service.NewAccessorSubscription(watch, nil, serviceOptions)
-		redirectHandler = service.NewRedirectHandler(
-			subscription,
-			http.StatusTemporaryRedirect,
-			device.IDHashParser(device.DefaultDeviceNameHeader),
-			logger,
-		)
-
-		_, runnable = webPA.Prepare(logger, redirectHandler)
-		signals     = make(chan os.Signal, 1)
+		// TODO: handle rehashes using this subscription
+		_       = service.NewAccessorSubscription(watch, nil, serviceOptions)
+		signals = make(chan os.Signal, 1)
 	)
 
-	//
-	// Execute the runnable, which runs all the servers, and wait for a signal
-	//
-
-	if err := concurrent.Await(runnable, signals); err != nil {
-		fmt.Fprintf(os.Stderr, "Error when starting %s: %s", applicationName, err)
-		return 4
-	}
+	signal.Notify(signals)
+	<-signals
+	close(shutdown)
+	waitGroup.Wait()
 
 	return 0
 }
