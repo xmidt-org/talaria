@@ -1,0 +1,96 @@
+hash: 665a273715d4c4f95dc1a315fff7e4a949629507a93bbbfec483145f4375e4da
+updated: 2017-02-06T12:04:45.163257766-08:00
+imports:
+- name: github.com/billhathaway/consistentHash
+  version: addea16d2229dba874111898b45be7f4a78af631
+- name: github.com/c9s/goprocinfo
+  version: 19cb9f127a9c8d2034cf59ccb683cdb94b9deb6c
+  subpackages:
+  - linux
+- name: github.com/Comcast/webpa-common
+  version: 5de00e3ce1afb3eb2e08664e0e8c9c3bd3e738ff
+  subpackages:
+  - concurrent
+  - device
+  - health
+  - logging
+  - logging/golog
+  - server
+  - service
+  - wrp
+- name: github.com/fsnotify/fsnotify
+  version: a904159b9206978bb6d53fcc7a769e5cd726c737
+- name: github.com/gorilla/websocket
+  version: 3ab3a8b8831546bd18fd182c20687ca853b2bb13
+- name: github.com/hashicorp/hcl
+  version: 372e8ddaa16fd67e371e9323807d056b799360af
+  subpackages:
+  - hcl/ast
+  - hcl/parser
+  - hcl/scanner
+  - hcl/strconv
+  - hcl/token
+  - json/parser
+  - json/scanner
+  - json/token
+- name: github.com/ian-kent/go-log
+  version: 5731446c36ab9f716106ce0731f484c50fdf1ad1
+  subpackages:
+  - appenders
+  - layout
+  - levels
+  - logger
+- name: github.com/magiconair/properties
+  version: b3b15ef068fd0b17ddf408a23669f20811d194d2
+- name: github.com/mitchellh/mapstructure
+  version: db1efb556f84b25a0a13a04aad883943538ad2e0
+- name: github.com/pelletier/go-buffruneio
+  version: df1e16fde7fc330a0ca68167c23bf7ed6ac31d6d
+- name: github.com/pelletier/go-toml
+  version: d1fa2118c12c44e4f5004da216d1efad10cb4924
+- name: github.com/philhofer/fwd
+  version: 98c11a7a6ec829d672b03833c3d69a7fae1ca972
+- name: github.com/samuel/go-zookeeper
+  version: 1d7be4effb13d2d908342d349d71a284a7542693
+  subpackages:
+  - zk
+- name: github.com/spaolacci/murmur3
+  version: 0d12bf811670bf6a1a63828dfbd003eded177fce
+- name: github.com/spf13/afero
+  version: 72b31426848c6ef12a7a8e216708cb0d1530f074
+  subpackages:
+  - mem
+- name: github.com/spf13/cast
+  version: d1139bab1c07d5ad390a65e7305876b3c1a8370b
+- name: github.com/spf13/jwalterweatherman
+  version: fa7ca7e836cf3a8bb4ebf799f472c12d7e903d66
+- name: github.com/spf13/pflag
+  version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
+- name: github.com/spf13/viper
+  version: 5ed0fc31f7f453625df314d8e66b9791e8d13003
+- name: github.com/strava/go.serversets
+  version: 28ab685d470f2bfb6d8abe4077cc1ab19c33e24b
+- name: github.com/t-k/fluent-logger-golang
+  version: 0f8ec08f2057a61574b6943e75045fffbeae894e
+  subpackages:
+  - fluent
+- name: github.com/tinylib/msgp
+  version: 38a6f61a768dc24552dad94611923841b53acc4f
+  subpackages:
+  - msgp
+- name: github.com/ugorji/go
+  version: d23841a297e5489e787e72fceffabf9d2994b52a
+  subpackages:
+  - codec
+- name: golang.org/x/sys
+  version: 7a6e5648d140666db5d920909e082ca00a87ba2c
+  subpackages:
+  - unix
+- name: golang.org/x/text
+  version: 506f9d5c962f284575e88337e7d9296d27e729d3
+  subpackages:
+  - transform
+  - unicode/norm
+- name: gopkg.in/yaml.v2
+  version: 4c78c975fe7c825c6d1466c42be594d1d6f3aba6
+testImports: []
