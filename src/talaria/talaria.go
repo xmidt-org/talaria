@@ -11,6 +11,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"routing"
 )
 
 const (
@@ -44,11 +45,19 @@ func talaria(arguments []string) int {
 	// Initialize the manager first, as if it fails we don't want to advertise this service
 	//
 
+	outbounder, err := routing.NewOutbounder(v.Sub(routing.OutbounderKey))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to read device outbounder configuration: %s\n", err)
+		return 1
+	}
+
 	deviceOptions, err := device.NewOptions(logger, v.Sub(device.DeviceManagerKey))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to read device management configuration: %s\n", err)
 		return 1
 	}
+
+	deviceOptions.MessageListener = outbounder.NewMessageListener(logger)
 
 	var (
 		manager        = device.NewManager(deviceOptions, nil)
