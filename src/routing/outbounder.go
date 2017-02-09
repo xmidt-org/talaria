@@ -34,8 +34,8 @@ const (
 // for a given WRP message.
 type RequestFactory func(device.Interface, []byte, *wrp.Message) (*http.Request, error)
 
-// Outbounder is a Manager listener that accepts device messages and dispatches them
-// to the notification endpoint.
+// Outbounder acts as a factory for MessageListener instances that accept WRP traffic
+// and dispatch HTTP requests.
 type Outbounder struct {
 	Method              string
 	EventEndpoint       string
