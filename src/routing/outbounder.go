@@ -156,11 +156,13 @@ func (o *Outbounder) newTransport() *http.Transport {
 	}
 }
 
-func (o *Outbounder) newClient() *http.Client {
-	return &http.Client{
+func (o *Outbounder) newTransactor() func(*http.Request) (*http.Response, error) {
+	client := &http.Client{
 		Transport: o.newTransport(),
 		Timeout:   o.timeout(),
 	}
+
+	return client.Do
 }
 
 // newRequestFactory produces a RequestFactory function that creates an outbound HTTP request
@@ -210,7 +212,7 @@ func (o *Outbounder) newRequestFactory() RequestFactory {
 // for each WRP message.
 func (o *Outbounder) NewMessageListener(logger logging.Logger) device.MessageListener {
 	var (
-		client         = o.newClient()
+		transactor     = o.newTransactor()
 		requestFactory = o.newRequestFactory()
 	)
 
@@ -221,7 +223,7 @@ func (o *Outbounder) NewMessageListener(logger logging.Logger) device.MessageLis
 			return
 		}
 
-		response, err := client.Do(request)
+		response, err := transactor(request)
 		if err != nil {
 			logger.Error("HTTP error for device [%s]: %s", d.ID(), err)
 			return
