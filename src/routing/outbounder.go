@@ -8,7 +8,6 @@ import (
 	"github.com/Comcast/webpa-common/wrp"
 	"github.com/spf13/viper"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 )
@@ -164,6 +163,9 @@ func (o *Outbounder) newClient() *http.Client {
 	}
 }
 
+// newRequestFactory produces a RequestFactory function that creates an outbound HTTP request
+// for a given WRP message from a specific device.  Once created, the returned factory is isolated
+// from any changes made to this Outbounder instance.
 func (o *Outbounder) newRequestFactory() RequestFactory {
 	var (
 		method           = o.method()
@@ -176,20 +178,16 @@ func (o *Outbounder) newRequestFactory() RequestFactory {
 
 	return func(d device.Interface, raw []byte, message *wrp.Message) (r *http.Request, err error) {
 		if strings.HasPrefix(message.Destination, EventPrefix) {
+			// route this to the configured endpoint that receives all events
 			r, err = http.NewRequest(method, eventEndpoint, bytes.NewBuffer(raw))
 		} else if strings.HasPrefix(message.Destination, URLPrefix) {
-			var (
-				rawDestinationURL = message.Destination[len(URLPrefix):]
-				destinationURL    *url.URL
-			)
-
-			if destinationURL, err = url.Parse(rawDestinationURL); err == nil {
-				if len(destinationURL.Scheme) == 0 {
-					r, err = http.NewRequest(method, assumeScheme+"://"+rawDestinationURL, bytes.NewBuffer(raw))
-				} else if allowedSchemes[destinationURL.Scheme] {
-					r, err = http.NewRequest(method, rawDestinationURL, bytes.NewBuffer(raw))
-				} else {
-					err = fmt.Errorf("Scheme not allowed: %s", destinationURL.Scheme)
+			// route this to the given URL, subject to some validation
+			if r, err = http.NewRequest(method, message.Destination[len(URLPrefix):], bytes.NewBuffer(raw)); err == nil {
+				if len(r.URL.Scheme) == 0 {
+					// if no scheme is supplied, use the configured AssumeScheme
+					r.URL.Scheme = assumeScheme
+				} else if !allowedSchemes[r.URL.Scheme] {
+					err = fmt.Errorf("Scheme not allowed: %s", r.URL.Scheme)
 				}
 			}
 		} else {
