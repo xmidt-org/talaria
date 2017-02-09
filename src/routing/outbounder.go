@@ -2,11 +2,14 @@ package routing
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/Comcast/webpa-common/device"
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/Comcast/webpa-common/wrp"
 	"github.com/spf13/viper"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 )
 
@@ -14,8 +17,13 @@ const (
 	// OutbounderKey is the Viper subkey which is expected to hold Outbounder configuration
 	OutbounderKey = "device.outbound"
 
+	EventPrefix = "event:"
+	URLPrefix   = "url:"
+
 	DefaultMethod                            = "POST"
-	DefaultEndpoint                          = "http://localhost:8090/api/v2/notify"
+	DefaultEventEndpoint                     = "http://localhost:8090/api/v2/notify"
+	DefaultAssumeScheme                      = "https"
+	DefaultAllowedScheme                     = "https"
 	DefaultContentType                       = "application/wrp"
 	DefaultTimeout             time.Duration = 10 * time.Second
 	DefaultMaxIdleConns                      = 0
@@ -31,8 +39,10 @@ type RequestFactory func(device.Interface, []byte, *wrp.Message) (*http.Request,
 // to the notification endpoint.
 type Outbounder struct {
 	Method              string
-	Endpoint            string
+	EventEndpoint       string
 	DeviceNameHeader    string
+	AssumeScheme        string
+	AllowedSchemes      []string
 	ContentType         string
 	Timeout             time.Duration
 	MaxIdleConns        int
@@ -60,12 +70,12 @@ func (o *Outbounder) method() string {
 	return DefaultMethod
 }
 
-func (o *Outbounder) endpoint() string {
-	if len(o.Endpoint) > 0 {
-		return o.Endpoint
+func (o *Outbounder) eventEndpoint() string {
+	if len(o.EventEndpoint) > 0 {
+		return o.EventEndpoint
 	}
 
-	return DefaultEndpoint
+	return DefaultEventEndpoint
 }
 
 func (o *Outbounder) deviceNameHeader() string {
@@ -74,6 +84,29 @@ func (o *Outbounder) deviceNameHeader() string {
 	}
 
 	return device.DefaultDeviceNameHeader
+}
+
+func (o *Outbounder) assumeScheme() string {
+	if len(o.AssumeScheme) > 0 {
+		return o.AssumeScheme
+	}
+
+	return DefaultAssumeScheme
+}
+
+func (o *Outbounder) allowedSchemes() map[string]bool {
+	if len(o.AllowedSchemes) > 0 {
+		schemes := make(map[string]bool, len(o.AllowedSchemes))
+		for _, scheme := range o.AllowedSchemes {
+			schemes[scheme] = true
+		}
+
+		return schemes
+	}
+
+	return map[string]bool{
+		DefaultAllowedScheme: true,
+	}
 }
 
 func (o *Outbounder) contentType() string {
@@ -134,13 +167,35 @@ func (o *Outbounder) newClient() *http.Client {
 func (o *Outbounder) newRequestFactory() RequestFactory {
 	var (
 		method           = o.method()
-		endpoint         = o.endpoint()
+		eventEndpoint    = o.eventEndpoint()
 		contentType      = o.contentType()
 		deviceNameHeader = o.deviceNameHeader()
+		assumeScheme     = o.assumeScheme()
+		allowedSchemes   = o.allowedSchemes()
 	)
 
 	return func(d device.Interface, raw []byte, message *wrp.Message) (r *http.Request, err error) {
-		r, err = http.NewRequest(method, endpoint, bytes.NewBuffer(raw))
+		if strings.HasPrefix(message.Destination, EventPrefix) {
+			r, err = http.NewRequest(method, eventEndpoint, bytes.NewBuffer(raw))
+		} else if strings.HasPrefix(message.Destination, URLPrefix) {
+			var (
+				rawDestinationURL = message.Destination[len(URLPrefix):]
+				destinationURL    *url.URL
+			)
+
+			if destinationURL, err = url.Parse(rawDestinationURL); err == nil {
+				if len(destinationURL.Scheme) == 0 {
+					r, err = http.NewRequest(method, assumeScheme+"://"+rawDestinationURL, bytes.NewBuffer(raw))
+				} else if allowedSchemes[destinationURL.Scheme] {
+					r, err = http.NewRequest(method, rawDestinationURL, bytes.NewBuffer(raw))
+				} else {
+					err = fmt.Errorf("Scheme not allowed: %s", destinationURL.Scheme)
+				}
+			}
+		} else {
+			err = fmt.Errorf("Bad WRP destination: %s", message.Destination)
+		}
+
 		if err != nil {
 			return
 		}
