@@ -1,5 +1,5 @@
-hash: 665a273715d4c4f95dc1a315fff7e4a949629507a93bbbfec483145f4375e4da
-updated: 2017-02-06T12:04:45.163257766-08:00
+hash: 022c4be5635512bc1b5ed439c5958d9467f4e0db74ea6a3ee81233d62f4e9b76
+updated: 2017-02-09T18:51:51.01545035-08:00
 imports:
 - name: github.com/billhathaway/consistentHash
   version: addea16d2229dba874111898b45be7f4a78af631
@@ -20,6 +20,8 @@ imports:
   - wrp
 - name: github.com/fsnotify/fsnotify
   version: a904159b9206978bb6d53fcc7a769e5cd726c737
+- name: github.com/gorilla/mux
+  version: 392c28fe23e1c45ddba891b0320b3b5df220beea
 - name: github.com/gorilla/websocket
   version: 3ab3a8b8831546bd18fd182c20687ca853b2bb13
 - name: github.com/hashicorp/hcl

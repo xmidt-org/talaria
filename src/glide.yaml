@@ -8,3 +8,6 @@ import:
   - device
   - server
   - service
+- package: github.com/gorilla/mux
+  version: v1.3.0
+
