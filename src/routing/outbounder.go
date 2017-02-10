@@ -75,7 +75,8 @@ func NewOutbounder(logger logging.Logger, v *viper.Viper) (o *Outbounder, err er
 	return
 }
 
-func (o *Outbounder) NewTransport() *http.Transport {
+// NewTransport creates an HTTP RoundTripper (transport) using this Outbounder's configuration.
+func (o *Outbounder) newRoundTripper() http.RoundTripper {
 	return &http.Transport{
 		MaxIdleConns:        o.MaxIdleConns,
 		MaxIdleConnsPerHost: o.MaxIdleConnsPerHost,
@@ -83,19 +84,20 @@ func (o *Outbounder) NewTransport() *http.Transport {
 	}
 }
 
-func (o *Outbounder) NewTransactor() func(*http.Request) (*http.Response, error) {
+// newTransactor returns a closure which can execute HTTP transactions
+func (o *Outbounder) newTransactor() func(*http.Request) (*http.Response, error) {
 	client := &http.Client{
-		Transport: o.NewTransport(),
+		Transport: o.newRoundTripper(),
 		Timeout:   o.Timeout,
 	}
 
 	return client.Do
 }
 
-// NewRequestFactory produces a RequestFactory function that creates an outbound HTTP request
+// newRequestFactory produces a RequestFactory function that creates an outbound HTTP request
 // for a given WRP message from a specific device.  Once created, the returned factory is isolated
 // from any changes made to this Outbounder instance.
-func (o *Outbounder) NewRequestFactory() RequestFactory {
+func (o *Outbounder) newRequestFactory() RequestFactory {
 	allowedSchemes := make(map[string]bool, len(o.AllowedSchemes))
 	for _, scheme := range o.AllowedSchemes {
 		allowedSchemes[scheme] = true
@@ -135,8 +137,8 @@ func (o *Outbounder) NewRequestFactory() RequestFactory {
 // for each WRP message.
 func (o *Outbounder) NewMessageListener() device.MessageListener {
 	var (
-		transactor     = o.NewTransactor()
-		requestFactory = o.NewRequestFactory()
+		transactor     = o.newTransactor()
+		requestFactory = o.newRequestFactory()
 	)
 
 	return func(d device.Interface, raw []byte, message *wrp.Message) {
