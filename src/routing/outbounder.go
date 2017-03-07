@@ -7,6 +7,8 @@ import (
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/Comcast/webpa-common/wrp"
 	"github.com/spf13/viper"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
@@ -26,6 +28,8 @@ const (
 	DefaultEventEndpoint                     = "http://localhost:8090/api/v2/notify"
 	DefaultAssumeScheme                      = "https"
 	DefaultAllowedScheme                     = "https"
+	DefaultWorkerPoolSize                    = 100
+	DefaultRequestQueueSize                  = 1000
 	DefaultTimeout             time.Duration = 10 * time.Second
 	DefaultMaxIdleConns                      = 0
 	DefaultMaxIdleConnsPerHost               = 100
@@ -36,14 +40,16 @@ const (
 // for a given WRP message.
 type RequestFactory func(device.Interface, []byte, *wrp.Message) (*http.Request, error)
 
-// Outbounder acts as a factory for MessageReceivedListener instances that accept WRP traffic
-// and dispatch HTTP requests.
+// Outbounder acts as a configurable endpoint for dispatching WRP messages from devices
+// and handling any failed messages.
 type Outbounder struct {
 	Method              string
 	EventEndpoint       string
 	DeviceNameHeader    string
 	AssumeScheme        string
 	AllowedSchemes      []string
+	WorkerPoolSize      int
+	RequestQueueSize    int
 	Timeout             time.Duration
 	MaxIdleConns        int
 	MaxIdleConnsPerHost int
@@ -61,6 +67,8 @@ func NewOutbounder(logger logging.Logger, v *viper.Viper) (o *Outbounder, err er
 		DeviceNameHeader:    device.DefaultDeviceNameHeader,
 		AssumeScheme:        DefaultAssumeScheme,
 		AllowedSchemes:      []string{DefaultAllowedScheme},
+		WorkerPoolSize:      DefaultWorkerPoolSize,
+		RequestQueueSize:    DefaultRequestQueueSize,
 		Timeout:             DefaultTimeout,
 		MaxIdleConns:        DefaultMaxIdleConns,
 		MaxIdleConnsPerHost: DefaultMaxIdleConnsPerHost,
@@ -133,28 +141,43 @@ func (o *Outbounder) newRequestFactory() RequestFactory {
 	}
 }
 
-// NewMessageReceivedListener returns a MessageListener which dispatches an HTTP transaction
-// for each WRP message.
-func (o *Outbounder) NewMessageReceivedListener() device.MessageReceivedListener {
+func (o *Outbounder) Start(listeners *device.Listeners) {
 	var (
 		transactor     = o.newTransactor()
 		requestFactory = o.newRequestFactory()
+		requests       = make(chan *http.Request, o.RequestQueueSize)
 	)
 
-	return func(d device.Interface, message *wrp.Message, raw []byte) {
+	for repeat := 0; repeat < o.WorkerPoolSize; repeat++ {
+		go func() {
+			for request := range requests {
+				response, err := transactor(request)
+				if err != nil {
+					o.Logger.Error("HTTP error: %s", err)
+					continue
+				}
+
+				if response.StatusCode < 400 {
+					o.Logger.Debug("HTTP response status: %s", response.Status)
+				} else {
+					o.Logger.Error("HTTP response status: %s", response.Status)
+				}
+
+				io.Copy(ioutil.Discard, response.Body)
+				response.Body.Close()
+			}
+		}()
+	}
+
+	listeners.MessageReceived = func(d device.Interface, message *wrp.Message, raw []byte) {
 		request, err := requestFactory(d, raw, message)
 		if err != nil {
 			o.Logger.Error("Unable to create request for device [%s]: %s", d.ID(), err)
 			return
 		}
 
-		response, err := transactor(request)
-		if err != nil {
-			o.Logger.Error("HTTP error for device [%s]: %s", d.ID(), err)
-		} else if response.StatusCode < 400 {
-			o.Logger.Debug("HTTP response for device [%s]: %s", d.ID(), response.Status)
-		} else {
-			o.Logger.Error("HTTP response for device [%s]: %s", d.ID(), response.Status)
-		}
+		requests <- request
 	}
+
+	// TODO: Need to handle message failures
 }
