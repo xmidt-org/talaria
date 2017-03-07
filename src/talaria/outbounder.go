@@ -212,6 +212,25 @@ func (o *Outbounder) newMessageFailedListener(requests chan<- *http.Request, req
 	}
 }
 
+func (o *Outbounder) serviceRequests(requests <-chan *http.Request, transactor func(*http.Request) (*http.Response, error)) {
+	for request := range requests {
+		response, err := transactor(request)
+		if err != nil {
+			o.Logger.Error("HTTP error: %s", err)
+			continue
+		}
+
+		if response.StatusCode < 400 {
+			o.Logger.Debug("HTTP response status: %s", response.Status)
+		} else {
+			o.Logger.Error("HTTP response status: %s", response.Status)
+		}
+
+		io.Copy(ioutil.Discard, response.Body)
+		response.Body.Close()
+	}
+}
+
 func (o *Outbounder) Start(listeners *device.Listeners) {
 	var (
 		transactor     = o.newTransactor()
@@ -220,24 +239,7 @@ func (o *Outbounder) Start(listeners *device.Listeners) {
 	)
 
 	for repeat := 0; repeat < o.WorkerPoolSize; repeat++ {
-		go func() {
-			for request := range requests {
-				response, err := transactor(request)
-				if err != nil {
-					o.Logger.Error("HTTP error: %s", err)
-					continue
-				}
-
-				if response.StatusCode < 400 {
-					o.Logger.Debug("HTTP response status: %s", response.Status)
-				} else {
-					o.Logger.Error("HTTP response status: %s", response.Status)
-				}
-
-				io.Copy(ioutil.Discard, response.Body)
-				response.Body.Close()
-			}
-		}()
+		go o.serviceRequests(requests, transactor)
 	}
 
 	listeners.MessageReceived = o.newMessageReceivedListener(requests, requestFactory)
