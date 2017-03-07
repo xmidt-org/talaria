@@ -22,7 +22,7 @@ func NewInboundHandler(logger logging.Logger, manager device.Manager, v *viper.V
 
 	handler.Handle("/device", device.NewMsgpackHandler(poolFactory.NewDecoderPool(wrp.Msgpack), manager)).
 		Methods("POST").
-		Headers("Content-Type", "application/json")
+		Headers("Content-Type", "application/wrp")
 
 	handler.Handle("/connect", device.NewConnectHandler(manager, nil, logger))
 	return handler, nil

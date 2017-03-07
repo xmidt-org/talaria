@@ -115,8 +115,7 @@ func (o *Outbounder) newTransactor() func(*http.Request) (*http.Response, error)
 }
 
 // newRequestFactory produces a RequestFactory function that creates an outbound HTTP request
-// for a given WRP message from a specific device.  Once created, the returned factory is isolated
-// from any changes made to this Outbounder instance.
+// for a given WRP message from a specific device.
 func (o *Outbounder) newRequestFactory() RequestFactory {
 	allowedSchemes := make(map[string]bool, len(o.AllowedSchemes))
 	for _, scheme := range o.AllowedSchemes {
