@@ -36,7 +36,7 @@ const (
 // for a given WRP message.
 type RequestFactory func(device.Interface, []byte, *wrp.Message) (*http.Request, error)
 
-// Outbounder acts as a factory for MessageListener instances that accept WRP traffic
+// Outbounder acts as a factory for MessageReceivedListener instances that accept WRP traffic
 // and dispatch HTTP requests.
 type Outbounder struct {
 	Method              string
@@ -151,10 +151,7 @@ func (o *Outbounder) NewMessageReceivedListener() device.MessageReceivedListener
 		response, err := transactor(request)
 		if err != nil {
 			o.Logger.Error("HTTP error for device [%s]: %s", d.ID(), err)
-			return
-		}
-
-		if response.StatusCode < 400 {
+		} else if response.StatusCode < 400 {
 			o.Logger.Debug("HTTP response for device [%s]: %s", d.ID(), response.Status)
 		} else {
 			o.Logger.Error("HTTP response for device [%s]: %s", d.ID(), response.Status)
