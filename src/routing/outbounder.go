@@ -2,6 +2,7 @@ package routing
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"github.com/Comcast/webpa-common/device"
 	"github.com/Comcast/webpa-common/logging"
@@ -30,7 +31,11 @@ const (
 	DefaultAllowedScheme                     = "https"
 	DefaultWorkerPoolSize                    = 100
 	DefaultRequestQueueSize                  = 1000
-	DefaultTimeout             time.Duration = 10 * time.Second
+	DefaultRequestTimeout      time.Duration = 5 * time.Second
+	DefaultClientTimeout       time.Duration = 3 * time.Second
+	DefaultEncoderPoolSize                   = 100
+	DefaultMessageFailedSource               = "talaria"
+	DefaultMessageFailedHeader               = "X-Webpa-Message-Delivery-Failure"
 	DefaultMaxIdleConns                      = 0
 	DefaultMaxIdleConnsPerHost               = 100
 	DefaultIdleConnTimeout     time.Duration = 0
@@ -38,7 +43,7 @@ const (
 
 // RequestFactory is a simple function type for creating an outbound HTTP request
 // for a given WRP message.
-type RequestFactory func(device.Interface, []byte, *wrp.Message) (*http.Request, error)
+type RequestFactory func(device.Interface, *wrp.Message, []byte) (*http.Request, error)
 
 // Outbounder acts as a configurable endpoint for dispatching WRP messages from devices
 // and handling any failed messages.
@@ -50,7 +55,11 @@ type Outbounder struct {
 	AllowedSchemes      []string
 	WorkerPoolSize      int
 	RequestQueueSize    int
-	Timeout             time.Duration
+	RequestTimeout      time.Duration
+	ClientTimeout       time.Duration
+	EncoderPoolSize     int
+	MessageFailedSource string
+	MessageFailedHeader string
 	MaxIdleConns        int
 	MaxIdleConnsPerHost int
 	IdleConnTimeout     time.Duration
@@ -69,7 +78,10 @@ func NewOutbounder(logger logging.Logger, v *viper.Viper) (o *Outbounder, err er
 		AllowedSchemes:      []string{DefaultAllowedScheme},
 		WorkerPoolSize:      DefaultWorkerPoolSize,
 		RequestQueueSize:    DefaultRequestQueueSize,
-		Timeout:             DefaultTimeout,
+		RequestTimeout:      DefaultRequestTimeout,
+		ClientTimeout:       DefaultClientTimeout,
+		EncoderPoolSize:     DefaultEncoderPoolSize,
+		MessageFailedSource: DefaultMessageFailedSource,
 		MaxIdleConns:        DefaultMaxIdleConns,
 		MaxIdleConnsPerHost: DefaultMaxIdleConnsPerHost,
 		IdleConnTimeout:     DefaultIdleConnTimeout,
@@ -96,7 +108,7 @@ func (o *Outbounder) newRoundTripper() http.RoundTripper {
 func (o *Outbounder) newTransactor() func(*http.Request) (*http.Response, error) {
 	client := &http.Client{
 		Transport: o.newRoundTripper(),
-		Timeout:   o.Timeout,
+		Timeout:   o.ClientTimeout,
 	}
 
 	return client.Do
@@ -111,7 +123,7 @@ func (o *Outbounder) newRequestFactory() RequestFactory {
 		allowedSchemes[scheme] = true
 	}
 
-	return func(d device.Interface, raw []byte, message *wrp.Message) (r *http.Request, err error) {
+	return func(d device.Interface, message *wrp.Message, raw []byte) (r *http.Request, err error) {
 		if strings.HasPrefix(message.Destination, EventPrefix) {
 			// route this to the configured endpoint that receives all events
 			r, err = http.NewRequest(o.Method, o.EventEndpoint, bytes.NewBuffer(raw))
@@ -137,7 +149,63 @@ func (o *Outbounder) newRequestFactory() RequestFactory {
 		r.Header.Set("Content-Type", OutboundContentType)
 		// TODO: Need to set Convey?
 
+		ctx, _ := context.WithTimeout(context.Background(), o.RequestTimeout)
+		r = r.WithContext(ctx)
+
 		return
+	}
+}
+
+func (o *Outbounder) newMessageReceivedListener(requests chan<- *http.Request, requestFactory RequestFactory) device.MessageReceivedListener {
+	return func(d device.Interface, message *wrp.Message, raw []byte) {
+		request, err := requestFactory(d, message, raw)
+		if err != nil {
+			o.Logger.Error("Unable to create request for device [%s]: %s", d.ID(), err)
+			return
+		}
+
+		select {
+		case requests <- request:
+		default:
+			o.Logger.Error("Dropping outbound message for device [%s]: %s->%s", d.ID(), message.Source, message.Destination)
+		}
+	}
+}
+
+func (o *Outbounder) newMessageFailedListener(requests chan<- *http.Request, requestFactory RequestFactory) device.MessageFailedListener {
+	encoderPool := wrp.NewEncoderPool(o.EncoderPoolSize, 0, wrp.Msgpack)
+	return func(d device.Interface, message *wrp.Message, raw []byte, sendError error) {
+		returnedMessage := new(wrp.Message)
+		*returnedMessage = *message
+		returnedMessage.Destination = returnedMessage.Source
+		returnedMessage.Source = o.MessageFailedSource
+
+		// TODO: Do we want to carry the original WRP message back as the payload?
+		returnedMessage.Payload = nil
+
+		encoded, err := encoderPool.EncodeBytes(returnedMessage)
+		if err != nil {
+			o.Logger.Error("Could not encode returned message for device [%s]: %s", d.ID(), err)
+			return
+		}
+
+		request, err := requestFactory(d, returnedMessage, encoded)
+		if err != nil {
+			o.Logger.Error("Unable to create returned message request for device [%s]: %s", d.ID(), err)
+			return
+		}
+
+		if sendError != nil {
+			request.Header.Set(o.MessageFailedHeader, sendError.Error())
+		} else {
+			request.Header.Set(o.MessageFailedHeader, "Disconnected")
+		}
+
+		select {
+		case requests <- request:
+		default:
+			o.Logger.Error("Dropping returned message for device [%s]: %s->%s", d.ID(), returnedMessage.Source, returnedMessage.Destination)
+		}
 	}
 }
 
@@ -169,15 +237,6 @@ func (o *Outbounder) Start(listeners *device.Listeners) {
 		}()
 	}
 
-	listeners.MessageReceived = func(d device.Interface, message *wrp.Message, raw []byte) {
-		request, err := requestFactory(d, raw, message)
-		if err != nil {
-			o.Logger.Error("Unable to create request for device [%s]: %s", d.ID(), err)
-			return
-		}
-
-		requests <- request
-	}
-
-	// TODO: Need to handle message failures
+	listeners.MessageReceived = o.newMessageReceivedListener(requests, requestFactory)
+	listeners.MessageFailed = o.newMessageFailedListener(requests, requestFactory)
 }
