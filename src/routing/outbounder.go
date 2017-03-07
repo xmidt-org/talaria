@@ -133,15 +133,15 @@ func (o *Outbounder) newRequestFactory() RequestFactory {
 	}
 }
 
-// NewMessageListener returns a MessageListener which dispatches an HTTP transaction
+// NewMessageReceivedListener returns a MessageListener which dispatches an HTTP transaction
 // for each WRP message.
-func (o *Outbounder) NewMessageListener() device.MessageListener {
+func (o *Outbounder) NewMessageReceivedListener() device.MessageReceivedListener {
 	var (
 		transactor     = o.newTransactor()
 		requestFactory = o.newRequestFactory()
 	)
 
-	return func(d device.Interface, raw []byte, message *wrp.Message) {
+	return func(d device.Interface, message *wrp.Message, raw []byte) {
 		request, err := requestFactory(d, raw, message)
 		if err != nil {
 			o.Logger.Error("Unable to create request for device [%s]: %s", d.ID(), err)
