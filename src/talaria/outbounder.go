@@ -158,8 +158,8 @@ func (o *Outbounder) newRequestFactory() RequestFactory {
 // newMessageReceivedListener produces a listener which can turn WRP messages into requests
 // and dispatch them to a channel.  The returned listener will drop messages in the event of a slow consumer.
 func (o *Outbounder) newMessageReceivedListener(requests chan<- *http.Request, requestFactory RequestFactory) device.MessageReceivedListener {
-	return func(d device.Interface, message *wrp.Message, raw []byte) {
-		request, err := requestFactory(d, message, raw)
+	return func(d device.Interface, message *wrp.Message, encoded []byte) {
+		request, err := requestFactory(d, message, encoded)
 		if err != nil {
 			o.Logger.Error("Unable to create request for device [%s]: %s", d.ID(), err)
 			return
@@ -177,22 +177,21 @@ func (o *Outbounder) newMessageReceivedListener(requests chan<- *http.Request, r
 // delivery failures.  The returned listener will drop messages in the event of a slow consumer.
 func (o *Outbounder) newMessageFailedListener(requests chan<- *http.Request, requestFactory RequestFactory) device.MessageFailedListener {
 	encoderPool := wrp.NewEncoderPool(o.EncoderPoolSize, 0, wrp.Msgpack)
-	return func(d device.Interface, message *wrp.Message, raw []byte, sendError error) {
-		returnedMessage := new(wrp.Message)
-		*returnedMessage = *message
-		returnedMessage.Destination = returnedMessage.Source
-		returnedMessage.Source = o.MessageFailedSource
+	return func(d device.Interface, failedMessage *wrp.Message, failedEncoded []byte, sendError error) {
+		// reuse the wrp.Message given here
+		failedMessage.Destination = failedMessage.Source
+		failedMessage.Source = o.MessageFailedSource
 
 		// TODO: Do we want to carry the original WRP message back as the payload?
-		returnedMessage.Payload = nil
+		failedMessage.Payload = nil
 
-		encoded, err := encoderPool.EncodeBytes(returnedMessage)
+		returnEncoded, err := encoderPool.EncodeBytes(failedMessage)
 		if err != nil {
 			o.Logger.Error("Could not encode returned message for device [%s]: %s", d.ID(), err)
 			return
 		}
 
-		request, err := requestFactory(d, returnedMessage, encoded)
+		request, err := requestFactory(d, failedMessage, returnEncoded)
 		if err != nil {
 			o.Logger.Error("Unable to create returned message request for device [%s]: %s", d.ID(), err)
 			return
@@ -207,7 +206,7 @@ func (o *Outbounder) newMessageFailedListener(requests chan<- *http.Request, req
 		select {
 		case requests <- request:
 		default:
-			o.Logger.Error("Dropping returned message for device [%s]: %s->%s", d.ID(), returnedMessage.Source, returnedMessage.Destination)
+			o.Logger.Error("Dropping returned message for device [%s]: %s->%s", d.ID(), failedMessage.Source, failedMessage.Destination)
 		}
 	}
 }
