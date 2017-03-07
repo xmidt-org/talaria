@@ -95,7 +95,7 @@ func NewOutbounder(logger logging.Logger, v *viper.Viper) (o *Outbounder, err er
 	return
 }
 
-// NewTransport creates an HTTP RoundTripper (transport) using this Outbounder's configuration.
+// newRoundTripper creates an HTTP RoundTripper (transport) using this Outbounder's configuration.
 func (o *Outbounder) newRoundTripper() http.RoundTripper {
 	return &http.Transport{
 		MaxIdleConns:        o.MaxIdleConns,
@@ -156,6 +156,8 @@ func (o *Outbounder) newRequestFactory() RequestFactory {
 	}
 }
 
+// newMessageReceivedListener produces a listener which can turn WRP messages into requests
+// and dispatch them to a channel.  The returned listener will drop messages in the event of a slow consumer.
 func (o *Outbounder) newMessageReceivedListener(requests chan<- *http.Request, requestFactory RequestFactory) device.MessageReceivedListener {
 	return func(d device.Interface, message *wrp.Message, raw []byte) {
 		request, err := requestFactory(d, message, raw)
@@ -172,6 +174,8 @@ func (o *Outbounder) newMessageReceivedListener(requests chan<- *http.Request, r
 	}
 }
 
+// newMessageFailedListener produces a listener which can dispatch HTTP messages notifying senders of
+// delivery failures.  The returned listener will drop messages in the event of a slow consumer.
 func (o *Outbounder) newMessageFailedListener(requests chan<- *http.Request, requestFactory RequestFactory) device.MessageFailedListener {
 	encoderPool := wrp.NewEncoderPool(o.EncoderPoolSize, 0, wrp.Msgpack)
 	return func(d device.Interface, message *wrp.Message, raw []byte, sendError error) {
