@@ -11,7 +11,6 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"routing"
 )
 
 const (
@@ -51,7 +50,7 @@ func talaria(arguments []string) int {
 		return 1
 	}
 
-	outbounder, err := routing.NewOutbounder(logger, v.Sub(routing.OutbounderKey))
+	outbounder, err := NewOutbounder(logger, v.Sub(OutbounderKey))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to read device outbounder configuration: %s\n", err)
 		return 1
