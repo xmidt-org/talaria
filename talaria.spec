@@ -3,7 +3,7 @@
 Name:       talaria
 Version:    %{_ver}
 Release:    %{_releaseno}%{?dist}
-Summary:    The WebPA HTTP redirector component.
+Summary:    The WebPA websocket router component.
 
 Group:      System Environment/Daemons
 License:    ASL 2.0
@@ -14,7 +14,7 @@ BuildRequires:  golang >= 1.7
 Requires:       supervisor
 
 %description
-Webpa notifications delivery server.
+Webpa websocket router component.
 
 %prep
 %setup -q
