@@ -56,7 +56,7 @@ func talaria(arguments []string) int {
 		return 1
 	}
 
-	outbounder.Start(&deviceOptions.Listeners)
+	deviceOptions.Listeners = []device.Listener{outbounder.Start()}
 	manager := device.NewManager(deviceOptions, nil)
 	deviceHandler, err := NewInboundHandler(logger, manager, v)
 	if err != nil {

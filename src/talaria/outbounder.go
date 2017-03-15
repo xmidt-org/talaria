@@ -43,7 +43,106 @@ const (
 
 // RequestFactory is a simple function type for creating an outbound HTTP request
 // for a given WRP message.
-type RequestFactory func(device.Interface, *wrp.Message, []byte) (*http.Request, error)
+type requestFactory func(device.Interface, wrp.Routable, []byte) (*http.Request, error)
+
+// listener is the internal device Listener type that dispatches requests over HTTP.
+type listener struct {
+	logger              logging.Logger
+	requests            chan<- *http.Request
+	requestFactory      requestFactory
+	messageFailedHeader string
+	encoderPool         *wrp.EncoderPool
+}
+
+func (l *listener) messageReceived(device device.Interface, message wrp.Routable, encoded []byte) {
+	request, err := l.requestFactory(device, message, encoded)
+	if err != nil {
+		l.logger.Error("Unable to create request for device [%s]: %s", device.ID(), err)
+		return
+	}
+
+	select {
+	case l.requests <- request:
+	default:
+		l.logger.Error("Dropping outbound message for device [%s]: %s->%s", device.ID(), message.From(), message.To())
+	}
+}
+
+func (l *listener) messageFailed(device device.Interface, message wrp.Routable, encoded []byte, sendError error) {
+	if message.MessageType() == wrp.SimpleEventMessageType {
+		return
+	}
+
+	var (
+		failureResponse = message.Response("TODO", 1)
+		encodedFailure  bytes.Buffer
+	)
+
+	if err := l.encoderPool.Encode(&encodedFailure, failureResponse); err != nil {
+		l.logger.Error("Could not encode returned message for device [%s]: %s", device.ID(), err)
+		return
+	}
+
+	request, err := l.requestFactory(device, failureResponse, encodedFailure.Bytes())
+	if err != nil {
+		l.logger.Error("Unable to create returned message request for device [%s]: %s", device.ID(), err)
+		return
+	}
+
+	if sendError != nil {
+		request.Header.Set(l.messageFailedHeader, sendError.Error())
+	} else {
+		request.Header.Set(l.messageFailedHeader, "Disconnected")
+	}
+
+	select {
+	case l.requests <- request:
+	default:
+		l.logger.Error("Dropping returned message for device [%s]: %s->%s", device.ID(), failureResponse.From(), failureResponse.To())
+	}
+}
+
+func (l *listener) OnDeviceEvent(event *device.Event) {
+	switch event.Type {
+	case device.MessageReceived:
+		l.messageReceived(event.Device, event.Message, event.Encoded)
+	case device.MessageFailed:
+		l.messageFailed(event.Device, event.Message, event.Encoded, event.Err)
+	}
+}
+
+// workerPool describes a pool of goroutines that dispatch http.Request objects to
+// a transactor function
+type workerPool struct {
+	logger     logging.Logger
+	requests   <-chan *http.Request
+	transactor func(*http.Request) (*http.Response, error)
+}
+
+func (wp *workerPool) worker() {
+	for request := range wp.requests {
+		response, err := wp.transactor(request)
+		if err != nil {
+			wp.logger.Error("HTTP error: %s", err)
+			continue
+		}
+
+		if response.StatusCode < 400 {
+			wp.logger.Debug("HTTP response status: %s", response.Status)
+		} else {
+			wp.logger.Error("HTTP response status: %s", response.Status)
+		}
+
+		io.Copy(ioutil.Discard, response.Body)
+		response.Body.Close()
+	}
+}
+
+func (wp *workerPool) run(workers int) {
+	for repeat := 0; repeat < workers; repeat++ {
+		go wp.worker()
+	}
+}
 
 // Outbounder acts as a configurable endpoint for dispatching WRP messages from devices
 // and handling any failed messages.
@@ -116,19 +215,20 @@ func (o *Outbounder) newTransactor() func(*http.Request) (*http.Response, error)
 
 // newRequestFactory produces a RequestFactory function that creates an outbound HTTP request
 // for a given WRP message from a specific device.
-func (o *Outbounder) newRequestFactory() RequestFactory {
+func (o *Outbounder) newRequestFactory() requestFactory {
 	allowedSchemes := make(map[string]bool, len(o.AllowedSchemes))
 	for _, scheme := range o.AllowedSchemes {
 		allowedSchemes[scheme] = true
 	}
 
-	return func(d device.Interface, message *wrp.Message, raw []byte) (r *http.Request, err error) {
-		if strings.HasPrefix(message.Destination, EventPrefix) {
+	return func(device device.Interface, message wrp.Routable, encoded []byte) (r *http.Request, err error) {
+		destination := message.To()
+		if strings.HasPrefix(destination, EventPrefix) {
 			// route this to the configured endpoint that receives all events
-			r, err = http.NewRequest(o.Method, o.EventEndpoint, bytes.NewBuffer(raw))
-		} else if strings.HasPrefix(message.Destination, URLPrefix) {
+			r, err = http.NewRequest(o.Method, o.EventEndpoint, bytes.NewBuffer(encoded))
+		} else if strings.HasPrefix(destination, URLPrefix) {
 			// route this to the given URL, subject to some validation
-			if r, err = http.NewRequest(o.Method, message.Destination[len(URLPrefix):], bytes.NewBuffer(raw)); err == nil {
+			if r, err = http.NewRequest(o.Method, destination[len(URLPrefix):], bytes.NewBuffer(encoded)); err == nil {
 				if len(r.URL.Scheme) == 0 {
 					// if no scheme is supplied, use the configured AssumeScheme
 					r.URL.Scheme = o.AssumeScheme
@@ -137,14 +237,14 @@ func (o *Outbounder) newRequestFactory() RequestFactory {
 				}
 			}
 		} else {
-			err = fmt.Errorf("Bad WRP destination: %s", message.Destination)
+			err = fmt.Errorf("Bad WRP destination: %s", destination)
 		}
 
 		if err != nil {
 			return
 		}
 
-		r.Header.Set(o.DeviceNameHeader, string(d.ID()))
+		r.Header.Set(o.DeviceNameHeader, string(device.ID()))
 		r.Header.Set("Content-Type", OutboundContentType)
 		// TODO: Need to set Convey?
 
@@ -155,92 +255,25 @@ func (o *Outbounder) newRequestFactory() RequestFactory {
 	}
 }
 
-// newMessageReceivedListener produces a listener which can turn WRP messages into requests
-// and dispatch them to a channel.  The returned listener will drop messages in the event of a slow consumer.
-func (o *Outbounder) newMessageReceivedListener(requests chan<- *http.Request, requestFactory RequestFactory) device.MessageReceivedListener {
-	return func(d device.Interface, message *wrp.Message, encoded []byte) {
-		request, err := requestFactory(d, message, encoded)
-		if err != nil {
-			o.Logger.Error("Unable to create request for device [%s]: %s", d.ID(), err)
-			return
-		}
-
-		select {
-		case requests <- request:
-		default:
-			o.Logger.Error("Dropping outbound message for device [%s]: %s->%s", d.ID(), message.Source, message.Destination)
-		}
-	}
-}
-
-// newMessageFailedListener produces a listener which can dispatch HTTP messages notifying senders of
-// delivery failures.  The returned listener will drop messages in the event of a slow consumer.
-func (o *Outbounder) newMessageFailedListener(requests chan<- *http.Request, requestFactory RequestFactory) device.MessageFailedListener {
-	encoderPool := wrp.NewEncoderPool(o.EncoderPoolSize, 0, wrp.Msgpack)
-	return func(d device.Interface, failedMessage *wrp.Message, failedEncoded []byte, sendError error) {
-		// reuse the wrp.Message given here
-		failedMessage.Destination = failedMessage.Source
-		failedMessage.Source = o.MessageFailedSource
-
-		// TODO: Do we want to carry the original WRP message back as the payload?
-		failedMessage.Payload = nil
-
-		returnEncoded, err := encoderPool.EncodeBytes(failedMessage)
-		if err != nil {
-			o.Logger.Error("Could not encode returned message for device [%s]: %s", d.ID(), err)
-			return
-		}
-
-		request, err := requestFactory(d, failedMessage, returnEncoded)
-		if err != nil {
-			o.Logger.Error("Unable to create returned message request for device [%s]: %s", d.ID(), err)
-			return
-		}
-
-		if sendError != nil {
-			request.Header.Set(o.MessageFailedHeader, sendError.Error())
-		} else {
-			request.Header.Set(o.MessageFailedHeader, "Disconnected")
-		}
-
-		select {
-		case requests <- request:
-		default:
-			o.Logger.Error("Dropping returned message for device [%s]: %s->%s", d.ID(), failedMessage.Source, failedMessage.Destination)
-		}
-	}
-}
-
-func (o *Outbounder) serviceRequests(requests <-chan *http.Request, transactor func(*http.Request) (*http.Response, error)) {
-	for request := range requests {
-		response, err := transactor(request)
-		if err != nil {
-			o.Logger.Error("HTTP error: %s", err)
-			continue
-		}
-
-		if response.StatusCode < 400 {
-			o.Logger.Debug("HTTP response status: %s", response.Status)
-		} else {
-			o.Logger.Error("HTTP response status: %s", response.Status)
-		}
-
-		io.Copy(ioutil.Discard, response.Body)
-		response.Body.Close()
-	}
-}
-
-func (o *Outbounder) Start(listeners *device.Listeners) {
+func (o *Outbounder) Start() device.Listener {
 	var (
-		transactor     = o.newTransactor()
-		requestFactory = o.newRequestFactory()
-		requests       = make(chan *http.Request, o.RequestQueueSize)
+		requests = make(chan *http.Request, o.RequestQueueSize)
+
+		workerPool = workerPool{
+			logger:     o.Logger,
+			requests:   requests,
+			transactor: o.newTransactor(),
+		}
+
+		listener = &listener{
+			logger:              o.Logger,
+			requestFactory:      o.newRequestFactory(),
+			messageFailedHeader: o.MessageFailedHeader,
+			requests:            requests,
+			encoderPool:         wrp.NewEncoderPool(o.EncoderPoolSize, wrp.Msgpack),
+		}
 	)
 
-	for repeat := 0; repeat < o.WorkerPoolSize; repeat++ {
-		go o.serviceRequests(requests, transactor)
-	}
-
-	listeners.MessageReceived = o.newMessageReceivedListener(requests, requestFactory)
-	listeners.MessageFailed = o.newMessageFailedListener(requests, requestFactory)
+	workerPool.run(o.WorkerPoolSize)
+	return listener.OnDeviceEvent
 }
