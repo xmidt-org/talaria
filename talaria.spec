@@ -3,7 +3,7 @@
 Name:       talaria
 Version:    %{_ver}
 Release:    %{_releaseno}%{?dist}
-Summary:    The WebPA websocket router component.
+Summary:    The Webpa router agent.
 
 Group:      System Environment/Daemons
 License:    ASL 2.0
@@ -14,7 +14,7 @@ BuildRequires:  golang >= 1.7
 Requires:       supervisor
 
 %description
-Webpa websocket router component.
+The Webpa router agent.
 
 %prep
 %setup -q
@@ -102,4 +102,3 @@ if [ $1 = 0 ]; then
 fi
 
 %changelog
-

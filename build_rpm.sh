@@ -1,5 +1,7 @@
 #!/bin/bash
 
+NAME=talaria
+
 echo "Adjusting build number..."
 
 OIFS=$IFS
@@ -34,16 +36,25 @@ release=`echo "$release" | awk -F'v' '{print $2}'`
 echo "Issuing release $new_release..."
 echo "New base version: $release..."
 
-echo "Building the talaria rpm..."
+echo "Building the ${NAME} rpm..."
 
 pushd ..
-cp -r talaria talaria-$release
-tar -czvf talaria-$new_release.tar.gz talaria-$release
-mv talaria-$new_release.tar.gz /root/rpmbuild/SOURCES
-rm -rf talaria-$release
+cp -r ${NAME} ${NAME}-$release
+tar -czvf ${NAME}-$new_release.tar.gz ${NAME}-$release
+mv ${NAME}-$new_release.tar.gz /root/rpmbuild/SOURCES
+rm -rf ${NAME}-$release
 popd
 
-rpmbuild -ba --define "_ver $release" --define "_releaseno ${BUILD_NUMBER}alpha" --define "_fullver $new_release" talaria.spec
+# Merge the changelog into the spec file so we're consistent
+cat ChangeLog >> ${NAME}.spec
+
+yes "" | rpmbuild -ba --sign \
+    --define "_signature gpg" \
+    --define "_gpg_name Comcast Webpa Team <CHQSV-Webpa-Gpg@comcast.com>" \
+    --define "_ver $release" \
+    --define "_releaseno ${BUILD_NUMBER}" \
+    --define "_fullver $new_release" \
+    ${NAME}.spec
 
 pushd ..
 echo "$new_release" > versionno.txt
