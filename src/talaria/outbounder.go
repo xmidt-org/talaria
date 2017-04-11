@@ -102,12 +102,12 @@ func (l *listener) messageFailed(device device.Interface, message wrp.Routable, 
 	}
 }
 
-func (l *listener) OnDeviceEvent(event *device.Event) {
-	switch event.Type {
+func (l *listener) OnDeviceEvent(e *device.Event) {
+	switch e.Type {
 	case device.MessageReceived:
-		l.messageReceived(event.Device, event.Message, event.Encoded)
+		l.messageReceived(e.Device, e.Message, e.Contents)
 	case device.MessageFailed:
-		l.messageFailed(event.Device, event.Message, event.Encoded, event.Err)
+		l.messageFailed(e.Device, e.Message, e.Contents, e.Error)
 	}
 }
 
