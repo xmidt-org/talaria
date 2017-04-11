@@ -75,7 +75,7 @@ func talaria(arguments []string) int {
 	// Now, initialize the service discovery infrastructure
 	//
 
-	serviceOptions, registrar, err := service.Initialize(logger, nil, v.Sub(service.DiscoveryKey))
+	serviceOptions, registrar, registeredEndpoints, err := service.Initialize(logger, nil, v.Sub(service.DiscoveryKey))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to initialize service discovery: %s\n", err)
 		return 2
@@ -90,6 +90,21 @@ func talaria(arguments []string) int {
 			Registrar: registrar,
 			Listener: func(endpoints []string) {
 				accessor.Update(endpoints)
+				manager.DisconnectIf(func(candidate device.ID) bool {
+					hashedEndpoint, err := accessor.Get(candidate.Bytes())
+					if err != nil {
+						logger.Error("Error while attempting to rehash device id %s: %s", candidate, err)
+						return true
+					}
+
+					// disconnect if hashedEndpoint was NOT found in the endpoints that this talaria instance registered under
+					disconnect := !registeredEndpoints.Has(hashedEndpoint)
+					if disconnect {
+						logger.Info("Disconnecting %s due to service discovery rehash", candidate)
+					}
+
+					return disconnect
+				})
 			},
 		}
 
