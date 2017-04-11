@@ -58,13 +58,13 @@ func talaria(arguments []string) int {
 
 	deviceOptions.Listeners = []device.Listener{outbounder.Start()}
 	manager := device.NewManager(deviceOptions, nil)
-	deviceHandler, err := NewInboundHandler(logger, manager, v)
+	primaryHandler, err := NewPrimaryHandler(logger, manager, v)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to initialize inbound handler: %s\n", err)
 		return 1
 	}
 
-	_, runnable := webPA.Prepare(logger, deviceHandler)
+	_, runnable := webPA.Prepare(logger, primaryHandler)
 	waitGroup, shutdown, err := concurrent.Execute(runnable)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to start device manager: %s\n", err)

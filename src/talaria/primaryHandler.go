@@ -9,7 +9,7 @@ import (
 	"net/http"
 )
 
-func NewInboundHandler(logger logging.Logger, manager device.Manager, v *viper.Viper) (http.Handler, error) {
+func NewPrimaryHandler(logger logging.Logger, manager device.Manager, v *viper.Viper) (http.Handler, error) {
 	poolFactory, err := wrp.NewPoolFactory(v.Sub(wrp.ViperKey))
 	if err != nil {
 		return nil, err
