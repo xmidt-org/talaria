@@ -83,17 +83,23 @@ func talaria(arguments []string) int {
 
 	logger.Info("Service options: %#v", serviceOptions)
 
-	watch, err := registrar.Watch()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to set watch on services: %s\n", err)
-		return 3
-	}
-
 	var (
-		// TODO: handle rehashes using this subscription
-		_       = service.NewAccessorSubscription(watch, nil, serviceOptions)
+		accessor     = service.NewUpdatableAccessor(serviceOptions, nil)
+		subscription = service.Subscription{
+			Logger:    logger,
+			Registrar: registrar,
+			Listener: func(endpoints []string) {
+				accessor.Update(endpoints)
+			},
+		}
+
 		signals = make(chan os.Signal, 1)
 	)
+
+	if err := subscription.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to run subscription: %s", err)
+		return 3
+	}
 
 	signal.Notify(signals)
 	<-signals

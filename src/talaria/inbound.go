@@ -16,14 +16,27 @@ func NewInboundHandler(logger logging.Logger, manager device.Manager, v *viper.V
 	}
 
 	handler := mux.NewRouter()
-	handler.Handle("/device", device.NewTranscodingHandler(poolFactory.NewDecoderPool(wrp.JSON), manager)).
-		Methods("POST").
+
+	handler.Handle("/device", &device.MessageHandler{
+		Logger:   logger,
+		Decoders: poolFactory.NewDecoderPool(wrp.JSON),
+		Router:   manager,
+	}).
+		Methods("POST", "PATCH").
 		Headers("Content-Type", "application/json")
 
-	handler.Handle("/device", device.NewMsgpackHandler(poolFactory.NewDecoderPool(wrp.Msgpack), manager)).
-		Methods("POST").
+	handler.Handle("/device", &device.MessageHandler{
+		Logger:   logger,
+		Decoders: poolFactory.NewDecoderPool(wrp.Msgpack),
+		Router:   manager,
+	}).
+		Methods("POST", "PATCH").
 		Headers("Content-Type", "application/wrp")
 
-	handler.Handle("/connect", device.NewConnectHandler(manager, nil, logger))
+	handler.Handle("/connect", &device.ConnectHandler{
+		Logger:    logger,
+		Connector: manager,
+	})
+
 	return handler, nil
 }
