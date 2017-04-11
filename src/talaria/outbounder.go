@@ -19,9 +19,6 @@ const (
 	// OutbounderKey is the Viper subkey which is expected to hold Outbounder configuration
 	OutbounderKey = "device.outbound"
 
-	// OutboundContentType is the Content-Type header value for device messages leaving talaria
-	OutboundContentType = "application/wrp"
-
 	EventPrefix = "event:"
 	URLPrefix   = "url:"
 
@@ -33,9 +30,6 @@ const (
 	DefaultRequestQueueSize                  = 1000
 	DefaultRequestTimeout      time.Duration = 5 * time.Second
 	DefaultClientTimeout       time.Duration = 3 * time.Second
-	DefaultEncoderPoolSize                   = 100
-	DefaultMessageFailedSource               = "talaria"
-	DefaultMessageFailedHeader               = "X-Webpa-Message-Delivery-Failure"
 	DefaultMaxIdleConns                      = 0
 	DefaultMaxIdleConnsPerHost               = 100
 	DefaultIdleConnTimeout     time.Duration = 0
@@ -47,67 +41,26 @@ type requestFactory func(device.Interface, wrp.Routable, []byte) (*http.Request,
 
 // listener is the internal device Listener type that dispatches requests over HTTP.
 type listener struct {
-	logger              logging.Logger
-	requests            chan<- *http.Request
-	requestFactory      requestFactory
-	messageFailedHeader string
-	encoderPool         *wrp.EncoderPool
-}
-
-func (l *listener) messageReceived(device device.Interface, message wrp.Routable, encoded []byte) {
-	request, err := l.requestFactory(device, message, encoded)
-	if err != nil {
-		l.logger.Error("Unable to create request for device [%s]: %s", device.ID(), err)
-		return
-	}
-
-	select {
-	case l.requests <- request:
-	default:
-		l.logger.Error("Dropping outbound message for device [%s]: %s->%s", device.ID(), message.From(), message.To())
-	}
-}
-
-func (l *listener) messageFailed(device device.Interface, message wrp.Routable, encoded []byte, sendError error) {
-	if message.MessageType() == wrp.SimpleEventMessageType {
-		return
-	}
-
-	var (
-		failureResponse = message.Response("TODO", 1)
-		encodedFailure  bytes.Buffer
-	)
-
-	if err := l.encoderPool.Encode(&encodedFailure, failureResponse); err != nil {
-		l.logger.Error("Could not encode returned message for device [%s]: %s", device.ID(), err)
-		return
-	}
-
-	request, err := l.requestFactory(device, failureResponse, encodedFailure.Bytes())
-	if err != nil {
-		l.logger.Error("Unable to create returned message request for device [%s]: %s", device.ID(), err)
-		return
-	}
-
-	if sendError != nil {
-		request.Header.Set(l.messageFailedHeader, sendError.Error())
-	} else {
-		request.Header.Set(l.messageFailedHeader, "Disconnected")
-	}
-
-	select {
-	case l.requests <- request:
-	default:
-		l.logger.Error("Dropping returned message for device [%s]: %s->%s", device.ID(), failureResponse.From(), failureResponse.To())
-	}
+	logger         logging.Logger
+	requests       chan<- *http.Request
+	requestFactory requestFactory
 }
 
 func (l *listener) OnDeviceEvent(e *device.Event) {
-	switch e.Type {
-	case device.MessageReceived:
-		l.messageReceived(e.Device, e.Message, e.Contents)
-	case device.MessageFailed:
-		l.messageFailed(e.Device, e.Message, e.Contents, e.Error)
+	if e.Type != device.MessageReceived {
+		return
+	}
+
+	request, err := l.requestFactory(e.Device, e.Message, e.Contents)
+	if err != nil {
+		l.logger.Error("Unable to create request for device [%s]: %s", e.Device.ID(), err)
+		return
+	}
+
+	select {
+	case l.requests <- request:
+	default:
+		l.logger.Error("Dropping outbound message for device [%s]: %s->%s", e.Device.ID(), e.Message.From(), e.Message.To())
 	}
 }
 
@@ -156,9 +109,6 @@ type Outbounder struct {
 	RequestQueueSize    int
 	RequestTimeout      time.Duration
 	ClientTimeout       time.Duration
-	EncoderPoolSize     int
-	MessageFailedSource string
-	MessageFailedHeader string
 	MaxIdleConns        int
 	MaxIdleConnsPerHost int
 	IdleConnTimeout     time.Duration
@@ -179,8 +129,6 @@ func NewOutbounder(logger logging.Logger, v *viper.Viper) (o *Outbounder, err er
 		RequestQueueSize:    DefaultRequestQueueSize,
 		RequestTimeout:      DefaultRequestTimeout,
 		ClientTimeout:       DefaultClientTimeout,
-		EncoderPoolSize:     DefaultEncoderPoolSize,
-		MessageFailedSource: DefaultMessageFailedSource,
 		MaxIdleConns:        DefaultMaxIdleConns,
 		MaxIdleConnsPerHost: DefaultMaxIdleConnsPerHost,
 		IdleConnTimeout:     DefaultIdleConnTimeout,
@@ -221,14 +169,14 @@ func (o *Outbounder) newRequestFactory() requestFactory {
 		allowedSchemes[scheme] = true
 	}
 
-	return func(device device.Interface, message wrp.Routable, encoded []byte) (r *http.Request, err error) {
-		destination := message.To()
+	return func(d device.Interface, m wrp.Routable, c []byte) (r *http.Request, err error) {
+		destination := m.To()
 		if strings.HasPrefix(destination, EventPrefix) {
 			// route this to the configured endpoint that receives all events
-			r, err = http.NewRequest(o.Method, o.EventEndpoint, bytes.NewBuffer(encoded))
+			r, err = http.NewRequest(o.Method, o.EventEndpoint, bytes.NewReader(c))
 		} else if strings.HasPrefix(destination, URLPrefix) {
 			// route this to the given URL, subject to some validation
-			if r, err = http.NewRequest(o.Method, destination[len(URLPrefix):], bytes.NewBuffer(encoded)); err == nil {
+			if r, err = http.NewRequest(o.Method, destination[len(URLPrefix):], bytes.NewReader(c)); err == nil {
 				if len(r.URL.Scheme) == 0 {
 					// if no scheme is supplied, use the configured AssumeScheme
 					r.URL.Scheme = o.AssumeScheme
@@ -244,8 +192,8 @@ func (o *Outbounder) newRequestFactory() requestFactory {
 			return
 		}
 
-		r.Header.Set(o.DeviceNameHeader, string(device.ID()))
-		r.Header.Set("Content-Type", OutboundContentType)
+		r.Header.Set(o.DeviceNameHeader, string(d.ID()))
+		r.Header.Set("Content-Type", wrp.Msgpack.ContentType())
 		// TODO: Need to set Convey?
 
 		ctx, _ := context.WithTimeout(context.Background(), o.RequestTimeout)
@@ -266,11 +214,9 @@ func (o *Outbounder) Start() device.Listener {
 		}
 
 		listener = &listener{
-			logger:              o.Logger,
-			requestFactory:      o.newRequestFactory(),
-			messageFailedHeader: o.MessageFailedHeader,
-			requests:            requests,
-			encoderPool:         wrp.NewEncoderPool(o.EncoderPoolSize, wrp.Msgpack),
+			logger:         o.Logger,
+			requestFactory: o.newRequestFactory(),
+			requests:       requests,
 		}
 	)
 
