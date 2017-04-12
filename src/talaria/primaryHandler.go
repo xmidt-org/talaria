@@ -23,7 +23,7 @@ func NewPrimaryHandler(logger logging.Logger, manager device.Manager, v *viper.V
 		Router:   manager,
 	}).
 		Methods("POST", "PATCH").
-		Headers("Content-Type", "application/json")
+		Headers("Content-Type", wrp.JSON.ContentType())
 
 	handler.Handle("/device", &device.MessageHandler{
 		Logger:   logger,
@@ -31,7 +31,7 @@ func NewPrimaryHandler(logger logging.Logger, manager device.Manager, v *viper.V
 		Router:   manager,
 	}).
 		Methods("POST", "PATCH").
-		Headers("Content-Type", "application/wrp")
+		Headers("Content-Type", wrp.Msgpack.ContentType())
 
 	handler.Handle("/connect", &device.ConnectHandler{
 		Logger:    logger,
