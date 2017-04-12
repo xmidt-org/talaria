@@ -27,22 +27,29 @@ const (
 	DefaultAssumeScheme                      = "https"
 	DefaultAllowedScheme                     = "https"
 	DefaultWorkerPoolSize                    = 100
-	DefaultRequestQueueSize                  = 1000
-	DefaultRequestTimeout      time.Duration = 5 * time.Second
+	DefaultOutboundQueueSize                 = 1000
+	DefaultRequestTimeout      time.Duration = 15 * time.Second
 	DefaultClientTimeout       time.Duration = 3 * time.Second
 	DefaultMaxIdleConns                      = 0
 	DefaultMaxIdleConnsPerHost               = 100
 	DefaultIdleConnTimeout     time.Duration = 0
 )
 
+// outboundEnvelope is a tuple of information related to handling an asynchronous HTTP request
+type outboundEnvelope struct {
+	request *http.Request
+	cancel  func()
+}
+
 // RequestFactory is a simple function type for creating an outbound HTTP request
-// for a given WRP message.
-type requestFactory func(device.Interface, wrp.Routable, []byte) (*http.Request, error)
+// for a given WRP message.  This factory function type wraps the created HTTP request in
+// an envelope with other data related to cancellation and queue management.
+type requestFactory func(device.Interface, wrp.Routable, []byte) (*outboundEnvelope, error)
 
 // listener is the internal device Listener type that dispatches requests over HTTP.
 type listener struct {
 	logger         logging.Logger
-	requests       chan<- *http.Request
+	outbounds      chan<- *outboundEnvelope
 	requestFactory requestFactory
 }
 
@@ -51,14 +58,14 @@ func (l *listener) OnDeviceEvent(e *device.Event) {
 		return
 	}
 
-	request, err := l.requestFactory(e.Device, e.Message, e.Contents)
+	outbound, err := l.requestFactory(e.Device, e.Message, e.Contents)
 	if err != nil {
 		l.logger.Error("Unable to create request for device [%s]: %s", e.Device.ID(), err)
 		return
 	}
 
 	select {
-	case l.requests <- request:
+	case l.outbounds <- outbound:
 	default:
 		l.logger.Error("Dropping outbound message for device [%s]: %s->%s", e.Device.ID(), e.Message.From(), e.Message.To())
 	}
@@ -68,26 +75,32 @@ func (l *listener) OnDeviceEvent(e *device.Event) {
 // a transactor function
 type workerPool struct {
 	logger     logging.Logger
-	requests   <-chan *http.Request
+	outbounds  <-chan *outboundEnvelope
 	transactor func(*http.Request) (*http.Response, error)
 }
 
+func (wp *workerPool) send(outbound *outboundEnvelope) {
+	defer outbound.cancel()
+
+	response, err := wp.transactor(outbound.request)
+	if err != nil {
+		wp.logger.Error("HTTP error: %s", err)
+		return
+	}
+
+	if response.StatusCode < 400 {
+		wp.logger.Debug("HTTP response status: %s", response.Status)
+	} else {
+		wp.logger.Error("HTTP response status: %s", response.Status)
+	}
+
+	io.Copy(ioutil.Discard, response.Body)
+	response.Body.Close()
+}
+
 func (wp *workerPool) worker() {
-	for request := range wp.requests {
-		response, err := wp.transactor(request)
-		if err != nil {
-			wp.logger.Error("HTTP error: %s", err)
-			continue
-		}
-
-		if response.StatusCode < 400 {
-			wp.logger.Debug("HTTP response status: %s", response.Status)
-		} else {
-			wp.logger.Error("HTTP response status: %s", response.Status)
-		}
-
-		io.Copy(ioutil.Discard, response.Body)
-		response.Body.Close()
+	for outbound := range wp.outbounds {
+		wp.send(outbound)
 	}
 }
 
@@ -106,7 +119,7 @@ type Outbounder struct {
 	AssumeScheme        string
 	AllowedSchemes      []string
 	WorkerPoolSize      int
-	RequestQueueSize    int
+	OutboundQueueSize   int
 	RequestTimeout      time.Duration
 	ClientTimeout       time.Duration
 	MaxIdleConns        int
@@ -126,7 +139,7 @@ func NewOutbounder(logger logging.Logger, v *viper.Viper) (o *Outbounder, err er
 		AssumeScheme:        DefaultAssumeScheme,
 		AllowedSchemes:      []string{DefaultAllowedScheme},
 		WorkerPoolSize:      DefaultWorkerPoolSize,
-		RequestQueueSize:    DefaultRequestQueueSize,
+		OutboundQueueSize:   DefaultOutboundQueueSize,
 		RequestTimeout:      DefaultRequestTimeout,
 		ClientTimeout:       DefaultClientTimeout,
 		MaxIdleConns:        DefaultMaxIdleConns,
@@ -169,19 +182,20 @@ func (o *Outbounder) newRequestFactory() requestFactory {
 		allowedSchemes[scheme] = true
 	}
 
-	return func(d device.Interface, m wrp.Routable, c []byte) (r *http.Request, err error) {
+	return func(d device.Interface, m wrp.Routable, c []byte) (outbound *outboundEnvelope, err error) {
 		destination := m.To()
+		var request *http.Request
 		if strings.HasPrefix(destination, EventPrefix) {
 			// route this to the configured endpoint that receives all events
-			r, err = http.NewRequest(o.Method, o.EventEndpoint, bytes.NewReader(c))
+			request, err = http.NewRequest(o.Method, o.EventEndpoint, bytes.NewReader(c))
 		} else if strings.HasPrefix(destination, URLPrefix) {
 			// route this to the given URL, subject to some validation
-			if r, err = http.NewRequest(o.Method, destination[len(URLPrefix):], bytes.NewReader(c)); err == nil {
-				if len(r.URL.Scheme) == 0 {
+			if request, err = http.NewRequest(o.Method, destination[len(URLPrefix):], bytes.NewReader(c)); err == nil {
+				if len(request.URL.Scheme) == 0 {
 					// if no scheme is supplied, use the configured AssumeScheme
-					r.URL.Scheme = o.AssumeScheme
-				} else if !allowedSchemes[r.URL.Scheme] {
-					err = fmt.Errorf("Scheme not allowed: %s", r.URL.Scheme)
+					request.URL.Scheme = o.AssumeScheme
+				} else if !allowedSchemes[request.URL.Scheme] {
+					err = fmt.Errorf("Scheme not allowed: %s", request.URL.Scheme)
 				}
 			}
 		} else {
@@ -192,31 +206,35 @@ func (o *Outbounder) newRequestFactory() requestFactory {
 			return
 		}
 
-		r.Header.Set(o.DeviceNameHeader, string(d.ID()))
-		r.Header.Set("Content-Type", wrp.Msgpack.ContentType())
+		request.Header.Set(o.DeviceNameHeader, string(d.ID()))
+		request.Header.Set("Content-Type", wrp.Msgpack.ContentType())
 		// TODO: Need to set Convey?
 
-		ctx, _ := context.WithTimeout(context.Background(), o.RequestTimeout)
-		r = r.WithContext(ctx)
+		ctx, cancel := context.WithTimeout(request.Context(), o.RequestTimeout)
+		outbound = &outboundEnvelope{
+			request: request.WithContext(ctx),
+			cancel:  cancel,
+		}
 
 		return
 	}
 }
 
+// Start spawns all necessary goroutines and returns a device.Listener
 func (o *Outbounder) Start() device.Listener {
 	var (
-		requests = make(chan *http.Request, o.RequestQueueSize)
+		outbounds = make(chan *outboundEnvelope, o.OutboundQueueSize)
 
 		workerPool = workerPool{
 			logger:     o.Logger,
-			requests:   requests,
+			outbounds:  outbounds,
 			transactor: o.newTransactor(),
 		}
 
 		listener = &listener{
 			logger:         o.Logger,
 			requestFactory: o.newRequestFactory(),
-			requests:       requests,
+			outbounds:      outbounds,
 		}
 	)
 
