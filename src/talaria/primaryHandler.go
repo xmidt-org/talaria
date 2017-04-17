@@ -9,7 +9,7 @@ import (
 	"net/http"
 )
 
-func NewPrimaryHandler(logger logging.Logger, manager device.Manager, v *viper.Viper) (http.Handler, error) {
+func NewPrimaryHandler(logger logging.Logger, connectedUpdates <-chan []byte, manager device.Manager, v *viper.Viper) (http.Handler, error) {
 	poolFactory, err := wrp.NewPoolFactory(v.Sub(wrp.ViperKey))
 	if err != nil {
 		return nil, err
@@ -32,6 +32,11 @@ func NewPrimaryHandler(logger logging.Logger, manager device.Manager, v *viper.V
 	}).
 		Methods("POST", "PATCH").
 		Headers("Content-Type", wrp.Msgpack.ContentType())
+
+	listHandler := new(device.ListHandler)
+	listHandler.Consume(connectedUpdates)
+	handler.Handle("/devices", listHandler).
+		Methods("GET")
 
 	handler.Handle("/connect", &device.ConnectHandler{
 		Logger:    logger,
