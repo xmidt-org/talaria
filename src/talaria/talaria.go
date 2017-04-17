@@ -11,6 +11,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"time"
 )
 
 const (
@@ -18,6 +19,14 @@ const (
 	release               = "Developer"
 	defaultVnodeCount int = 211
 )
+
+func newConnectedDeviceListener() (device.Listener, <-chan []byte) {
+	connectedDeviceListener := &device.ConnectedDeviceListener{
+		RefreshInterval: 10 * time.Second,
+	}
+
+	return connectedDeviceListener.Listen()
+}
 
 // talaria is the driver function for Talaria.  It performs everything main() would do,
 // except for obtaining the command-line arguments (which are passed to it).
@@ -56,9 +65,10 @@ func talaria(arguments []string) int {
 		return 1
 	}
 
-	deviceOptions.Listeners = []device.Listener{outbounder.Start()}
+	connectedDeviceListener, connectedUpdates := newConnectedDeviceListener()
+	deviceOptions.Listeners = []device.Listener{connectedDeviceListener, outbounder.Start()}
 	manager := device.NewManager(deviceOptions, nil)
-	primaryHandler, err := NewPrimaryHandler(logger, manager, v)
+	primaryHandler, err := NewPrimaryHandler(logger, connectedUpdates, manager, v)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to initialize inbound handler: %s\n", err)
 		return 1
