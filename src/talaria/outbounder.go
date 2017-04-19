@@ -118,7 +118,6 @@ func (wp *workerPool) run(workers int) {
 type Outbounder struct {
 	Method              string
 	EventEndpoint       string
-	DeviceNameHeader    string
 	AssumeScheme        string
 	AllowedSchemes      []string
 	WorkerPoolSize      int
@@ -138,7 +137,6 @@ func NewOutbounder(logger logging.Logger, v *viper.Viper) (o *Outbounder, err er
 	o = &Outbounder{
 		Method:              DefaultMethod,
 		EventEndpoint:       DefaultEventEndpoint,
-		DeviceNameHeader:    device.DefaultDeviceNameHeader,
 		AssumeScheme:        DefaultAssumeScheme,
 		AllowedSchemes:      []string{DefaultAllowedScheme},
 		WorkerPoolSize:      DefaultWorkerPoolSize,
@@ -209,9 +207,9 @@ func (o *Outbounder) newRequestFactory() requestFactory {
 			return
 		}
 
-		request.Header.Set(o.DeviceNameHeader, string(d.ID()))
+		request.Header.Set(device.DeviceNameHeader, string(d.ID()))
 		request.Header.Set("Content-Type", wrp.Msgpack.ContentType())
-		// TODO: Need to set Convey?
+		d.SetConveyHeader(request.Header)
 
 		ctx, cancel := context.WithTimeout(request.Context(), o.RequestTimeout)
 		outbound = &outboundEnvelope{
