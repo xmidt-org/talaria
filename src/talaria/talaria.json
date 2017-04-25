@@ -1,20 +1,21 @@
 {
 	"primary": {
-		"address": ":9090"
+		"address": ":10090"
 	},
 
 	"health": {
-		"address": ":9999"
+		"address": ":19999"
 	},
 
 	"pprof": {
-		"address": ":9191"
+		"address": ":19191"
 	},
 	
 	"discovery": {
 		"servers": ["localhost:2181"],
 		"serviceName": "talaria",
-		"environment": "dev"
+		"environment": "dev",
+		"registrations": ["localhost:10090"]
 	},
 
 	"device": {
