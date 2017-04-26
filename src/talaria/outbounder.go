@@ -1,17 +1,12 @@
 package main
 
 import (
-	"bytes"
-	"context"
-	"fmt"
 	"github.com/Comcast/webpa-common/device"
 	"github.com/Comcast/webpa-common/logging"
-	"github.com/Comcast/webpa-common/wrp"
 	"github.com/spf13/viper"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -19,13 +14,13 @@ const (
 	// OutbounderKey is the Viper subkey which is expected to hold Outbounder configuration
 	OutbounderKey = "device.outbound"
 
-	EventPrefix = "event:"
-	URLPrefix   = "url:"
+	EventPrefix                 = "event:"
+	URLPrefix                   = "url:"
+	DefaultDefaultEventEndpoint = "http://localhost:8090/api/v2/notify"
+	DefaultAssumeScheme         = "https"
+	DefaultAllowedScheme        = "https"
 
 	DefaultMethod                            = "POST"
-	DefaultEventEndpoint                     = "http://localhost:8090/api/v2/notify"
-	DefaultAssumeScheme                      = "https"
-	DefaultAllowedScheme                     = "https"
 	DefaultWorkerPoolSize                    = 100
 	DefaultOutboundQueueSize                 = 1000
 	DefaultRequestTimeout      time.Duration = 15 * time.Second
@@ -35,22 +30,11 @@ const (
 	DefaultIdleConnTimeout     time.Duration = 0
 )
 
-// outboundEnvelope is a tuple of information related to handling an asynchronous HTTP request
-type outboundEnvelope struct {
-	request *http.Request
-	cancel  func()
-}
-
-// RequestFactory is a simple function type for creating an outbound HTTP request
-// for a given WRP message.  This factory function type wraps the created HTTP request in
-// an envelope with other data related to cancellation and queue management.
-type requestFactory func(device.Interface, wrp.Routable, []byte) (*outboundEnvelope, error)
-
 // listener is the internal device Listener type that dispatches requests over HTTP.
 type listener struct {
-	logger         logging.Logger
-	outbounds      chan<- *outboundEnvelope
-	requestFactory requestFactory
+	logger          logging.Logger
+	outbounds       chan<- *outboundEnvelope
+	envelopeFactory envelopeFactory
 }
 
 func (l *listener) onDeviceEvent(e *device.Event) {
@@ -58,17 +42,19 @@ func (l *listener) onDeviceEvent(e *device.Event) {
 		return
 	}
 
-	outbound, err := l.requestFactory(e.Device, e.Message, e.Contents)
+	envelopes, err := l.envelopeFactory(e.Message.To(), e.Contents)
 	if err != nil {
-		l.logger.Error("Unable to create request for device [%s]: %s", e.Device.ID(), err)
+		l.logger.Error("Unable to create requests for device [%s]: %s", e.Device.ID(), err)
 		return
 	}
 
-	select {
-	case <-outbound.request.Context().Done():
-		l.logger.Error("Dropping outbound message for device [%s]: %s->%s", e.Device.ID(), e.Message.From(), e.Message.To())
-		outbound.cancel()
-	case l.outbounds <- outbound:
+	for _, envelope := range envelopes {
+		select {
+		case <-envelope.done():
+			l.logger.Error("Dropping outbound message for device [%s]: %s->%s", e.Device.ID(), e.Message.From(), e.Message.To())
+			envelope.cancel()
+		case l.outbounds <- envelope:
+		}
 	}
 }
 
@@ -80,12 +66,12 @@ type workerPool struct {
 	transactor func(*http.Request) (*http.Response, error)
 }
 
-// transact performs all the logic necessary to fulfill and outbound request.
+// transact performs all the logic necessary to fulfill an outbound request.
 // This method ensures that the Context associated with the request is properly cancelled.
-func (wp *workerPool) transact(outbound *outboundEnvelope) {
-	defer outbound.cancel()
+func (wp *workerPool) transact(e *outboundEnvelope) {
+	defer e.cancel()
 
-	response, err := wp.transactor(outbound.request)
+	response, err := wp.transactor(e.request)
 	if err != nil {
 		wp.logger.Error("HTTP error: %s", err)
 		return
@@ -102,8 +88,8 @@ func (wp *workerPool) transact(outbound *outboundEnvelope) {
 }
 
 func (wp *workerPool) worker() {
-	for outbound := range wp.outbounds {
-		wp.transact(outbound)
+	for e := range wp.outbounds {
+		wp.transact(e)
 	}
 }
 
@@ -116,13 +102,9 @@ func (wp *workerPool) run(workers int) {
 // Outbounder acts as a configurable endpoint for dispatching WRP messages from devices
 // and handling any failed messages.
 type Outbounder struct {
-	Method              string
-	EventEndpoint       string
-	AssumeScheme        string
-	AllowedSchemes      []string
+	Routing             Routing
 	WorkerPoolSize      int
 	OutboundQueueSize   int
-	RequestTimeout      time.Duration
 	ClientTimeout       time.Duration
 	MaxIdleConns        int
 	MaxIdleConnsPerHost int
@@ -135,13 +117,15 @@ type Outbounder struct {
 // Outbounder is returned.
 func NewOutbounder(logger logging.Logger, v *viper.Viper) (o *Outbounder, err error) {
 	o = &Outbounder{
-		Method:              DefaultMethod,
-		EventEndpoint:       DefaultEventEndpoint,
-		AssumeScheme:        DefaultAssumeScheme,
-		AllowedSchemes:      []string{DefaultAllowedScheme},
+		Routing: Routing{
+			Method:                DefaultMethod,
+			Timeout:               DefaultRequestTimeout,
+			AssumeScheme:          DefaultAssumeScheme,
+			AllowedSchemes:        []string{DefaultAllowedScheme},
+			DefaultEventEndpoints: []string{DefaultDefaultEventEndpoint},
+		},
 		WorkerPoolSize:      DefaultWorkerPoolSize,
 		OutboundQueueSize:   DefaultOutboundQueueSize,
-		RequestTimeout:      DefaultRequestTimeout,
 		ClientTimeout:       DefaultClientTimeout,
 		MaxIdleConns:        DefaultMaxIdleConns,
 		MaxIdleConnsPerHost: DefaultMaxIdleConnsPerHost,
@@ -175,52 +159,6 @@ func (o *Outbounder) newTransactor() func(*http.Request) (*http.Response, error)
 	return client.Do
 }
 
-// newRequestFactory produces a RequestFactory function that creates an outbound HTTP request
-// for a given WRP message from a specific device.
-func (o *Outbounder) newRequestFactory() requestFactory {
-	allowedSchemes := make(map[string]bool, len(o.AllowedSchemes))
-	for _, scheme := range o.AllowedSchemes {
-		allowedSchemes[scheme] = true
-	}
-
-	return func(d device.Interface, m wrp.Routable, c []byte) (outbound *outboundEnvelope, err error) {
-		destination := m.To()
-		var request *http.Request
-		if strings.HasPrefix(destination, EventPrefix) {
-			// route this to the configured endpoint that receives all events
-			request, err = http.NewRequest(o.Method, o.EventEndpoint, bytes.NewReader(c))
-		} else if strings.HasPrefix(destination, URLPrefix) {
-			// route this to the given URL, subject to some validation
-			if request, err = http.NewRequest(o.Method, destination[len(URLPrefix):], bytes.NewReader(c)); err == nil {
-				if len(request.URL.Scheme) == 0 {
-					// if no scheme is supplied, use the configured AssumeScheme
-					request.URL.Scheme = o.AssumeScheme
-				} else if !allowedSchemes[request.URL.Scheme] {
-					err = fmt.Errorf("Scheme not allowed: %s", request.URL.Scheme)
-				}
-			}
-		} else {
-			err = fmt.Errorf("Bad WRP destination: %s", destination)
-		}
-
-		if err != nil {
-			return
-		}
-
-		request.Header.Set(device.DeviceNameHeader, string(d.ID()))
-		request.Header.Set("Content-Type", wrp.Msgpack.ContentType())
-		d.SetConveyHeader(request.Header)
-
-		ctx, cancel := context.WithTimeout(request.Context(), o.RequestTimeout)
-		outbound = &outboundEnvelope{
-			request: request.WithContext(ctx),
-			cancel:  cancel,
-		}
-
-		return
-	}
-}
-
 // Start spawns all necessary goroutines and returns a device.Listener
 func (o *Outbounder) Start() device.Listener {
 	var (
@@ -233,9 +171,9 @@ func (o *Outbounder) Start() device.Listener {
 		}
 
 		listener = &listener{
-			logger:         o.Logger,
-			requestFactory: o.newRequestFactory(),
-			outbounds:      outbounds,
+			logger:          o.Logger,
+			outbounds:       outbounds,
+			envelopeFactory: o.Routing.NewEnvelopeFactory(),
 		}
 	)
 
