@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -34,8 +34,11 @@ func newOutboundEnvelope(timeout time.Duration, method, urlString string, body i
 	return &outboundEnvelope{r.WithContext(ctx), cancel}, nil
 }
 
-// envelopeFactory takes an HTTP request and wraps it in one or more envelopes for transport.
+// envelopeFactory takes an HTTP request and produces one or more envelopes for transport.
 type envelopeFactory func(string, []byte) ([]*outboundEnvelope, error)
+
+// urlPattern is the regular expression used to parsed out the scheme from URLs
+var urlPattern = regexp.MustCompile(`(?P<prefix>(?P<scheme>[a-z0-9\+\-\.]*)://)?.*`)
 
 // urlFilter performs validation and mutation on URLs supplied by devices
 type urlFilter struct {
@@ -61,20 +64,23 @@ func newURLFilter(assumeScheme string, allowedSchemes []string) *urlFilter {
 		uf.allowedSchemes[DefaultAllowedScheme] = true
 	}
 
+	if !uf.allowedSchemes[uf.assumeScheme] {
+		panic(fmt.Errorf("Allowed schemes %v do not include the default scheme %s", uf.allowedSchemes, uf.assumeScheme))
+	}
+
 	return uf
 }
 
 func (uf *urlFilter) filter(v string) (string, error) {
-	url, err := url.Parse(v)
-	if err != nil {
-		return "", err
+	matches := urlPattern.FindStringSubmatchIndex(v)
+	if matches[2] < 0 {
+		// no prefix at all
+		return (uf.assumeScheme + `://` + v), nil
 	}
 
-	if len(url.Scheme) == 0 {
-		url.Scheme = uf.assumeScheme
-		return url.String(), nil
-	} else if !uf.allowedSchemes[url.Scheme] {
-		return "", fmt.Errorf("Scheme not allowed: %s", url.Scheme)
+	scheme := v[matches[4]:matches[5]]
+	if !uf.allowedSchemes[scheme] {
+		return "", fmt.Errorf("Scheme not allowed: %s", scheme)
 	}
 
 	return v, nil
