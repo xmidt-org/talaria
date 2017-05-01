@@ -14,8 +14,12 @@ const (
 	// OutbounderKey is the Viper subkey which is expected to hold Outbounder configuration
 	OutbounderKey = "device.outbound"
 
-	EventPrefix                 = "event:"
-	URLPrefix                   = "url:"
+	// EventPrefix is the string prefix for WRP destinations that should be treated as events
+	EventPrefix = "event:"
+
+	// DNSPrefix is the string prefix for WRP destinations that should be treated as exact URLs
+	DNSPrefix = "dns:"
+
 	DefaultDefaultEventEndpoint = "http://localhost:8090/api/v2/notify"
 	DefaultAssumeScheme         = "https"
 	DefaultAllowedScheme        = "https"
@@ -49,11 +53,34 @@ func (l *listener) onDeviceEvent(e *device.Event) {
 	}
 
 	for _, envelope := range envelopes {
+		ctx := envelope.request.Context()
+		if ctx.Err() != nil {
+			l.logger.Error(
+				`Dropping outbound message for device [%s]: %s->%s`,
+				e.Device.ID(),
+				e.Message.From(),
+				envelope.request.URL,
+			)
+
+			continue
+		}
+
 		select {
-		case <-envelope.done():
-			l.logger.Error("Dropping outbound message for device [%s]: %s->%s", e.Device.ID(), e.Message.From(), e.Message.To())
+		case <-ctx.Done():
 			envelope.cancel()
+			l.logger.Error(
+				`Message cancelled for device [%s]: %s->%s`,
+				e.Device.ID(),
+				e.Message.From(),
+				envelope.request.URL,
+			)
 		case l.outbounds <- envelope:
+			l.logger.Debug(
+				`Queued outbound message for device [%s]: %s->%s`,
+				e.Device.ID(),
+				e.Message.From(),
+				envelope.request.URL,
+			)
 		}
 	}
 }
