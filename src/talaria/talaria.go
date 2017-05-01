@@ -65,8 +65,14 @@ func talaria(arguments []string) int {
 		return 1
 	}
 
+	outboundListener, err := outbounder.Start()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to start outbound listener: %s\n", err)
+		return 1
+	}
+
 	connectedDeviceListener, connectedUpdates := newConnectedDeviceListener()
-	deviceOptions.Listeners = []device.Listener{connectedDeviceListener, outbounder.Start()}
+	deviceOptions.Listeners = []device.Listener{connectedDeviceListener, outboundListener}
 	manager := device.NewManager(deviceOptions, nil)
 	primaryHandler, err := NewPrimaryHandler(logger, connectedUpdates, manager, v)
 	if err != nil {

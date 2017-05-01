@@ -2,57 +2,47 @@ package main
 
 import (
 	"fmt"
-	"regexp"
+	"strings"
 )
 
-// urlPattern is the regular expression used to parsed out the scheme from URLs
-var urlPattern = regexp.MustCompile(`(?P<prefix>(?P<scheme>[a-z0-9\+\-\.]*)://)?.*`)
+// URLFilter represents a strategy for validating and possibly mutating URLs from devices.
+type URLFilter interface {
+	Filter(string) (string, error)
+}
 
-// urlFilter performs validation and mutation on URLs supplied by devices
+// urlFilter is the internal URLFilter implementation
 type urlFilter struct {
 	assumeScheme   string
 	allowedSchemes map[string]bool
 }
 
-// newURLFilter preprocesses its parameters, applying appropriate defaults, and produces
-// a urlFilter instance.
-func newURLFilter(assumeScheme string, allowedSchemes []string) *urlFilter {
+// NewURLFilter returns a URLFilter using the supplied configuration.  If assumeScheme is empty,
+// DefaultAssumeScheme is used.  If allowedSchemes is empty, the DefaultAllowedScheme is
+// used as the sole allowed scheme.  An error is returned if the assumeScheme is not present
+// in the allowedSchemes.
+func NewURLFilter(o *Outbounder) (URLFilter, error) {
 	uf := &urlFilter{
-		assumeScheme:   assumeScheme,
-		allowedSchemes: make(map[string]bool, len(allowedSchemes)),
-	}
-
-	if len(uf.assumeScheme) == 0 {
-		uf.assumeScheme = DefaultAssumeScheme
-	}
-
-	if len(allowedSchemes) > 0 {
-		for _, v := range allowedSchemes {
-			uf.allowedSchemes[v] = true
-		}
-	} else {
-		uf.allowedSchemes[DefaultAllowedScheme] = true
+		assumeScheme:   o.assumeScheme(),
+		allowedSchemes: o.allowedSchemes(),
 	}
 
 	if !uf.allowedSchemes[uf.assumeScheme] {
-		panic(fmt.Errorf("Allowed schemes %v do not include the default scheme %s", uf.allowedSchemes, uf.assumeScheme))
+		return nil, fmt.Errorf(
+			"Allowed schemes %v do not include the default scheme %s", uf.allowedSchemes, uf.assumeScheme,
+		)
 	}
 
-	return uf
+	return uf, nil
 }
 
-// filter accepts a URL and ensures that there is a scheme and that the scheme is allowed.
-func (uf *urlFilter) filter(v string) (string, error) {
-	matches := urlPattern.FindStringSubmatchIndex(v)
-
-	// indices (2, 3) are the prefix range
-	if matches[2] < 0 {
-		// no prefix at all
-		return (uf.assumeScheme + `://` + v), nil
+func (uf *urlFilter) Filter(v string) (string, error) {
+	position := strings.Index(v, "://")
+	if position < 0 {
+		return (uf.assumeScheme + "://" + v), nil
 	}
 
-	scheme := v[matches[4]:matches[5]]
-	if !uf.allowedSchemes[scheme] {
+	scheme := v[:position]
+	if !uf.allowedSchemes[v[:position]] {
 		return "", fmt.Errorf("Scheme not allowed: %s", scheme)
 	}
 
