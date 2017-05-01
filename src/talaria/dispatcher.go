@@ -58,6 +58,11 @@ func NewDispatcher(o *Outbounder, urlFilter URLFilter) (Dispatcher, <-chan *outb
 	}, outbounds, nil
 }
 
+// send wraps the given request in an outboundEnvelope together with a cancellable context,
+// then asynchronously sends that request to the outbounds channel.  This method will
+// block on the outbound channel only as long as the context is not cancelled, i.e. does not time out.
+// If the context is cancelled before the envelope can be queued, this method drops the message
+// and returns an error.
 func (d *dispatcher) send(request *http.Request) error {
 	var (
 		ctx, cancel = context.WithTimeout(request.Context(), d.timeout)

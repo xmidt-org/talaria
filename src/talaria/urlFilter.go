@@ -7,6 +7,9 @@ import (
 
 // URLFilter represents a strategy for validating and possibly mutating URLs from devices.
 type URLFilter interface {
+	// Filter accepts a URL and performs validation on it.  This method can return
+	// a different URL, if the internal configuration requires it.  For example, if the
+	// supplied URL has no scheme, this method may prepend one.
 	Filter(string) (string, error)
 }
 
