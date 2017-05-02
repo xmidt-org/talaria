@@ -17,9 +17,8 @@ const (
 	// DNSPrefix is the string prefix for WRP destinations that should be treated as exact URLs
 	DNSPrefix = "dns:"
 
-	DefaultDefaultEventEndpoint = "http://localhost:8090/api/v2/notify"
-	DefaultAssumeScheme         = "https"
-	DefaultAllowedScheme        = "https"
+	DefaultAssumeScheme  = "https"
+	DefaultAllowedScheme = "https"
 
 	DefaultMethod                            = "POST"
 	DefaultWorkerPoolSize                    = 100
@@ -54,18 +53,17 @@ type Outbounder struct {
 // Outbounder is returned.
 func NewOutbounder(logger logging.Logger, v *viper.Viper) (o *Outbounder, err error) {
 	o = &Outbounder{
-		Method:                DefaultMethod,
-		RequestTimeout:        DefaultRequestTimeout,
-		AssumeScheme:          DefaultAssumeScheme,
-		AllowedSchemes:        []string{DefaultAllowedScheme},
-		DefaultEventEndpoints: []string{DefaultDefaultEventEndpoint},
-		OutboundQueueSize:     DefaultOutboundQueueSize,
-		WorkerPoolSize:        DefaultWorkerPoolSize,
-		ClientTimeout:         DefaultClientTimeout,
-		MaxIdleConns:          DefaultMaxIdleConns,
-		MaxIdleConnsPerHost:   DefaultMaxIdleConnsPerHost,
-		IdleConnTimeout:       DefaultIdleConnTimeout,
-		Logger:                logger,
+		Method:              DefaultMethod,
+		RequestTimeout:      DefaultRequestTimeout,
+		AssumeScheme:        DefaultAssumeScheme,
+		AllowedSchemes:      []string{DefaultAllowedScheme},
+		OutboundQueueSize:   DefaultOutboundQueueSize,
+		WorkerPoolSize:      DefaultWorkerPoolSize,
+		ClientTimeout:       DefaultClientTimeout,
+		MaxIdleConns:        DefaultMaxIdleConns,
+		MaxIdleConnsPerHost: DefaultMaxIdleConnsPerHost,
+		IdleConnTimeout:     DefaultIdleConnTimeout,
+		Logger:              logger,
 	}
 
 	if v != nil {
@@ -125,7 +123,9 @@ func (o *Outbounder) defaultEventEndpoints() []string {
 		return o.DefaultEventEndpoints
 	}
 
-	return []string{DefaultDefaultEventEndpoint}
+	// no reason not to return nil here, as client code
+	// only iterates over this slice and gets the length
+	return nil
 }
 
 func (o *Outbounder) eventEndpoints() map[string][]string {
@@ -133,6 +133,8 @@ func (o *Outbounder) eventEndpoints() map[string][]string {
 		return o.EventEndpoints
 	}
 
+	// don't return nil, as we want to make sure client code can
+	// always do lookups for event types
 	return map[string][]string{}
 }
 

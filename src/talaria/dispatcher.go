@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"github.com/Comcast/webpa-common/device"
 	"github.com/Comcast/webpa-common/logging"
 	"net/http"
@@ -78,9 +79,15 @@ func (d *dispatcher) send(request *http.Request) error {
 }
 
 func (d *dispatcher) dispatchEvent(eventType string, contents []byte) error {
-	endpoints, ok := d.eventEndpoints[eventType]
-	if !ok {
+	endpoints := d.eventEndpoints[eventType]
+	if len(endpoints) == 0 {
 		endpoints = d.defaultEventEndpoints
+	}
+
+	if len(endpoints) == 0 {
+		// allow no endpoints, but log an error since this means that we're dropping
+		// traffic explicitly because of configuration
+		return fmt.Errorf("No endpoints configured for event: %s", eventType)
 	}
 
 	for _, url := range endpoints {
@@ -118,7 +125,7 @@ func (d *dispatcher) OnDeviceEvent(event *device.Event) {
 
 	destination := event.Message.To()
 	if strings.HasPrefix(destination, EventPrefix) {
-		if err := d.dispatchEvent(destination[:len(EventPrefix)], event.Contents); err != nil {
+		if err := d.dispatchEvent(destination[len(EventPrefix):], event.Contents); err != nil {
 			d.logger.Error("Error dispatching event [%s]: %s", destination, err)
 		}
 	} else if strings.HasPrefix(destination, DNSPrefix) {
