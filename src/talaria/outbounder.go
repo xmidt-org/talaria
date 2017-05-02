@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"github.com/Comcast/webpa-common/device"
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/spf13/viper"
@@ -33,19 +34,19 @@ const (
 // Outbounder encapsulates the configuration necessary for handling outbound traffic
 // and grants the ability to start the outbounding infrastructure.
 type Outbounder struct {
-	Method                string
-	RequestTimeout        time.Duration
-	DefaultScheme         string
-	AllowedSchemes        []string
-	DefaultEventEndpoints []string
-	EventEndpoints        map[string][]string
-	OutboundQueueSize     uint
-	WorkerPoolSize        uint
-	ClientTimeout         time.Duration
-	MaxIdleConns          int
-	MaxIdleConnsPerHost   int
-	IdleConnTimeout       time.Duration
-	Logger                logging.Logger
+	Method                string              `json:"method"`
+	RequestTimeout        time.Duration       `json:"requestTimeout"`
+	DefaultScheme         string              `json:"defaultScheme"`
+	AllowedSchemes        []string            `json:"allowedSchemes"`
+	DefaultEventEndpoints []string            `json:"defaultEventEndpoints"`
+	EventEndpoints        map[string][]string `json:"eventEndpoints"`
+	OutboundQueueSize     uint                `json:"outboundQueueSize"`
+	WorkerPoolSize        uint                `json:"workerPoolSize"`
+	ClientTimeout         time.Duration       `json:"clientTimeout"`
+	MaxIdleConns          int                 `json:"maxIdleConns"`
+	MaxIdleConnsPerHost   int                 `json:"maxIdleConnsPerHost"`
+	IdleConnTimeout       time.Duration       `json:"idleConnTimeout"`
+	Logger                logging.Logger      `json:"-"`
 }
 
 // NewOutbounder returns an Outbounder unmarshalled from a Viper environment.
@@ -71,6 +72,15 @@ func NewOutbounder(logger logging.Logger, v *viper.Viper) (o *Outbounder, err er
 	}
 
 	return
+}
+
+// String emits a JSON string representing this outbounder, primarily useful for debugging.
+func (o *Outbounder) String() string {
+	if data, err := json.Marshal(o); err != nil {
+		return err.Error()
+	} else {
+		return string(data)
+	}
 }
 
 func (o *Outbounder) logger() logging.Logger {
@@ -188,6 +198,7 @@ func (o *Outbounder) clientTimeout() time.Duration {
 
 // Start spawns all necessary goroutines and returns a device.Listener
 func (o *Outbounder) Start() (device.Listener, error) {
+	o.logger().Info("Starting outbounder: %s", o)
 	dispatcher, outbounds, err := NewDispatcher(o, nil)
 	if err != nil {
 		return nil, err
