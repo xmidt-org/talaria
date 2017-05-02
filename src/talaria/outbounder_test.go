@@ -12,7 +12,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -21,13 +20,12 @@ import (
 func ExampleOutbounder() {
 	var (
 		finish = new(sync.WaitGroup)
-		output []string // we'll sort this so we get consistent output ordering
 		server = httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 			defer finish.Done()
 			if body, err := ioutil.ReadAll(request.Body); err != nil {
-				output = append(output, err.Error())
+				fmt.Println(err)
 			} else {
-				output = append(output, request.Method+":"+string(body))
+				fmt.Printf("%s:%s\n", request.Method, body)
 			}
 		}))
 	)
@@ -35,11 +33,13 @@ func ExampleOutbounder() {
 	defer server.Close()
 
 	var (
+		// set the workerPoolSize to 1 so that output order is deterministic
 		configuration = []byte(fmt.Sprintf(
 			`{
 				"defaultScheme": "http",
 				"allowedSchemes": ["http", "https"],
-				"defaultEventEndpoints": ["%s"]
+				"defaultEventEndpoints": ["%s"],
+				"workerPoolSize": 1
 			}`,
 			server.URL,
 		))
@@ -81,16 +81,9 @@ func ExampleOutbounder() {
 
 	finish.Wait()
 
-	// since there's a worker pool, the order in which output happens isn't deterministic
-	// sorting the output before printing it makes it deterministic
-	sort.Strings(output)
-	for _, s := range output {
-		fmt.Println(s)
-	}
-
 	// Output:
-	// POST:dns message
 	// POST:iot event
+	// POST:dns message
 }
 
 func testOutbounderDefaults(t *testing.T) {
