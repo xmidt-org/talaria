@@ -17,12 +17,12 @@ const (
 	// DNSPrefix is the string prefix for WRP destinations that should be treated as exact URLs
 	DNSPrefix = "dns:"
 
-	DefaultAssumeScheme  = "https"
+	DefaultDefaultScheme = "https"
 	DefaultAllowedScheme = "https"
 
 	DefaultMethod                            = "POST"
-	DefaultWorkerPoolSize                    = 100
-	DefaultOutboundQueueSize                 = 1000
+	DefaultWorkerPoolSize      uint          = 100
+	DefaultOutboundQueueSize   uint          = 1000
 	DefaultRequestTimeout      time.Duration = 15 * time.Second
 	DefaultClientTimeout       time.Duration = 3 * time.Second
 	DefaultMaxIdleConns                      = 0
@@ -35,7 +35,7 @@ const (
 type Outbounder struct {
 	Method                string
 	RequestTimeout        time.Duration
-	AssumeScheme          string
+	DefaultScheme         string
 	AllowedSchemes        []string
 	DefaultEventEndpoints []string
 	EventEndpoints        map[string][]string
@@ -55,7 +55,7 @@ func NewOutbounder(logger logging.Logger, v *viper.Viper) (o *Outbounder, err er
 	o = &Outbounder{
 		Method:              DefaultMethod,
 		RequestTimeout:      DefaultRequestTimeout,
-		AssumeScheme:        DefaultAssumeScheme,
+		DefaultScheme:       DefaultDefaultScheme,
 		AllowedSchemes:      []string{DefaultAllowedScheme},
 		OutboundQueueSize:   DefaultOutboundQueueSize,
 		WorkerPoolSize:      DefaultWorkerPoolSize,
@@ -97,12 +97,12 @@ func (o *Outbounder) requestTimeout() time.Duration {
 	return DefaultRequestTimeout
 }
 
-func (o *Outbounder) assumeScheme() string {
-	if o != nil && len(o.AssumeScheme) > 0 {
-		return o.AssumeScheme
+func (o *Outbounder) defaultScheme() string {
+	if o != nil && len(o.DefaultScheme) > 0 {
+		return o.DefaultScheme
 	}
 
-	return DefaultAssumeScheme
+	return DefaultDefaultScheme
 }
 
 func (o *Outbounder) allowedSchemes() map[string]bool {

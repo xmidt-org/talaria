@@ -6,10 +6,10 @@ import (
 	"testing"
 )
 
-func testURLFilterInvalidAssumeScheme(t *testing.T) {
+func testURLFilterInvalidDefaultScheme(t *testing.T) {
 	assert := assert.New(t)
 	urlFilter, err := NewURLFilter(&Outbounder{
-		AssumeScheme:   "http",
+		DefaultScheme:  "http",
 		AllowedSchemes: []string{"https"},
 	})
 
@@ -34,11 +34,11 @@ func testURLFilterFilter(t *testing.T) {
 			{nil, "xxx://foobar.com", "", true},
 			{nil, "http://foobar.com:1234", "", true},
 
-			{&Outbounder{AssumeScheme: "ftp", AllowedSchemes: []string{"ftp", "https"}}, "foobar.com", "ftp://foobar.com", false},
-			{&Outbounder{AssumeScheme: "ftp", AllowedSchemes: []string{"ftp", "https"}}, "foobar.com?test=1", "ftp://foobar.com?test=1", false},
-			{&Outbounder{AssumeScheme: "ftp", AllowedSchemes: []string{"ftp", "https"}}, "https://foobar.com", "https://foobar.com", false},
-			{&Outbounder{AssumeScheme: "ftp", AllowedSchemes: []string{"ftp", "https"}}, "https://foobar.com?test=1", "https://foobar.com?test=1", false},
-			{&Outbounder{AssumeScheme: "ftp", AllowedSchemes: []string{"ftp", "https"}}, "http://foobar.com", "", true},
+			{&Outbounder{DefaultScheme: "ftp", AllowedSchemes: []string{"ftp", "https"}}, "foobar.com", "ftp://foobar.com", false},
+			{&Outbounder{DefaultScheme: "ftp", AllowedSchemes: []string{"ftp", "https"}}, "foobar.com?test=1", "ftp://foobar.com?test=1", false},
+			{&Outbounder{DefaultScheme: "ftp", AllowedSchemes: []string{"ftp", "https"}}, "https://foobar.com", "https://foobar.com", false},
+			{&Outbounder{DefaultScheme: "ftp", AllowedSchemes: []string{"ftp", "https"}}, "https://foobar.com?test=1", "https://foobar.com?test=1", false},
+			{&Outbounder{DefaultScheme: "ftp", AllowedSchemes: []string{"ftp", "https"}}, "http://foobar.com", "", true},
 		}
 	)
 
@@ -55,6 +55,6 @@ func testURLFilterFilter(t *testing.T) {
 }
 
 func TestURLFilter(t *testing.T) {
-	t.Run("InvalidAssumeScheme", testURLFilterInvalidAssumeScheme)
+	t.Run("InvalidDefaultScheme", testURLFilterInvalidDefaultScheme)
 	t.Run("Filter", testURLFilterFilter)
 }

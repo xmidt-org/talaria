@@ -48,7 +48,7 @@ func testDispatcherUnroutable(t *testing.T) {
 func testDispatcherBadURLFilter(t *testing.T) {
 	var (
 		assert                     = assert.New(t)
-		dispatcher, outbounds, err = NewDispatcher(&Outbounder{AssumeScheme: "bad"}, nil)
+		dispatcher, outbounds, err = NewDispatcher(&Outbounder{DefaultScheme: "bad"}, nil)
 	)
 
 	assert.Nil(dispatcher)

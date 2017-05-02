@@ -15,23 +15,23 @@ type URLFilter interface {
 
 // urlFilter is the internal URLFilter implementation
 type urlFilter struct {
-	assumeScheme   string
+	defaultScheme  string
 	allowedSchemes map[string]bool
 }
 
-// NewURLFilter returns a URLFilter using the supplied configuration.  If assumeScheme is empty,
+// NewURLFilter returns a URLFilter using the supplied configuration.  If defaultScheme is empty,
 // DefaultAssumeScheme is used.  If allowedSchemes is empty, the DefaultAllowedScheme is
-// used as the sole allowed scheme.  An error is returned if the assumeScheme is not present
+// used as the sole allowed scheme.  An error is returned if the defaultScheme is not present
 // in the allowedSchemes.
 func NewURLFilter(o *Outbounder) (URLFilter, error) {
 	uf := &urlFilter{
-		assumeScheme:   o.assumeScheme(),
+		defaultScheme:  o.defaultScheme(),
 		allowedSchemes: o.allowedSchemes(),
 	}
 
-	if !uf.allowedSchemes[uf.assumeScheme] {
+	if !uf.allowedSchemes[uf.defaultScheme] {
 		return nil, fmt.Errorf(
-			"Allowed schemes %v do not include the default scheme %s", uf.allowedSchemes, uf.assumeScheme,
+			"Allowed schemes %v do not include the default scheme %s", uf.allowedSchemes, uf.defaultScheme,
 		)
 	}
 
@@ -41,7 +41,7 @@ func NewURLFilter(o *Outbounder) (URLFilter, error) {
 func (uf *urlFilter) Filter(v string) (string, error) {
 	position := strings.Index(v, "://")
 	if position < 0 {
-		return (uf.assumeScheme + "://" + v), nil
+		return (uf.defaultScheme + "://" + v), nil
 	}
 
 	scheme := v[:position]
