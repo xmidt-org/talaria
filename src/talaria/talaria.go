@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"github.com/Comcast/webpa-common/concurrent"
 	"github.com/Comcast/webpa-common/device"
+	"github.com/Comcast/webpa-common/logging"
 	"github.com/Comcast/webpa-common/server"
 	"github.com/Comcast/webpa-common/service"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
@@ -20,12 +22,33 @@ const (
 	defaultVnodeCount int = 211
 )
 
-func newConnectedDeviceListener() (device.Listener, <-chan []byte) {
-	connectedDeviceListener := &device.ConnectedDeviceListener{
-		RefreshInterval: 10 * time.Second,
+// startDeviceManagement handles the configuration and initialization of the device management subsystem
+// for talaria.  The returned HTTP handler can be used for device connections and messages, while the returned
+// Manager can be used to route and administer the set of connected devices.
+func startDeviceManagement(logger logging.Logger, v *viper.Viper) (http.Handler, device.Manager, error) {
+	deviceOptions, err := device.NewOptions(logger, v.Sub(device.DeviceManagerKey))
+	if err != nil {
+		return nil, nil, err
 	}
 
-	return connectedDeviceListener.Listen()
+	outbounder, err := NewOutbounder(logger, v.Sub(OutbounderKey))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	outboundListener, err := outbounder.Start()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	connectedDeviceListener, connectedUpdates := (&device.ConnectedDeviceListener{
+		RefreshInterval: 10 * time.Second,
+	}).Listen()
+
+	deviceOptions.Listeners = []device.Listener{connectedDeviceListener, outboundListener}
+	manager := device.NewManager(deviceOptions, nil)
+	primaryHandler, err := NewPrimaryHandler(logger, connectedUpdates, manager, v)
+	return primaryHandler, manager, err
 }
 
 // talaria is the driver function for Talaria.  It performs everything main() would do,
@@ -53,24 +76,9 @@ func talaria(arguments []string) int {
 	// Initialize the manager first, as if it fails we don't want to advertise this service
 	//
 
-	deviceOptions, err := device.NewOptions(logger, v.Sub(device.DeviceManagerKey))
+	primaryHandler, manager, err := startDeviceManagement(logger, v)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to read device management configuration: %s\n", err)
-		return 1
-	}
-
-	outbounder, err := NewOutbounder(logger, v.Sub(OutbounderKey))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to read device outbounder configuration: %s\n", err)
-		return 1
-	}
-
-	connectedDeviceListener, connectedUpdates := newConnectedDeviceListener()
-	deviceOptions.Listeners = []device.Listener{connectedDeviceListener, outbounder.Start()}
-	manager := device.NewManager(deviceOptions, nil)
-	primaryHandler, err := NewPrimaryHandler(logger, connectedUpdates, manager, v)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to initialize inbound handler: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Unable to start device management: %s\n", err)
 		return 1
 	}
 

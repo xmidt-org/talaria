@@ -1,17 +1,9 @@
 package main
 
 import (
-	"bytes"
-	"context"
-	"fmt"
 	"github.com/Comcast/webpa-common/device"
 	"github.com/Comcast/webpa-common/logging"
-	"github.com/Comcast/webpa-common/wrp"
 	"github.com/spf13/viper"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"strings"
 	"time"
 )
 
@@ -19,15 +11,18 @@ const (
 	// OutbounderKey is the Viper subkey which is expected to hold Outbounder configuration
 	OutbounderKey = "device.outbound"
 
+	// EventPrefix is the string prefix for WRP destinations that should be treated as events
 	EventPrefix = "event:"
-	URLPrefix   = "url:"
+
+	// DNSPrefix is the string prefix for WRP destinations that should be treated as exact URLs
+	DNSPrefix = "dns:"
+
+	DefaultDefaultScheme = "https"
+	DefaultAllowedScheme = "https"
 
 	DefaultMethod                            = "POST"
-	DefaultEventEndpoint                     = "http://localhost:8090/api/v2/notify"
-	DefaultAssumeScheme                      = "https"
-	DefaultAllowedScheme                     = "https"
-	DefaultWorkerPoolSize                    = 100
-	DefaultOutboundQueueSize                 = 1000
+	DefaultWorkerPoolSize      uint          = 100
+	DefaultOutboundQueueSize   uint          = 1000
 	DefaultRequestTimeout      time.Duration = 15 * time.Second
 	DefaultClientTimeout       time.Duration = 3 * time.Second
 	DefaultMaxIdleConns                      = 0
@@ -35,99 +30,22 @@ const (
 	DefaultIdleConnTimeout     time.Duration = 0
 )
 
-// outboundEnvelope is a tuple of information related to handling an asynchronous HTTP request
-type outboundEnvelope struct {
-	request *http.Request
-	cancel  func()
-}
-
-// RequestFactory is a simple function type for creating an outbound HTTP request
-// for a given WRP message.  This factory function type wraps the created HTTP request in
-// an envelope with other data related to cancellation and queue management.
-type requestFactory func(device.Interface, wrp.Routable, []byte) (*outboundEnvelope, error)
-
-// listener is the internal device Listener type that dispatches requests over HTTP.
-type listener struct {
-	logger         logging.Logger
-	outbounds      chan<- *outboundEnvelope
-	requestFactory requestFactory
-}
-
-func (l *listener) onDeviceEvent(e *device.Event) {
-	if e.Type != device.MessageReceived {
-		return
-	}
-
-	outbound, err := l.requestFactory(e.Device, e.Message, e.Contents)
-	if err != nil {
-		l.logger.Error("Unable to create request for device [%s]: %s", e.Device.ID(), err)
-		return
-	}
-
-	select {
-	case <-outbound.request.Context().Done():
-		l.logger.Error("Dropping outbound message for device [%s]: %s->%s", e.Device.ID(), e.Message.From(), e.Message.To())
-		outbound.cancel()
-	case l.outbounds <- outbound:
-	}
-}
-
-// workerPool describes a pool of goroutines that dispatch http.Request objects to
-// a transactor function
-type workerPool struct {
-	logger     logging.Logger
-	outbounds  <-chan *outboundEnvelope
-	transactor func(*http.Request) (*http.Response, error)
-}
-
-// transact performs all the logic necessary to fulfill and outbound request.
-// This method ensures that the Context associated with the request is properly cancelled.
-func (wp *workerPool) transact(outbound *outboundEnvelope) {
-	defer outbound.cancel()
-
-	response, err := wp.transactor(outbound.request)
-	if err != nil {
-		wp.logger.Error("HTTP error: %s", err)
-		return
-	}
-
-	if response.StatusCode < 400 {
-		wp.logger.Debug("HTTP response status: %s", response.Status)
-	} else {
-		wp.logger.Error("HTTP response status: %s", response.Status)
-	}
-
-	io.Copy(ioutil.Discard, response.Body)
-	response.Body.Close()
-}
-
-func (wp *workerPool) worker() {
-	for outbound := range wp.outbounds {
-		wp.transact(outbound)
-	}
-}
-
-func (wp *workerPool) run(workers int) {
-	for repeat := 0; repeat < workers; repeat++ {
-		go wp.worker()
-	}
-}
-
-// Outbounder acts as a configurable endpoint for dispatching WRP messages from devices
-// and handling any failed messages.
+// Outbounder encapsulates the configuration necessary for handling outbound traffic
+// and grants the ability to start the outbounding infrastructure.
 type Outbounder struct {
-	Method              string
-	EventEndpoint       string
-	AssumeScheme        string
-	AllowedSchemes      []string
-	WorkerPoolSize      int
-	OutboundQueueSize   int
-	RequestTimeout      time.Duration
-	ClientTimeout       time.Duration
-	MaxIdleConns        int
-	MaxIdleConnsPerHost int
-	IdleConnTimeout     time.Duration
-	Logger              logging.Logger
+	Method                string
+	RequestTimeout        time.Duration
+	DefaultScheme         string
+	AllowedSchemes        []string
+	DefaultEventEndpoints []string
+	EventEndpoints        map[string][]string
+	OutboundQueueSize     uint
+	WorkerPoolSize        uint
+	ClientTimeout         time.Duration
+	MaxIdleConns          int
+	MaxIdleConnsPerHost   int
+	IdleConnTimeout       time.Duration
+	Logger                logging.Logger
 }
 
 // NewOutbounder returns an Outbounder unmarshalled from a Viper environment.
@@ -136,12 +54,11 @@ type Outbounder struct {
 func NewOutbounder(logger logging.Logger, v *viper.Viper) (o *Outbounder, err error) {
 	o = &Outbounder{
 		Method:              DefaultMethod,
-		EventEndpoint:       DefaultEventEndpoint,
-		AssumeScheme:        DefaultAssumeScheme,
-		AllowedSchemes:      []string{DefaultAllowedScheme},
-		WorkerPoolSize:      DefaultWorkerPoolSize,
-		OutboundQueueSize:   DefaultOutboundQueueSize,
 		RequestTimeout:      DefaultRequestTimeout,
+		DefaultScheme:       DefaultDefaultScheme,
+		AllowedSchemes:      []string{DefaultAllowedScheme},
+		OutboundQueueSize:   DefaultOutboundQueueSize,
+		WorkerPoolSize:      DefaultWorkerPoolSize,
 		ClientTimeout:       DefaultClientTimeout,
 		MaxIdleConns:        DefaultMaxIdleConns,
 		MaxIdleConnsPerHost: DefaultMaxIdleConnsPerHost,
@@ -156,89 +73,128 @@ func NewOutbounder(logger logging.Logger, v *viper.Viper) (o *Outbounder, err er
 	return
 }
 
-// newRoundTripper creates an HTTP RoundTripper (transport) using this Outbounder's configuration.
-func (o *Outbounder) newRoundTripper() http.RoundTripper {
-	return &http.Transport{
-		MaxIdleConns:        o.MaxIdleConns,
-		MaxIdleConnsPerHost: o.MaxIdleConnsPerHost,
-		IdleConnTimeout:     o.IdleConnTimeout,
+func (o *Outbounder) logger() logging.Logger {
+	if o != nil && o.Logger != nil {
+		return o.Logger
 	}
+
+	return logging.DefaultLogger()
 }
 
-// newTransactor returns a closure which can execute HTTP transactions
-func (o *Outbounder) newTransactor() func(*http.Request) (*http.Response, error) {
-	client := &http.Client{
-		Transport: o.newRoundTripper(),
-		Timeout:   o.ClientTimeout,
+func (o *Outbounder) method() string {
+	if o != nil && len(o.Method) > 0 {
+		return o.Method
 	}
 
-	return client.Do
+	return DefaultMethod
 }
 
-// newRequestFactory produces a RequestFactory function that creates an outbound HTTP request
-// for a given WRP message from a specific device.
-func (o *Outbounder) newRequestFactory() requestFactory {
-	allowedSchemes := make(map[string]bool, len(o.AllowedSchemes))
-	for _, scheme := range o.AllowedSchemes {
-		allowedSchemes[scheme] = true
+func (o *Outbounder) requestTimeout() time.Duration {
+	if o != nil && o.RequestTimeout > 0 {
+		return o.RequestTimeout
 	}
 
-	return func(d device.Interface, m wrp.Routable, c []byte) (outbound *outboundEnvelope, err error) {
-		destination := m.To()
-		var request *http.Request
-		if strings.HasPrefix(destination, EventPrefix) {
-			// route this to the configured endpoint that receives all events
-			request, err = http.NewRequest(o.Method, o.EventEndpoint, bytes.NewReader(c))
-		} else if strings.HasPrefix(destination, URLPrefix) {
-			// route this to the given URL, subject to some validation
-			if request, err = http.NewRequest(o.Method, destination[len(URLPrefix):], bytes.NewReader(c)); err == nil {
-				if len(request.URL.Scheme) == 0 {
-					// if no scheme is supplied, use the configured AssumeScheme
-					request.URL.Scheme = o.AssumeScheme
-				} else if !allowedSchemes[request.URL.Scheme] {
-					err = fmt.Errorf("Scheme not allowed: %s", request.URL.Scheme)
-				}
-			}
-		} else {
-			err = fmt.Errorf("Bad WRP destination: %s", destination)
-		}
+	return DefaultRequestTimeout
+}
 
-		if err != nil {
-			return
-		}
-
-		request.Header.Set(device.DeviceNameHeader, string(d.ID()))
-		request.Header.Set("Content-Type", wrp.Msgpack.ContentType())
-		d.SetConveyHeader(request.Header)
-
-		ctx, cancel := context.WithTimeout(request.Context(), o.RequestTimeout)
-		outbound = &outboundEnvelope{
-			request: request.WithContext(ctx),
-			cancel:  cancel,
-		}
-
-		return
+func (o *Outbounder) defaultScheme() string {
+	if o != nil && len(o.DefaultScheme) > 0 {
+		return o.DefaultScheme
 	}
+
+	return DefaultDefaultScheme
+}
+
+func (o *Outbounder) allowedSchemes() map[string]bool {
+	if o != nil && len(o.AllowedSchemes) > 0 {
+		allowedSchemes := make(map[string]bool, len(o.AllowedSchemes))
+		for _, as := range o.AllowedSchemes {
+			allowedSchemes[as] = true
+		}
+
+		return allowedSchemes
+	}
+
+	return map[string]bool{DefaultAllowedScheme: true}
+}
+
+func (o *Outbounder) defaultEventEndpoints() []string {
+	if o != nil && len(o.DefaultEventEndpoints) > 0 {
+		return o.DefaultEventEndpoints
+	}
+
+	// no reason not to return nil here, as client code
+	// only iterates over this slice and gets the length
+	return nil
+}
+
+func (o *Outbounder) eventEndpoints() map[string][]string {
+	if o != nil {
+		return o.EventEndpoints
+	}
+
+	// don't return nil, as we want to make sure client code can
+	// always do lookups for event types
+	return map[string][]string{}
+}
+
+func (o *Outbounder) outboundQueueSize() uint {
+	if o != nil && o.OutboundQueueSize > 0 {
+		return o.OutboundQueueSize
+	}
+
+	return DefaultOutboundQueueSize
+}
+
+func (o *Outbounder) workerPoolSize() uint {
+	if o != nil && o.WorkerPoolSize > 0 {
+		return o.WorkerPoolSize
+	}
+
+	return DefaultWorkerPoolSize
+}
+
+func (o *Outbounder) maxIdleConns() int {
+	if o != nil && o.MaxIdleConns > 0 {
+		return o.MaxIdleConns
+	}
+
+	return DefaultMaxIdleConns
+}
+
+func (o *Outbounder) maxIdleConnsPerHost() int {
+	if o != nil && o.MaxIdleConnsPerHost > 0 {
+		return o.MaxIdleConnsPerHost
+	}
+
+	return DefaultMaxIdleConnsPerHost
+}
+
+func (o *Outbounder) idleConnTimeout() time.Duration {
+	if o != nil && o.IdleConnTimeout > 0 {
+		return o.IdleConnTimeout
+	}
+
+	return DefaultIdleConnTimeout
+}
+
+func (o *Outbounder) clientTimeout() time.Duration {
+	if o != nil && o.ClientTimeout > 0 {
+		return o.ClientTimeout
+	}
+
+	return DefaultClientTimeout
 }
 
 // Start spawns all necessary goroutines and returns a device.Listener
-func (o *Outbounder) Start() device.Listener {
-	var (
-		outbounds = make(chan *outboundEnvelope, o.OutboundQueueSize)
+func (o *Outbounder) Start() (device.Listener, error) {
+	dispatcher, outbounds, err := NewDispatcher(o, nil)
+	if err != nil {
+		return nil, err
+	}
 
-		workerPool = workerPool{
-			logger:     o.Logger,
-			outbounds:  outbounds,
-			transactor: o.newTransactor(),
-		}
+	workerPool := NewWorkerPool(o, outbounds)
+	workerPool.Run()
 
-		listener = &listener{
-			logger:         o.Logger,
-			requestFactory: o.newRequestFactory(),
-			outbounds:      outbounds,
-		}
-	)
-
-	workerPool.run(o.WorkerPoolSize)
-	return listener.onDeviceEvent
+	return dispatcher.OnDeviceEvent, nil
 }
