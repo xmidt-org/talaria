@@ -129,48 +129,52 @@ func testDispatcherOnDeviceEventDispatchEvent(t *testing.T) {
 	)
 
 	for _, record := range testData {
-		t.Logf("%#v, method=%s", record, record.outbounder.method())
+		for _, format := range []wrp.Format{wrp.Msgpack, wrp.JSON} {
+			t.Logf("%#v, method=%s, format=%s", record, record.outbounder.method(), format)
 
-		var (
-			expectedContents           = []byte{1, 2, 3, 4}
-			urlFilter                  = new(mockURLFilter)
-			dispatcher, outbounds, err = NewDispatcher(record.outbounder, urlFilter)
-		)
+			var (
+				expectedContents           = []byte{1, 2, 3, 4}
+				urlFilter                  = new(mockURLFilter)
+				dispatcher, outbounds, err = NewDispatcher(record.outbounder, urlFilter)
+			)
 
-		require.NotNil(dispatcher)
-		require.NotNil(outbounds)
-		require.NoError(err)
+			require.NotNil(dispatcher)
+			require.NotNil(outbounds)
+			require.NoError(err)
 
-		dispatcher.OnDeviceEvent(&device.Event{
-			Type:     device.MessageReceived,
-			Message:  &wrp.Message{Destination: record.destination},
-			Contents: expectedContents,
-		})
+			dispatcher.OnDeviceEvent(&device.Event{
+				Type:     device.MessageReceived,
+				Message:  &wrp.Message{Destination: record.destination},
+				Format:   format,
+				Contents: expectedContents,
+			})
 
-		assert.Equal(len(record.expectedEndpoints), len(outbounds), "incorrect envelope count")
-		actualEndpoints := make(map[string]bool, len(record.expectedEndpoints))
-		for len(outbounds) > 0 {
-			select {
-			case e := <-outbounds:
-				e.cancel()
-				<-e.request.Context().Done()
+			assert.Equal(len(record.expectedEndpoints), len(outbounds), "incorrect envelope count")
+			actualEndpoints := make(map[string]bool, len(record.expectedEndpoints))
+			for len(outbounds) > 0 {
+				select {
+				case e := <-outbounds:
+					e.cancel()
+					<-e.request.Context().Done()
 
-				assert.Equal(record.outbounder.method(), e.request.Method)
+					assert.Equal(record.outbounder.method(), e.request.Method)
+					assert.Equal(format.ContentType(), e.request.Header.Get("Content-Type"))
 
-				urlString := e.request.URL.String()
-				assert.False(actualEndpoints[urlString])
-				actualEndpoints[urlString] = true
+					urlString := e.request.URL.String()
+					assert.False(actualEndpoints[urlString])
+					actualEndpoints[urlString] = true
 
-				actualContents, err := ioutil.ReadAll(e.request.Body)
-				assert.NoError(err)
-				assert.Equal(expectedContents, actualContents)
+					actualContents, err := ioutil.ReadAll(e.request.Body)
+					assert.NoError(err)
+					assert.Equal(expectedContents, actualContents)
 
-			default:
+				default:
+				}
 			}
-		}
 
-		assert.Equal(record.expectedEndpoints, actualEndpoints)
-		urlFilter.AssertExpectations(t)
+			assert.Equal(record.expectedEndpoints, actualEndpoints)
+			urlFilter.AssertExpectations(t)
+		}
 	}
 }
 
@@ -272,44 +276,48 @@ func testDispatcherOnDeviceEventDispatchTo(t *testing.T) {
 	)
 
 	for _, record := range testData {
-		t.Logf("%#v, method=%s", record, record.outbounder.method())
+		for _, format := range []wrp.Format{wrp.Msgpack, wrp.JSON} {
+			t.Logf("%#v, method=%s, format=%s", record, record.outbounder.method(), format)
 
-		var (
-			expectedContents           = []byte{4, 7, 8, 1}
-			urlFilter                  = new(mockURLFilter)
-			dispatcher, outbounds, err = NewDispatcher(record.outbounder, urlFilter)
-		)
+			var (
+				expectedContents           = []byte{4, 7, 8, 1}
+				urlFilter                  = new(mockURLFilter)
+				dispatcher, outbounds, err = NewDispatcher(record.outbounder, urlFilter)
+			)
 
-		require.NotNil(dispatcher)
-		require.NotNil(outbounds)
-		require.NoError(err)
+			require.NotNil(dispatcher)
+			require.NotNil(outbounds)
+			require.NoError(err)
 
-		urlFilter.On("Filter", record.expectedUnfilteredURL).Once().
-			Return(record.expectedEndpoint, (error)(nil))
+			urlFilter.On("Filter", record.expectedUnfilteredURL).Once().
+				Return(record.expectedEndpoint, (error)(nil))
 
-		dispatcher.OnDeviceEvent(&device.Event{
-			Type:     device.MessageReceived,
-			Message:  &wrp.Message{Destination: record.destination},
-			Contents: expectedContents,
-		})
+			dispatcher.OnDeviceEvent(&device.Event{
+				Type:     device.MessageReceived,
+				Message:  &wrp.Message{Destination: record.destination},
+				Format:   format,
+				Contents: expectedContents,
+			})
 
-		if !record.expectsEnvelope {
-			assert.Equal(0, len(outbounds))
-			continue
+			if !record.expectsEnvelope {
+				assert.Equal(0, len(outbounds))
+				continue
+			}
+
+			e := <-outbounds
+			e.cancel()
+			<-e.request.Context().Done()
+
+			assert.Equal(record.outbounder.method(), e.request.Method)
+			assert.Equal(format.ContentType(), e.request.Header.Get("Content-Type"))
+			assert.Equal(record.expectedEndpoint, e.request.URL.String())
+
+			actualContents, err := ioutil.ReadAll(e.request.Body)
+			assert.NoError(err)
+			assert.Equal(expectedContents, actualContents)
+
+			urlFilter.AssertExpectations(t)
 		}
-
-		e := <-outbounds
-		e.cancel()
-		<-e.request.Context().Done()
-
-		assert.Equal(record.outbounder.method(), e.request.Method)
-		assert.Equal(record.expectedEndpoint, e.request.URL.String())
-
-		actualContents, err := ioutil.ReadAll(e.request.Body)
-		assert.NoError(err)
-		assert.Equal(expectedContents, actualContents)
-
-		urlFilter.AssertExpectations(t)
 	}
 }
 

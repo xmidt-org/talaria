@@ -78,7 +78,7 @@ func (d *dispatcher) send(request *http.Request) error {
 	}
 }
 
-func (d *dispatcher) dispatchEvent(eventType string, contents []byte) error {
+func (d *dispatcher) dispatchEvent(eventType, contentType string, contents []byte) error {
 	endpoints := d.eventEndpoints[eventType]
 	if len(endpoints) == 0 {
 		endpoints = d.defaultEventEndpoints
@@ -96,6 +96,7 @@ func (d *dispatcher) dispatchEvent(eventType string, contents []byte) error {
 			return err
 		}
 
+		request.Header.Set("Content-Type", contentType)
 		if err := d.send(request); err != nil {
 			return err
 		}
@@ -104,7 +105,7 @@ func (d *dispatcher) dispatchEvent(eventType string, contents []byte) error {
 	return nil
 }
 
-func (d *dispatcher) dispatchTo(unfiltered string, contents []byte) error {
+func (d *dispatcher) dispatchTo(unfiltered string, contentType string, contents []byte) error {
 	url, err := d.urlFilter.Filter(unfiltered)
 	if err != nil {
 		return err
@@ -115,6 +116,7 @@ func (d *dispatcher) dispatchTo(unfiltered string, contents []byte) error {
 		return err
 	}
 
+	request.Header.Set("Content-Type", contentType)
 	return d.send(request)
 }
 
@@ -123,13 +125,19 @@ func (d *dispatcher) OnDeviceEvent(event *device.Event) {
 		return
 	}
 
-	destination := event.Message.To()
+	var (
+		destination = event.Message.To()
+		contentType = event.Format.ContentType()
+	)
+
 	if strings.HasPrefix(destination, EventPrefix) {
-		if err := d.dispatchEvent(destination[len(EventPrefix):], event.Contents); err != nil {
+		eventType := destination[len(EventPrefix):]
+		if err := d.dispatchEvent(eventType, contentType, event.Contents); err != nil {
 			d.logger.Error("Error dispatching event [%s]: %s", destination, err)
 		}
 	} else if strings.HasPrefix(destination, DNSPrefix) {
-		if err := d.dispatchTo(destination[len(DNSPrefix):], event.Contents); err != nil {
+		unfilteredURL := destination[len(DNSPrefix):]
+		if err := d.dispatchTo(unfilteredURL, contentType, event.Contents); err != nil {
 			d.logger.Error("Error dispatching to [%s]: %s", destination, err)
 		}
 	} else {

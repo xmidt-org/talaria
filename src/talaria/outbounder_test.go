@@ -25,7 +25,7 @@ func ExampleOutbounder() {
 			if body, err := ioutil.ReadAll(request.Body); err != nil {
 				fmt.Println(err)
 			} else {
-				fmt.Printf("%s:%s\n", request.Method, body)
+				fmt.Printf("%s:%s:%s\n", request.Method, request.Header.Get("Content-Type"), body)
 			}
 		}))
 	)
@@ -70,20 +70,22 @@ func ExampleOutbounder() {
 	listener(&device.Event{
 		Type:     device.MessageReceived,
 		Message:  &wrp.Message{Destination: "event:iot"},
+		Format:   wrp.Msgpack,
 		Contents: []byte("iot event"),
 	})
 
 	listener(&device.Event{
 		Type:     device.MessageReceived,
 		Message:  &wrp.Message{Destination: "dns:" + server.URL},
+		Format:   wrp.JSON,
 		Contents: []byte("dns message"),
 	})
 
 	finish.Wait()
 
 	// Output:
-	// POST:iot event
-	// POST:dns message
+	// POST:application/msgpack:iot event
+	// POST:application/json:dns message
 }
 
 func testOutbounderDefaults(t *testing.T) {
