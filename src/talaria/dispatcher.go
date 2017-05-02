@@ -129,7 +129,7 @@ func (d *dispatcher) OnDeviceEvent(event *device.Event) {
 			d.logger.Error("Error dispatching event [%s]: %s", destination, err)
 		}
 	} else if strings.HasPrefix(destination, DNSPrefix) {
-		if err := d.dispatchTo(destination[:len(DNSPrefix)], event.Contents); err != nil {
+		if err := d.dispatchTo(destination[len(DNSPrefix):], event.Contents); err != nil {
 			d.logger.Error("Error dispatching to [%s]: %s", destination, err)
 		}
 	} else {

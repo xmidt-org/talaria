@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"github.com/Comcast/webpa-common/device"
 	"github.com/Comcast/webpa-common/wrp"
 	"github.com/stretchr/testify/assert"
@@ -163,6 +164,7 @@ func testDispatcherOnDeviceEventDispatchEvent(t *testing.T) {
 				actualContents, err := ioutil.ReadAll(e.request.Body)
 				assert.NoError(err)
 				assert.Equal(expectedContents, actualContents)
+
 			default:
 			}
 		}
@@ -194,7 +196,121 @@ func testDispatcherOnDeviceEventEventTimeout(t *testing.T) {
 	})
 }
 
+func testDispatcherOnDeviceEventFilterError(t *testing.T) {
+	var (
+		assert        = assert.New(t)
+		require       = require.New(t)
+		urlFilter     = new(mockURLFilter)
+		expectedError = errors.New("expected")
+
+		dispatcher, outbounds, err = NewDispatcher(nil, urlFilter)
+	)
+
+	require.NotNil(dispatcher)
+	require.NotNil(outbounds)
+	require.NoError(err)
+
+	urlFilter.On("Filter", "doesnotmatter.com").Once().
+		Return("", expectedError)
+
+	dispatcher.OnDeviceEvent(&device.Event{
+		Type:    device.MessageReceived,
+		Message: &wrp.Message{Destination: "dns:doesnotmatter.com"},
+	})
+
+	assert.Equal(0, len(outbounds))
+	urlFilter.AssertExpectations(t)
+}
+
 func testDispatcherOnDeviceEventDispatchTo(t *testing.T) {
+	var (
+		assert   = assert.New(t)
+		require  = require.New(t)
+		testData = []struct {
+			outbounder            *Outbounder
+			destination           string
+			expectedUnfilteredURL string
+			expectedEndpoint      string
+			expectsEnvelope       bool
+		}{
+			{
+				outbounder:            nil,
+				destination:           "dns:foobar.com",
+				expectedUnfilteredURL: "foobar.com",
+				expectedEndpoint:      "http://foobar.com",
+				expectsEnvelope:       true,
+			},
+			{
+				outbounder:            &Outbounder{Method: "PATCH"},
+				destination:           "dns:foobar.com",
+				expectedUnfilteredURL: "foobar.com",
+				expectedEndpoint:      "http://foobar.com",
+				expectsEnvelope:       true,
+			},
+			{
+				outbounder:            &Outbounder{Method: "BADMETHOD$(*@#)*%"},
+				destination:           "dns:foobar.com",
+				expectedUnfilteredURL: "foobar.com",
+				expectedEndpoint:      "http://foobar.com",
+				expectsEnvelope:       false,
+			},
+			{
+				outbounder:            nil,
+				destination:           "dns:https://foobar.com",
+				expectedUnfilteredURL: "https://foobar.com",
+				expectedEndpoint:      "https://foobar.com",
+				expectsEnvelope:       true,
+			},
+			{
+				outbounder:            &Outbounder{Method: "BADMETHOD$(*@#)*%"},
+				destination:           "dns:https://foobar.com",
+				expectedUnfilteredURL: "https://foobar.com",
+				expectedEndpoint:      "https://foobar.com",
+				expectsEnvelope:       false,
+			},
+		}
+	)
+
+	for _, record := range testData {
+		t.Logf("%#v, method=%s", record, record.outbounder.method())
+
+		var (
+			expectedContents           = []byte{4, 7, 8, 1}
+			urlFilter                  = new(mockURLFilter)
+			dispatcher, outbounds, err = NewDispatcher(record.outbounder, urlFilter)
+		)
+
+		require.NotNil(dispatcher)
+		require.NotNil(outbounds)
+		require.NoError(err)
+
+		urlFilter.On("Filter", record.expectedUnfilteredURL).Once().
+			Return(record.expectedEndpoint, (error)(nil))
+
+		dispatcher.OnDeviceEvent(&device.Event{
+			Type:     device.MessageReceived,
+			Message:  &wrp.Message{Destination: record.destination},
+			Contents: expectedContents,
+		})
+
+		if !record.expectsEnvelope {
+			assert.Equal(0, len(outbounds))
+			continue
+		}
+
+		e := <-outbounds
+		e.cancel()
+		<-e.request.Context().Done()
+
+		assert.Equal(record.outbounder.method(), e.request.Method)
+		assert.Equal(record.expectedEndpoint, e.request.URL.String())
+
+		actualContents, err := ioutil.ReadAll(e.request.Body)
+		assert.NoError(err)
+		assert.Equal(expectedContents, actualContents)
+
+		urlFilter.AssertExpectations(t)
+	}
 }
 
 func TestDispatcher(t *testing.T) {
@@ -204,6 +320,7 @@ func TestDispatcher(t *testing.T) {
 	t.Run("OnDeviceEvent", func(t *testing.T) {
 		t.Run("DispatchEvent", testDispatcherOnDeviceEventDispatchEvent)
 		t.Run("EventTimeout", testDispatcherOnDeviceEventEventTimeout)
+		t.Run("FilterError", testDispatcherOnDeviceEventFilterError)
 		t.Run("DispatchTo", testDispatcherOnDeviceEventDispatchTo)
 	})
 }
