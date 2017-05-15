@@ -9,15 +9,25 @@ import (
 	"net/http"
 )
 
+const (
+	baseURI = "/api"
+
+	// TODO: Should this change for talaria 2.0?
+	version = "v2"
+)
+
 func NewPrimaryHandler(logger logging.Logger, connectedUpdates <-chan []byte, manager device.Manager, v *viper.Viper) (http.Handler, error) {
 	poolFactory, err := wrp.NewPoolFactory(v.Sub(wrp.ViperKey))
 	if err != nil {
 		return nil, err
 	}
 
-	handler := mux.NewRouter()
+	var (
+		handler    = mux.NewRouter()
+		apiHandler = handler.PathPrefix(baseURI + "/" + version).Subrouter()
+	)
 
-	handler.Handle("/device", &device.MessageHandler{
+	apiHandler.Handle("/device/send", &device.MessageHandler{
 		Logger:   logger,
 		Decoders: poolFactory.NewDecoderPool(wrp.JSON),
 		Router:   manager,
@@ -25,7 +35,7 @@ func NewPrimaryHandler(logger logging.Logger, connectedUpdates <-chan []byte, ma
 		Methods("POST", "PATCH").
 		Headers("Content-Type", wrp.JSON.ContentType())
 
-	handler.Handle("/device", &device.MessageHandler{
+	apiHandler.Handle("/device/send", &device.MessageHandler{
 		Logger:   logger,
 		Decoders: poolFactory.NewDecoderPool(wrp.Msgpack),
 		Router:   manager,
@@ -35,10 +45,10 @@ func NewPrimaryHandler(logger logging.Logger, connectedUpdates <-chan []byte, ma
 
 	listHandler := new(device.ListHandler)
 	listHandler.Consume(connectedUpdates)
-	handler.Handle("/devices", listHandler).
+	apiHandler.Handle("/devices", listHandler).
 		Methods("GET")
 
-	handler.Handle("/connect", &device.ConnectHandler{
+	apiHandler.Handle("/device", &device.ConnectHandler{
 		Logger:    logger,
 		Connector: manager,
 	})
