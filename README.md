@@ -7,7 +7,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/Comcast/talaria)](https://goreportcard.com/report/github.com/Comcast/talaria)
 [![Apache V2 License](http://img.shields.io/badge/license-Apache%20V2-blue.svg)](https://github.com/Comcast/talaria/blob/master/LICENSE)
 
-The Webpa routing agent.
+The Xmidt routing agent.
 
 # How to Install
 
@@ -16,7 +16,7 @@ The Webpa routing agent.
 1. Import the public GPG key (replace `v0.0.1-65alpha` with the release you want)
 
 ```
-rpm --import https://github.com/Comcast/talaria/releases/download/v0.0.1-65alpha/RPM-GPG-KEY-comcast-webpa
+rpm --import https://github.com/Comcast/talaria/releases/download/v0.0.1-65alpha/RPM-GPG-KEY-comcast-xmidt
 ```
 
 2. Install the rpm with yum (so it installs any/all dependencies for you)

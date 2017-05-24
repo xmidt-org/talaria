@@ -3,7 +3,7 @@
 Name:       talaria
 Version:    %{_ver}
 Release:    %{_releaseno}%{?dist}
-Summary:    The Webpa router agent.
+Summary:    The Xmidt router agent.
 
 Group:      System Environment/Daemons
 License:    ASL 2.0
@@ -14,7 +14,7 @@ BuildRequires:  golang >= 1.8
 Requires:       supervisor
 
 %description
-The Webpa router agent.
+The Xmidt router agent.
 
 %prep
 %setup -q
