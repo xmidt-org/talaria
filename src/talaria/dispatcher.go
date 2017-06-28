@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/Comcast/webpa-common/device"
-	"github.com/Comcast/webpa-common/logging"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/Comcast/webpa-common/device"
+	"github.com/Comcast/webpa-common/logging"
 )
 
 // outboundEnvelope is a tuple of information related to handling an asynchronous HTTP request
@@ -27,13 +28,12 @@ type Dispatcher interface {
 
 // dispatcher is the internal Dispatcher implementation
 type dispatcher struct {
-	logger                logging.Logger
-	urlFilter             URLFilter
-	method                string
-	timeout               time.Duration
-	defaultEventEndpoints []string
-	eventEndpoints        map[string][]string
-	outbounds             chan<- *outboundEnvelope
+	logger         logging.Logger
+	urlFilter      URLFilter
+	method         string
+	timeout        time.Duration
+	eventEndpoints map[string][]string
+	outbounds      chan<- *outboundEnvelope
 }
 
 // NewDispatcher constructs a Dispatcher which sends envelopes via the returned channel.
@@ -49,13 +49,12 @@ func NewDispatcher(o *Outbounder, urlFilter URLFilter) (Dispatcher, <-chan *outb
 
 	outbounds := make(chan *outboundEnvelope, o.outboundQueueSize())
 	return &dispatcher{
-		logger:                o.logger(),
-		urlFilter:             urlFilter,
-		method:                o.method(),
-		timeout:               o.requestTimeout(),
-		defaultEventEndpoints: o.defaultEventEndpoints(),
-		eventEndpoints:        o.eventEndpoints(),
-		outbounds:             outbounds,
+		logger:         o.logger(),
+		urlFilter:      urlFilter,
+		method:         o.method(),
+		timeout:        o.requestTimeout(),
+		eventEndpoints: o.eventEndpoints(),
+		outbounds:      outbounds,
 	}, outbounds, nil
 }
 
@@ -81,7 +80,7 @@ func (d *dispatcher) send(request *http.Request) error {
 func (d *dispatcher) dispatchEvent(eventType, contentType string, contents []byte) error {
 	endpoints := d.eventEndpoints[eventType]
 	if len(endpoints) == 0 {
-		endpoints = d.defaultEventEndpoints
+		endpoints = d.eventEndpoints[DefaultEventType]
 	}
 
 	if len(endpoints) == 0 {
