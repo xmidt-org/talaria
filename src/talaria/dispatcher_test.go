@@ -2,13 +2,14 @@ package main
 
 import (
 	"errors"
+	"io/ioutil"
+	"testing"
+	"time"
+
 	"github.com/Comcast/webpa-common/device"
 	"github.com/Comcast/webpa-common/wrp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"io/ioutil"
-	"testing"
-	"time"
 )
 
 func testDispatcherIgnoredEvent(t *testing.T) {
@@ -86,22 +87,22 @@ func testDispatcherOnDeviceEventDispatchEvent(t *testing.T) {
 				expectedEndpoints: map[string]bool{},
 			},
 			{
-				outbounder:        &Outbounder{DefaultEventEndpoints: []string{"http://endpoint1.com"}},
+				outbounder:        &Outbounder{EventEndpoints: map[string][]string{"default": []string{"http://endpoint1.com"}}},
 				destination:       "event:iot",
 				expectedEndpoints: map[string]bool{"http://endpoint1.com": true},
 			},
 			{
-				outbounder:        &Outbounder{Method: "PATCH", DefaultEventEndpoints: []string{"http://endpoint1.com"}},
+				outbounder:        &Outbounder{Method: "PATCH", EventEndpoints: map[string][]string{"default": []string{"http://endpoint1.com"}}},
 				destination:       "event:iot",
 				expectedEndpoints: map[string]bool{"http://endpoint1.com": true},
 			},
 			{
-				outbounder:        &Outbounder{DefaultEventEndpoints: []string{"http://endpoint1.com", "http://endpoint2.com"}},
+				outbounder:        &Outbounder{EventEndpoints: map[string][]string{"default": []string{"http://endpoint1.com", "http://endpoint2.com"}}},
 				destination:       "event:iot",
 				expectedEndpoints: map[string]bool{"http://endpoint1.com": true, "http://endpoint2.com": true},
 			},
 			{
-				outbounder:        &Outbounder{Method: "PATCH", DefaultEventEndpoints: []string{"http://endpoint1.com", "http://endpoint2.com"}},
+				outbounder:        &Outbounder{Method: "PATCH", EventEndpoints: map[string][]string{"default": []string{"http://endpoint1.com", "http://endpoint2.com"}}},
 				destination:       "event:iot",
 				expectedEndpoints: map[string]bool{"http://endpoint1.com": true, "http://endpoint2.com": true},
 			},
@@ -182,8 +183,8 @@ func testDispatcherOnDeviceEventEventTimeout(t *testing.T) {
 	var (
 		require    = require.New(t)
 		outbounder = &Outbounder{
-			RequestTimeout:        100 * time.Millisecond,
-			DefaultEventEndpoints: []string{"nowhere.com"},
+			RequestTimeout: 100 * time.Millisecond,
+			EventEndpoints: map[string][]string{"default": []string{"nowhere.com"}},
 		}
 
 		d, _, err = NewDispatcher(outbounder, nil)

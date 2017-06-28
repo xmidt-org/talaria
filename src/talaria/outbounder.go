@@ -2,10 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"time"
+
 	"github.com/Comcast/webpa-common/device"
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/spf13/viper"
-	"time"
 )
 
 const (
@@ -21,6 +22,7 @@ const (
 	DefaultDefaultScheme = "https"
 	DefaultAllowedScheme = "https"
 
+	DefaultEventType                         = "default"
 	DefaultMethod                            = "POST"
 	DefaultWorkerPoolSize      uint          = 100
 	DefaultOutboundQueueSize   uint          = 1000
@@ -34,19 +36,18 @@ const (
 // Outbounder encapsulates the configuration necessary for handling outbound traffic
 // and grants the ability to start the outbounding infrastructure.
 type Outbounder struct {
-	Method                string              `json:"method"`
-	RequestTimeout        time.Duration       `json:"requestTimeout"`
-	DefaultScheme         string              `json:"defaultScheme"`
-	AllowedSchemes        []string            `json:"allowedSchemes"`
-	DefaultEventEndpoints []string            `json:"defaultEventEndpoints"`
-	EventEndpoints        map[string][]string `json:"eventEndpoints"`
-	OutboundQueueSize     uint                `json:"outboundQueueSize"`
-	WorkerPoolSize        uint                `json:"workerPoolSize"`
-	ClientTimeout         time.Duration       `json:"clientTimeout"`
-	MaxIdleConns          int                 `json:"maxIdleConns"`
-	MaxIdleConnsPerHost   int                 `json:"maxIdleConnsPerHost"`
-	IdleConnTimeout       time.Duration       `json:"idleConnTimeout"`
-	Logger                logging.Logger      `json:"-"`
+	Method              string              `json:"method"`
+	RequestTimeout      time.Duration       `json:"requestTimeout"`
+	DefaultScheme       string              `json:"defaultScheme"`
+	AllowedSchemes      []string            `json:"allowedSchemes"`
+	EventEndpoints      map[string][]string `json:"eventEndpoints"`
+	OutboundQueueSize   uint                `json:"outboundQueueSize"`
+	WorkerPoolSize      uint                `json:"workerPoolSize"`
+	ClientTimeout       time.Duration       `json:"clientTimeout"`
+	MaxIdleConns        int                 `json:"maxIdleConns"`
+	MaxIdleConnsPerHost int                 `json:"maxIdleConnsPerHost"`
+	IdleConnTimeout     time.Duration       `json:"idleConnTimeout"`
+	Logger              logging.Logger      `json:"-"`
 }
 
 // NewOutbounder returns an Outbounder unmarshalled from a Viper environment.
@@ -126,16 +127,6 @@ func (o *Outbounder) allowedSchemes() map[string]bool {
 	}
 
 	return map[string]bool{DefaultAllowedScheme: true}
-}
-
-func (o *Outbounder) defaultEventEndpoints() []string {
-	if o != nil && len(o.DefaultEventEndpoints) > 0 {
-		return o.DefaultEventEndpoints
-	}
-
-	// no reason not to return nil here, as client code
-	// only iterates over this slice and gets the length
-	return nil
 }
 
 func (o *Outbounder) eventEndpoints() map[string][]string {

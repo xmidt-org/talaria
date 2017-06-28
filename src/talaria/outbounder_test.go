@@ -3,18 +3,19 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/Comcast/webpa-common/device"
-	"github.com/Comcast/webpa-common/logging"
-	"github.com/Comcast/webpa-common/wrp"
-	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/Comcast/webpa-common/device"
+	"github.com/Comcast/webpa-common/logging"
+	"github.com/Comcast/webpa-common/wrp"
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func ExampleOutbounder() {
@@ -38,7 +39,7 @@ func ExampleOutbounder() {
 			`{
 				"defaultScheme": "http",
 				"allowedSchemes": ["http", "https"],
-				"defaultEventEndpoints": ["%s"],
+				"eventEndpoints": {"default": ["%s"]},
 				"workerPoolSize": 1
 			}`,
 			server.URL,
@@ -105,7 +106,6 @@ func testOutbounderDefaults(t *testing.T) {
 		assert.Equal(DefaultRequestTimeout, o.requestTimeout())
 		assert.Equal(DefaultDefaultScheme, o.defaultScheme())
 		assert.Equal(map[string]bool{DefaultAllowedScheme: true}, o.allowedSchemes())
-		assert.Nil(o.defaultEventEndpoints())
 		assert.Empty(o.eventEndpoints())
 		assert.Equal(DefaultOutboundQueueSize, o.outboundQueueSize())
 		assert.Equal(DefaultWorkerPoolSize, o.workerPoolSize())
@@ -154,7 +154,6 @@ func testOutbounderConfiguration(t *testing.T) {
 	assert.Equal(30*time.Second, o.requestTimeout())
 	assert.Equal("ftp", o.defaultScheme())
 	assert.Equal(map[string]bool{"nntp": true, "ftp": true}, o.allowedSchemes())
-	assert.Equal([]string{"https://default.endpoint.com"}, o.defaultEventEndpoints())
 	assert.Equal(
 		map[string][]string{
 			"iot":       []string{"https://endpoint1.com", "https://endpoint2.com"},
