@@ -1,12 +1,13 @@
 package main
 
 import (
+	"net/http"
+
 	"github.com/Comcast/webpa-common/device"
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/Comcast/webpa-common/wrp"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
-	"net/http"
 )
 
 const (
@@ -48,10 +49,13 @@ func NewPrimaryHandler(logger logging.Logger, connectedUpdates <-chan []byte, ma
 	apiHandler.Handle("/devices", listHandler).
 		Methods("GET")
 
-	apiHandler.Handle("/device", &device.ConnectHandler{
-		Logger:    logger,
-		Connector: manager,
-	})
+	apiHandler.Handle(
+		"/device",
+		device.UseID.FromHeader(&device.ConnectHandler{
+			Logger:    logger,
+			Connector: manager,
+		}),
+	)
 
 	return handler, nil
 }
