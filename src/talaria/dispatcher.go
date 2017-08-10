@@ -11,6 +11,7 @@ import (
 
 	"github.com/Comcast/webpa-common/device"
 	"github.com/Comcast/webpa-common/logging"
+	"github.com/Comcast/webpa-common/wrp"
 )
 
 // outboundEnvelope is a tuple of information related to handling an asynchronous HTTP request
@@ -140,22 +141,26 @@ func (d *dispatcher) OnDeviceEvent(event *device.Event) {
 		return
 	}
 
-	var (
-		destination = event.Message.To()
-		contentType = event.Format.ContentType()
-	)
+	if routable, ok := event.Message.(wrp.Routable); ok {
+		var (
+			destination = routable.To()
+			contentType = event.Format.ContentType()
+		)
 
-	if strings.HasPrefix(destination, EventPrefix) {
-		eventType := destination[len(EventPrefix):]
-		if err := d.dispatchEvent(eventType, contentType, event.Contents); err != nil {
-			d.logger.Error("Error dispatching event [%s]: %s", destination, err)
-		}
-	} else if strings.HasPrefix(destination, DNSPrefix) {
-		unfilteredURL := destination[len(DNSPrefix):]
-		if err := d.dispatchTo(unfilteredURL, contentType, event.Contents); err != nil {
-			d.logger.Error("Error dispatching to [%s]: %s", destination, err)
+		if strings.HasPrefix(destination, EventPrefix) {
+			eventType := destination[len(EventPrefix):]
+			if err := d.dispatchEvent(eventType, contentType, event.Contents); err != nil {
+				d.logger.Error("Error dispatching event [%s]: %s", destination, err)
+			}
+		} else if strings.HasPrefix(destination, DNSPrefix) {
+			unfilteredURL := destination[len(DNSPrefix):]
+			if err := d.dispatchTo(unfilteredURL, contentType, event.Contents); err != nil {
+				d.logger.Error("Error dispatching to [%s]: %s", destination, err)
+			}
+		} else {
+			d.logger.Error("Unable to route to [%s]", destination)
 		}
 	} else {
-		d.logger.Error("Unable to route to [%s]", destination)
+		d.logger.Error("Not a routable message type [%d].", event.Message.MessageType())
 	}
 }
