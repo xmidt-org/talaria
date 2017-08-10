@@ -80,6 +80,7 @@ func (d *dispatcher) send(request *http.Request) error {
 	}
 }
 
+// newRequest creates a basic HTTP request appropriate for this dispatcher
 func (d *dispatcher) newRequest(url, contentType string, body io.Reader) (*http.Request, error) {
 	request, err := http.NewRequest(d.method, url, body)
 	if err == nil {
