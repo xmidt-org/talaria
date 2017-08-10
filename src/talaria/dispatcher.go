@@ -160,7 +160,5 @@ func (d *dispatcher) OnDeviceEvent(event *device.Event) {
 		} else {
 			d.logger.Error("Unable to route to [%s]", destination)
 		}
-	} else {
-		d.logger.Error("Not a routable message type [%d].", event.Message.MessageType())
 	}
 }
