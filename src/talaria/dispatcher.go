@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -28,12 +29,13 @@ type Dispatcher interface {
 
 // dispatcher is the internal Dispatcher implementation
 type dispatcher struct {
-	logger         logging.Logger
-	urlFilter      URLFilter
-	method         string
-	timeout        time.Duration
-	eventEndpoints map[string][]string
-	outbounds      chan<- *outboundEnvelope
+	logger            logging.Logger
+	urlFilter         URLFilter
+	method            string
+	timeout           time.Duration
+	authorizationKeys []string
+	eventEndpoints    map[string][]string
+	outbounds         chan<- *outboundEnvelope
 }
 
 // NewDispatcher constructs a Dispatcher which sends envelopes via the returned channel.
@@ -49,12 +51,13 @@ func NewDispatcher(o *Outbounder, urlFilter URLFilter) (Dispatcher, <-chan *outb
 
 	outbounds := make(chan *outboundEnvelope, o.outboundQueueSize())
 	return &dispatcher{
-		logger:         o.logger(),
-		urlFilter:      urlFilter,
-		method:         o.method(),
-		timeout:        o.requestTimeout(),
-		eventEndpoints: o.eventEndpoints(),
-		outbounds:      outbounds,
+		logger:            o.logger(),
+		urlFilter:         urlFilter,
+		method:            o.method(),
+		timeout:           o.requestTimeout(),
+		authorizationKeys: o.AuthKey,
+		eventEndpoints:    o.eventEndpoints(),
+		outbounds:         outbounds,
 	}, outbounds, nil
 }
 
@@ -77,6 +80,20 @@ func (d *dispatcher) send(request *http.Request) error {
 	}
 }
 
+func (d *dispatcher) newRequest(url, contentType string, body io.Reader) (*http.Request, error) {
+	request, err := http.NewRequest(d.method, url, body)
+	if err == nil {
+		request.Header.Set("Content-Type", contentType)
+
+		// TODO: Need to work out how to handle authorization better, without basic auth
+		if len(d.authorizationKeys) > 0 {
+			request.Header.Set("Authorization", "Basic "+d.authorizationKeys[0])
+		}
+	}
+
+	return request, err
+}
+
 func (d *dispatcher) dispatchEvent(eventType, contentType string, contents []byte) error {
 	endpoints := d.eventEndpoints[eventType]
 	if len(endpoints) == 0 {
@@ -90,12 +107,11 @@ func (d *dispatcher) dispatchEvent(eventType, contentType string, contents []byt
 	}
 
 	for _, url := range endpoints {
-		request, err := http.NewRequest(d.method, url, bytes.NewReader(contents))
+		request, err := d.newRequest(url, contentType, bytes.NewReader(contents))
 		if err != nil {
 			return err
 		}
 
-		request.Header.Set("Content-Type", contentType)
 		if err := d.send(request); err != nil {
 			return err
 		}
@@ -110,12 +126,11 @@ func (d *dispatcher) dispatchTo(unfiltered string, contentType string, contents 
 		return err
 	}
 
-	request, err := http.NewRequest(d.method, url, bytes.NewReader(contents))
+	request, err := d.newRequest(url, contentType, bytes.NewReader(contents))
 	if err != nil {
 		return err
 	}
 
-	request.Header.Set("Content-Type", contentType)
 	return d.send(request)
 }
 

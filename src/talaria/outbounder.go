@@ -47,6 +47,7 @@ type Outbounder struct {
 	MaxIdleConns        int                 `json:"maxIdleConns"`
 	MaxIdleConnsPerHost int                 `json:"maxIdleConnsPerHost"`
 	IdleConnTimeout     time.Duration       `json:"idleConnTimeout"`
+	AuthKey             []string            `json:"authKey"`
 	Logger              logging.Logger      `json:"-"`
 }
 
