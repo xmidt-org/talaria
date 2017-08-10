@@ -64,9 +64,9 @@ func (wp *WorkerPool) transact(e *outboundEnvelope) {
 	}
 
 	if response.StatusCode < 400 {
-		wp.logger.Debug("HTTP response status: %s", response.Status)
+		wp.logger.Debug("HTTP response status: %s, target: %s", response.Status, e.request.URL)
 	} else {
-		wp.logger.Error("HTTP response status: %s", response.Status)
+		wp.logger.Error("HTTP response status: %s, target: %s", response.Status, e.request.URL)
 	}
 
 	io.Copy(ioutil.Discard, response.Body)
