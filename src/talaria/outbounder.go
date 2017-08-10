@@ -172,6 +172,14 @@ func (o *Outbounder) maxIdleConnsPerHost() int {
 	return DefaultMaxIdleConnsPerHost
 }
 
+func (o *Outbounder) authKey() []string {
+	if o != nil {
+		return o.AuthKey
+	}
+
+	return nil
+}
+
 func (o *Outbounder) idleConnTimeout() time.Duration {
 	if o != nil && o.IdleConnTimeout > 0 {
 		return o.IdleConnTimeout

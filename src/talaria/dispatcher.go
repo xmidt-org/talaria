@@ -55,7 +55,7 @@ func NewDispatcher(o *Outbounder, urlFilter URLFilter) (Dispatcher, <-chan *outb
 		urlFilter:         urlFilter,
 		method:            o.method(),
 		timeout:           o.requestTimeout(),
-		authorizationKeys: o.AuthKey,
+		authorizationKeys: o.authKey(),
 		eventEndpoints:    o.eventEndpoints(),
 		outbounds:         outbounds,
 	}, outbounds, nil
