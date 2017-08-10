@@ -47,6 +47,7 @@ type Outbounder struct {
 	MaxIdleConns        int                 `json:"maxIdleConns"`
 	MaxIdleConnsPerHost int                 `json:"maxIdleConnsPerHost"`
 	IdleConnTimeout     time.Duration       `json:"idleConnTimeout"`
+	AuthKey             []string            `json:"authKey"`
 	Logger              logging.Logger      `json:"-"`
 }
 
@@ -169,6 +170,14 @@ func (o *Outbounder) maxIdleConnsPerHost() int {
 	}
 
 	return DefaultMaxIdleConnsPerHost
+}
+
+func (o *Outbounder) authKey() []string {
+	if o != nil {
+		return o.AuthKey
+	}
+
+	return nil
 }
 
 func (o *Outbounder) idleConnTimeout() time.Duration {
