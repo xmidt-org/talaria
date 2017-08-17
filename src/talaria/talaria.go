@@ -2,18 +2,21 @@ package main
 
 import (
 	"fmt"
-	"github.com/Comcast/webpa-common/concurrent"
-	"github.com/Comcast/webpa-common/device"
-	"github.com/Comcast/webpa-common/logging"
-	"github.com/Comcast/webpa-common/server"
-	"github.com/Comcast/webpa-common/service"
-	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"time"
+
+	"github.com/Comcast/webpa-common/concurrent"
+	"github.com/Comcast/webpa-common/device"
+	"github.com/Comcast/webpa-common/device/devicehealth"
+	"github.com/Comcast/webpa-common/health"
+	"github.com/Comcast/webpa-common/logging"
+	"github.com/Comcast/webpa-common/server"
+	"github.com/Comcast/webpa-common/service"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -25,7 +28,7 @@ const (
 // startDeviceManagement handles the configuration and initialization of the device management subsystem
 // for talaria.  The returned HTTP handler can be used for device connections and messages, while the returned
 // Manager can be used to route and administer the set of connected devices.
-func startDeviceManagement(logger logging.Logger, v *viper.Viper) (http.Handler, device.Manager, error) {
+func startDeviceManagement(logger logging.Logger, h *health.Health, v *viper.Viper) (http.Handler, device.Manager, error) {
 	deviceOptions, err := device.NewOptions(logger, v.Sub(device.DeviceManagerKey))
 	if err != nil {
 		return nil, nil, err
@@ -45,7 +48,14 @@ func startDeviceManagement(logger logging.Logger, v *viper.Viper) (http.Handler,
 		RefreshInterval: 10 * time.Second,
 	}).Listen()
 
-	deviceOptions.Listeners = []device.Listener{connectedDeviceListener, outboundListener}
+	deviceOptions.Listeners = []device.Listener{
+		connectedDeviceListener,
+		outboundListener,
+		(&devicehealth.Listener{
+			Dispatcher: h,
+		}).OnDeviceEvent,
+	}
+
 	manager := device.NewManager(deviceOptions, nil)
 	primaryHandler, err := NewPrimaryHandler(logger, connectedUpdates, manager, v)
 	return primaryHandler, manager, err
@@ -76,14 +86,15 @@ func talaria(arguments []string) int {
 	// Initialize the manager first, as if it fails we don't want to advertise this service
 	//
 
-	primaryHandler, manager, err := startDeviceManagement(logger, v)
+	health := webPA.Health.NewHealth(logger, devicehealth.Options...)
+	primaryHandler, manager, err := startDeviceManagement(logger, health, v)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to start device management: %s\n", err)
 		return 1
 	}
 
-	_, runnable := webPA.Prepare(logger, primaryHandler)
-	waitGroup, shutdown, err := concurrent.Execute(runnable)
+	_, talariaServer := webPA.Prepare(logger, health, primaryHandler)
+	waitGroup, shutdown, err := concurrent.Execute(talariaServer)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to start device manager: %s\n", err)
 		return 1
