@@ -15,7 +15,7 @@
 		"servers": ["localhost:2181"],
 		"serviceName": "talaria",
 		"environment": "dev",
-		"registrations": ["localhost:10090"]
+		"registrations": ["https://localhost:10090"]
 	},
 
 	"device": {
