@@ -1,5 +1,5 @@
-hash: 4cae3549028677a57aa3c712f23ea6738febae337b74570813f295f087b9fca0
-updated: 2017-08-17T15:31:58.553218243-07:00
+hash: 4f1283b641a3c9f97ed6d219da420316fc2714babd76ef22673b5f96ea6f8d90
+updated: 2017-08-22T15:31:52.9535493-07:00
 imports:
 - name: github.com/billhathaway/consistentHash
   version: addea16d2229dba874111898b45be7f4a78af631
@@ -8,7 +8,7 @@ imports:
   subpackages:
   - linux
 - name: github.com/Comcast/webpa-common
-  version: 8c3337c32f98e4b38fea36b1d3c2dd03d7f95cd4
+  version: 4748c84a43400ca47e78796759c2da55b097dc08
   subpackages:
   - concurrent
   - device
@@ -57,7 +57,7 @@ imports:
 - name: github.com/philhofer/fwd
   version: 98c11a7a6ec829d672b03833c3d69a7fae1ca972
 - name: github.com/samuel/go-zookeeper
-  version: 1d7be4effb13d2d908342d349d71a284a7542693
+  version: e6b59f6144beb8570562539c1898a0b1fea34b41
   subpackages:
   - zk
 - name: github.com/spaolacci/murmur3
@@ -101,7 +101,7 @@ imports:
   version: 4c78c975fe7c825c6d1466c42be594d1d6f3aba6
 testImports:
 - name: github.com/davecgh/go-spew
-  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
+  version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
   subpackages:
   - spew
 - name: github.com/pmezard/go-difflib
@@ -111,8 +111,9 @@ testImports:
 - name: github.com/stretchr/objx
   version: cbeaeb16a013161a98496fad62933b1d21786672
 - name: github.com/stretchr/testify
-  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
+  version: 890a5c3458b43e6104ff5da8dfa139d013d77544
   subpackages:
   - assert
+  - linux
   - mock
   - require
