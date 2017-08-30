@@ -1,5 +1,5 @@
-hash: 4cae3549028677a57aa3c712f23ea6738febae337b74570813f295f087b9fca0
-updated: 2017-08-17T15:31:58.553218243-07:00
+hash: 9d972e38411bdc71b9d6eb05d4a9d606230d28a67ab8d5e5bedda799249ce70d
+updated: 2017-08-24T15:30:24.893161003-07:00
 imports:
 - name: github.com/billhathaway/consistentHash
   version: addea16d2229dba874111898b45be7f4a78af631
@@ -8,7 +8,7 @@ imports:
   subpackages:
   - linux
 - name: github.com/Comcast/webpa-common
-  version: 8c3337c32f98e4b38fea36b1d3c2dd03d7f95cd4
+  version: 7696a5eab9625e508963a5a2e9343214060f9718
   subpackages:
   - concurrent
   - device
@@ -57,7 +57,7 @@ imports:
 - name: github.com/philhofer/fwd
   version: 98c11a7a6ec829d672b03833c3d69a7fae1ca972
 - name: github.com/samuel/go-zookeeper
-  version: 1d7be4effb13d2d908342d349d71a284a7542693
+  version: e6b59f6144beb8570562539c1898a0b1fea34b41
   subpackages:
   - zk
 - name: github.com/spaolacci/murmur3

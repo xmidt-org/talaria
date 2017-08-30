@@ -23,7 +23,7 @@ The Xmidt router agent.
 %build
 export GOPATH=$(pwd)
 pushd src
-glide install
+glide install --strip-vendor
 cd talaria
 go build %{name}
 popd
