@@ -12,6 +12,7 @@ import (
 	"github.com/Comcast/webpa-common/device"
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/Comcast/webpa-common/wrp"
+	"github.com/go-kit/kit/log"
 )
 
 // outboundEnvelope is a tuple of information related to handling an asynchronous HTTP request
@@ -30,7 +31,7 @@ type Dispatcher interface {
 
 // dispatcher is the internal Dispatcher implementation
 type dispatcher struct {
-	logger            logging.Logger
+	errorLog          log.Logger
 	urlFilter         URLFilter
 	method            string
 	timeout           time.Duration
@@ -51,8 +52,9 @@ func NewDispatcher(o *Outbounder, urlFilter URLFilter) (Dispatcher, <-chan *outb
 	}
 
 	outbounds := make(chan *outboundEnvelope, o.outboundQueueSize())
+	logger := o.logger()
 	return &dispatcher{
-		logger:            o.logger(),
+		errorLog:          logging.Error(logger),
 		urlFilter:         urlFilter,
 		method:            o.method(),
 		timeout:           o.requestTimeout(),
@@ -150,15 +152,15 @@ func (d *dispatcher) OnDeviceEvent(event *device.Event) {
 		if strings.HasPrefix(destination, EventPrefix) {
 			eventType := destination[len(EventPrefix):]
 			if err := d.dispatchEvent(eventType, contentType, event.Contents); err != nil {
-				d.logger.Error("Error dispatching event [%s]: %s", destination, err)
+				d.errorLog.Log(logging.MessageKey(), "Error dispatching event", "destination", destination, logging.ErrorKey(), err)
 			}
 		} else if strings.HasPrefix(destination, DNSPrefix) {
 			unfilteredURL := destination[len(DNSPrefix):]
 			if err := d.dispatchTo(unfilteredURL, contentType, event.Contents); err != nil {
-				d.logger.Error("Error dispatching to [%s]: %s", destination, err)
+				d.errorLog.Log(logging.MessageKey(), "Error dispatching to endpoint", "destination", destination, logging.ErrorKey(), err)
 			}
 		} else {
-			d.logger.Error("Unable to route to [%s]", destination)
+			d.errorLog.Log(logging.MessageKey(), "Unroutable destination", "destination", destination)
 		}
 	}
 }
