@@ -26,7 +26,8 @@
 	},
 	
 	"log" : {
-		"file"      : "console",
-		"level"     : "DEBUG"
+		"file"      : "stdout",
+		"level"     : "DEBUG",
+		"json": true
 	}
 }

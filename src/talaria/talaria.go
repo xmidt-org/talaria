@@ -15,6 +15,7 @@ import (
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/Comcast/webpa-common/server"
 	"github.com/Comcast/webpa-common/service"
+	"github.com/go-kit/kit/log"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
@@ -28,7 +29,7 @@ const (
 // startDeviceManagement handles the configuration and initialization of the device management subsystem
 // for talaria.  The returned HTTP handler can be used for device connections and messages, while the returned
 // Manager can be used to route and administer the set of connected devices.
-func startDeviceManagement(logger logging.Logger, h *health.Health, v *viper.Viper) (http.Handler, device.Manager, error) {
+func startDeviceManagement(logger log.Logger, h *health.Health, v *viper.Viper) (http.Handler, device.Manager, error) {
 	deviceOptions, err := device.NewOptions(logger, v.Sub(device.DeviceManagerKey))
 	if err != nil {
 		return nil, nil, err
@@ -80,7 +81,10 @@ func talaria(arguments []string) int {
 		return 1
 	}
 
-	logger.Info("Using configuration file: %s", v.ConfigFileUsed())
+	var (
+		infoLog  = logging.Info(logger)
+		errorLog = logging.Error(logger)
+	)
 
 	//
 	// Initialize the manager first, as if it fails we don't want to advertise this service
@@ -110,7 +114,7 @@ func talaria(arguments []string) int {
 		return 2
 	}
 
-	logger.Info("Service options: %#v", serviceOptions)
+	infoLog.Log("configurationFile", v.ConfigFileUsed(), "serviceOptions", serviceOptions)
 
 	var (
 		accessor     = service.NewUpdatableAccessor(serviceOptions, nil)
@@ -122,14 +126,14 @@ func talaria(arguments []string) int {
 				manager.DisconnectIf(func(candidate device.ID) bool {
 					hashedEndpoint, err := accessor.Get(candidate.Bytes())
 					if err != nil {
-						logger.Error("Error while attempting to rehash device id %s: %s", candidate, err)
+						errorLog.Log(logging.MessageKey(), "Error while attempting to rehash device", "deviceID", candidate, logging.ErrorKey(), err)
 						return true
 					}
 
 					// disconnect if hashedEndpoint was NOT found in the endpoints that this talaria instance registered under
 					disconnect := !registeredEndpoints.Has(hashedEndpoint)
 					if disconnect {
-						logger.Info("Disconnecting %s due to service discovery rehash", candidate)
+						infoLog.Log(logging.MessageKey(), "Service discovery rehash", "deviceID", candidate)
 					}
 
 					return disconnect

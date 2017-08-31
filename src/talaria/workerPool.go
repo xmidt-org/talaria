@@ -1,11 +1,13 @@
 package main
 
 import (
-	"github.com/Comcast/webpa-common/logging"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"sync"
+
+	"github.com/Comcast/webpa-common/logging"
+	"github.com/go-kit/kit/log"
 )
 
 // NewTransactor returns a closure which can handle HTTP transactions.
@@ -25,7 +27,8 @@ func NewTransactor(o *Outbounder) func(*http.Request) (*http.Response, error) {
 // WorkerPool describes a pool of goroutines that dispatch http.Request objects to
 // a transactor function
 type WorkerPool struct {
-	logger         logging.Logger
+	errorLog       log.Logger
+	debugLog       log.Logger
 	outbounds      <-chan *outboundEnvelope
 	workerPoolSize uint
 	transactor     func(*http.Request) (*http.Response, error)
@@ -34,8 +37,10 @@ type WorkerPool struct {
 }
 
 func NewWorkerPool(o *Outbounder, outbounds <-chan *outboundEnvelope) *WorkerPool {
+	logger := o.logger()
 	return &WorkerPool{
-		logger:         o.logger(),
+		errorLog:       logging.Error(logger),
+		debugLog:       logging.Debug(logger),
 		outbounds:      outbounds,
 		workerPoolSize: o.workerPoolSize(),
 		transactor:     NewTransactor(o),
@@ -59,14 +64,14 @@ func (wp *WorkerPool) transact(e *outboundEnvelope) {
 
 	response, err := wp.transactor(e.request)
 	if err != nil {
-		wp.logger.Error("HTTP error: %s", err)
+		wp.errorLog.Log(logging.MessageKey(), "HTTP transaction error", logging.ErrorKey(), err)
 		return
 	}
 
 	if response.StatusCode < 400 {
-		wp.logger.Debug("HTTP response status: %s, target: %s", response.Status, e.request.URL)
+		wp.debugLog.Log(logging.MessageKey(), "HTTP response", "status", response.Status, "url", e.request.URL)
 	} else {
-		wp.logger.Error("HTTP response status: %s, target: %s", response.Status, e.request.URL)
+		wp.errorLog.Log(logging.MessageKey(), "HTTP response", "status", response.Status, "url", e.request.URL)
 	}
 
 	io.Copy(ioutil.Discard, response.Body)

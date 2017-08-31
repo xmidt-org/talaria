@@ -6,6 +6,7 @@ import (
 
 	"github.com/Comcast/webpa-common/device"
 	"github.com/Comcast/webpa-common/logging"
+	"github.com/go-kit/kit/log"
 	"github.com/spf13/viper"
 )
 
@@ -48,13 +49,13 @@ type Outbounder struct {
 	MaxIdleConnsPerHost int                 `json:"maxIdleConnsPerHost"`
 	IdleConnTimeout     time.Duration       `json:"idleConnTimeout"`
 	AuthKey             []string            `json:"authKey"`
-	Logger              logging.Logger      `json:"-"`
+	Logger              log.Logger          `json:"-"`
 }
 
 // NewOutbounder returns an Outbounder unmarshalled from a Viper environment.
 // This function allows the Viper instance to be nil, in which case a default
 // Outbounder is returned.
-func NewOutbounder(logger logging.Logger, v *viper.Viper) (o *Outbounder, err error) {
+func NewOutbounder(logger log.Logger, v *viper.Viper) (o *Outbounder, err error) {
 	o = &Outbounder{
 		Method:              DefaultMethod,
 		RequestTimeout:      DefaultRequestTimeout,
@@ -85,7 +86,7 @@ func (o *Outbounder) String() string {
 	}
 }
 
-func (o *Outbounder) logger() logging.Logger {
+func (o *Outbounder) logger() log.Logger {
 	if o != nil && o.Logger != nil {
 		return o.Logger
 	}
@@ -198,7 +199,7 @@ func (o *Outbounder) clientTimeout() time.Duration {
 
 // Start spawns all necessary goroutines and returns a device.Listener
 func (o *Outbounder) Start() (device.Listener, error) {
-	o.logger().Info("Starting outbounder: %s", o)
+	logging.Info(o.logger()).Log(logging.MessageKey(), "Starting outbounder", "outbounder", o)
 	dispatcher, outbounds, err := NewDispatcher(o, nil)
 	if err != nil {
 		return nil, err

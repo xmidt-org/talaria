@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/Comcast/webpa-common/device"
-	"github.com/Comcast/webpa-common/logging"
 	"github.com/Comcast/webpa-common/wrp"
+	"github.com/go-kit/kit/log"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 )
@@ -17,7 +17,7 @@ const (
 	version = "v2"
 )
 
-func NewPrimaryHandler(logger logging.Logger, connectedUpdates <-chan []byte, manager device.Manager, v *viper.Viper) (http.Handler, error) {
+func NewPrimaryHandler(logger log.Logger, connectedUpdates <-chan []byte, manager device.Manager, v *viper.Viper) (http.Handler, error) {
 	poolFactory, err := wrp.NewPoolFactory(v.Sub(wrp.ViperKey))
 	if err != nil {
 		return nil, err
