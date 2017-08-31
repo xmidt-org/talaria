@@ -2,14 +2,5 @@ package: .
 homepage: https://github.com/Comcast/talaria
 import:
 - package: github.com/Comcast/webpa-common
-  version: 7696a5eab9625e508963a5a2e9343214060f9718
-  subpackages:
-  - device
-  - logging
-  - wrp
-  - concurrent
-  - server
-  - service
-- package: github.com/gorilla/mux
-  version: v1.3.0
+  version: 9f0810dec1058c339282960f3e34d9d94f8dd6be
 
