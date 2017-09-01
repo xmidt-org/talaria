@@ -54,7 +54,7 @@ func ExampleOutbounder() {
 		return
 	}
 
-	o, err := NewOutbounder(&logging.LoggerWriter{ioutil.Discard}, v)
+	o, err := NewOutbounder(logging.DefaultLogger(), v)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -120,7 +120,7 @@ func testOutbounderConfiguration(t *testing.T) {
 	var (
 		assert        = assert.New(t)
 		require       = require.New(t)
-		logger        = logging.TestLogger(t)
+		logger        = logging.NewTestLogger(nil, t)
 		configuration = []byte(`{
 			"method": "PATCH",
 			"requestTimeout": "30s",

@@ -3,22 +3,25 @@ package main
 import (
 	"bytes"
 	"errors"
-	"github.com/Comcast/webpa-common/logging"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/Comcast/webpa-common/logging"
+	"github.com/stretchr/testify/assert"
 )
 
 func testWorkerPoolTransactTransactorError(t *testing.T) {
 	var (
 		assert          = assert.New(t)
+		logger          = logging.NewTestLogger(nil, t)
 		expectedRequest = httptest.NewRequest("POST", "/", nil)
 		envelope        = &outboundEnvelope{expectedRequest, func() {}}
 
 		wp = &WorkerPool{
-			logger: logging.DefaultLogger(),
+			errorLog: logging.Error(logger),
+			debugLog: logging.Debug(logger),
 			transactor: func(actualRequest *http.Request) (*http.Response, error) {
 				assert.Equal(expectedRequest, actualRequest)
 				return nil, errors.New("expected error")
@@ -32,11 +35,13 @@ func testWorkerPoolTransactTransactorError(t *testing.T) {
 func testWorkerPoolTransactHTTPSuccess(t *testing.T) {
 	var (
 		assert          = assert.New(t)
+		logger          = logging.NewTestLogger(nil, t)
 		expectedRequest = httptest.NewRequest("POST", "/", nil)
 		envelope        = &outboundEnvelope{expectedRequest, func() {}}
 
 		wp = &WorkerPool{
-			logger: logging.DefaultLogger(),
+			errorLog: logging.Error(logger),
+			debugLog: logging.Debug(logger),
 			transactor: func(actualRequest *http.Request) (*http.Response, error) {
 				assert.Equal(expectedRequest, actualRequest)
 				return &http.Response{
@@ -54,11 +59,13 @@ func testWorkerPoolTransactHTTPSuccess(t *testing.T) {
 func testWorkerPoolTransactHTTPError(t *testing.T) {
 	var (
 		assert          = assert.New(t)
+		logger          = logging.NewTestLogger(nil, t)
 		expectedRequest = httptest.NewRequest("POST", "/", nil)
 		envelope        = &outboundEnvelope{expectedRequest, func() {}}
 
 		wp = &WorkerPool{
-			logger: logging.DefaultLogger(),
+			errorLog: logging.Error(logger),
+			debugLog: logging.Debug(logger),
 			transactor: func(actualRequest *http.Request) (*http.Response, error) {
 				assert.Equal(expectedRequest, actualRequest)
 				return &http.Response{
