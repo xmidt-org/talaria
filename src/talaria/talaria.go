@@ -126,6 +126,8 @@ func talaria(arguments []string) int {
 		return 2
 	}
 
+	defer services.Deregister()
+	services.Register()
 	infoLog.Log("configurationFile", v.ConfigFileUsed(), "serviceOptions", serviceOptions)
 
 	var (
