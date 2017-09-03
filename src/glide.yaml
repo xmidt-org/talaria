@@ -2,5 +2,5 @@ package: .
 homepage: https://github.com/Comcast/talaria
 import:
 - package: github.com/Comcast/webpa-common
-  version: 418658c2755ed407e6c500f65262ce1dc228801f
+  version: 3bff998d6881098866a38d9363f90e162f0fc445
 

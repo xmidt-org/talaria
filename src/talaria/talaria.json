@@ -11,11 +11,11 @@
 		"address": ":19191"
 	},
 	
-	"discovery": {
+	"service": {
 		"servers": ["localhost:2181"],
+		"path": "/xmidt/local",
 		"serviceName": "talaria",
-		"environment": "dev",
-		"registrations": ["https://localhost:10090"]
+		"registration": "https://localhost:10090"
 	},
 
 	"device": {
