@@ -1,21 +1,21 @@
 {
 	"primary": {
-		"address": ":10090"
+		"address": ":7000"
 	},
 
 	"health": {
-		"address": ":19999"
+		"address": ":7001"
 	},
 
 	"pprof": {
-		"address": ":19191"
+		"address": ":7002"
 	},
 	
 	"service": {
 		"servers": ["localhost:2181"],
 		"path": "/xmidt/local",
 		"serviceName": "talaria",
-		"registration": "https://localhost:10090"
+		"registration": "https://localhost:7000"
 	},
 
 	"device": {
