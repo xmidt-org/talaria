@@ -15,7 +15,8 @@
 		"servers": ["localhost:2181"],
 		"path": "/xmidt/local",
 		"serviceName": "talaria",
-		"registration": "https://localhost:7000"
+		"registration": "https://localhost:7000",
+		"updateDelay": "1m"
 	},
 
 	"device": {
