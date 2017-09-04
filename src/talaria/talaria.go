@@ -108,46 +108,67 @@ func talaria(arguments []string) int {
 	// Now, initialize the service discovery infrastructure
 	//
 
-	serviceOptions, registrar, registeredEndpoints, err := service.Initialize(logger, nil, v.Sub(service.DiscoveryKey))
+	serviceOptions, err := service.FromViper(service.Sub(v))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to read service discovery options: %s\n", err)
+		return 2
+	}
+
+	serviceOptions.Logger = logger
+	services, err := service.New(serviceOptions)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to initialize service discovery: %s\n", err)
 		return 2
 	}
 
+	instancer, err := services.NewInstancer()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to obtain service discovery instancer: %s\n", err)
+		return 2
+	}
+
+	defer services.Deregister()
+	services.Register()
 	infoLog.Log("configurationFile", v.ConfigFileUsed(), "serviceOptions", serviceOptions)
 
 	var (
-		accessor     = service.NewUpdatableAccessor(serviceOptions, nil)
-		subscription = service.Subscription{
-			Logger:    logger,
-			Registrar: registrar,
-			Listener: func(endpoints []string) {
-				accessor.Update(endpoints)
+		subscription = service.Subscribe(serviceOptions, instancer)
+		signals      = make(chan os.Signal, 1)
+	)
+
+	go func() {
+		first := true
+		for {
+			select {
+			case u := <-subscription.Updates():
+				// throw away the first Accessor, as that is just the initial set of talarias
+				if first {
+					first = false
+					infoLog.Log(logging.MessageKey(), "discarding initial service discovery event")
+					continue
+				}
+
+				infoLog.Log(logging.MessageKey(), "new talaria instances")
 				manager.DisconnectIf(func(candidate device.ID) bool {
-					hashedEndpoint, err := accessor.Get(candidate.Bytes())
+					instance, err := u.Get(candidate.Bytes())
 					if err != nil {
 						errorLog.Log(logging.MessageKey(), "Error while attempting to rehash device", "deviceID", candidate, logging.ErrorKey(), err)
 						return true
 					}
 
-					// disconnect if hashedEndpoint was NOT found in the endpoints that this talaria instance registered under
-					disconnect := !registeredEndpoints.Has(hashedEndpoint)
-					if disconnect {
-						infoLog.Log(logging.MessageKey(), "Service discovery rehash", "deviceID", candidate)
+					if instance != serviceOptions.Registration {
+						infoLog.Log(logging.MessageKey(), "service discovery rehash", "deviceID", candidate)
+						return true
 					}
 
-					return disconnect
+					return false
 				})
-			},
+
+			case <-subscription.Stopped():
+				return
+			}
 		}
-
-		signals = make(chan os.Signal, 1)
-	)
-
-	if err := subscription.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to run subscription: %s", err)
-		return 3
-	}
+	}()
 
 	signal.Notify(signals)
 	<-signals
