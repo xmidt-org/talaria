@@ -114,6 +114,7 @@ func talaria(arguments []string) int {
 		return 2
 	}
 
+	serviceOptions.Logger = logger
 	services, err := service.New(serviceOptions)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to initialize service discovery: %s\n", err)
@@ -147,6 +148,7 @@ func talaria(arguments []string) int {
 					continue
 				}
 
+				infoLog.Log(logging.MessageKey(), "new talaria instances")
 				manager.DisconnectIf(func(candidate device.ID) bool {
 					instance, err := u.Get(candidate.Bytes())
 					if err != nil {
