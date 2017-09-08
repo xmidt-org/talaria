@@ -17,7 +17,7 @@ const (
 	version = "v2"
 )
 
-func NewPrimaryHandler(logger log.Logger, connectedUpdates <-chan []byte, manager device.Manager, v *viper.Viper) (http.Handler, error) {
+func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper) (http.Handler, error) {
 	poolFactory, err := wrp.NewPoolFactory(v.Sub(wrp.ViperKey))
 	if err != nil {
 		return nil, err
@@ -44,9 +44,10 @@ func NewPrimaryHandler(logger log.Logger, connectedUpdates <-chan []byte, manage
 		Methods("POST", "PATCH").
 		Headers("Content-Type", wrp.Msgpack.ContentType())
 
-	listHandler := new(device.ListHandler)
-	listHandler.Consume(connectedUpdates)
-	apiHandler.Handle("/devices", listHandler).
+	apiHandler.Handle("/devices", &device.ListHandler{
+		Logger:   logger,
+		Registry: manager,
+	}).
 		Methods("GET")
 
 	apiHandler.Handle(

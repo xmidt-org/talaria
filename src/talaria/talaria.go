@@ -6,7 +6,6 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"time"
 
 	"github.com/Comcast/webpa-common/concurrent"
 	"github.com/Comcast/webpa-common/device"
@@ -45,12 +44,7 @@ func startDeviceManagement(logger log.Logger, h *health.Health, v *viper.Viper) 
 		return nil, nil, err
 	}
 
-	connectedDeviceListener, connectedUpdates := (&device.ConnectedDeviceListener{
-		RefreshInterval: 10 * time.Second,
-	}).Listen()
-
 	deviceOptions.Listeners = []device.Listener{
-		connectedDeviceListener,
 		outboundListener,
 		(&devicehealth.Listener{
 			Dispatcher: h,
@@ -58,7 +52,7 @@ func startDeviceManagement(logger log.Logger, h *health.Health, v *viper.Viper) 
 	}
 
 	manager := device.NewManager(deviceOptions, nil)
-	primaryHandler, err := NewPrimaryHandler(logger, connectedUpdates, manager, v)
+	primaryHandler, err := NewPrimaryHandler(logger, manager, v)
 	return primaryHandler, manager, err
 }
 
