@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/Comcast/webpa-common/device"
@@ -15,22 +16,20 @@ const (
 
 	// TODO: Should this change for talaria 2.0?
 	version = "v2"
+
+	// TODO: This should be configurable at some point
+	poolSize = 1000
 )
 
 func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper) (http.Handler, error) {
-	poolFactory, err := wrp.NewPoolFactory(v.Sub(wrp.ViperKey))
-	if err != nil {
-		return nil, err
-	}
-
 	var (
 		handler    = mux.NewRouter()
-		apiHandler = handler.PathPrefix(baseURI + "/" + version).Subrouter()
+		apiHandler = handler.PathPrefix(fmt.Sprintf("%s/%s", baseURI, version)).Subrouter()
 	)
 
 	apiHandler.Handle("/device/send", &device.MessageHandler{
 		Logger:   logger,
-		Decoders: poolFactory.NewDecoderPool(wrp.JSON),
+		Decoders: wrp.NewDecoderPool(poolSize, wrp.JSON),
 		Router:   manager,
 	}).
 		Methods("POST", "PATCH").
@@ -38,7 +37,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 
 	apiHandler.Handle("/device/send", &device.MessageHandler{
 		Logger:   logger,
-		Decoders: poolFactory.NewDecoderPool(wrp.Msgpack),
+		Decoders: wrp.NewDecoderPool(poolSize, wrp.Msgpack),
 		Router:   manager,
 	}).
 		Methods("POST", "PATCH").
