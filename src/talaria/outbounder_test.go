@@ -156,8 +156,8 @@ func testOutbounderConfiguration(t *testing.T) {
 	assert.Equal(map[string]bool{"nntp": true, "ftp": true}, o.allowedSchemes())
 	assert.Equal(
 		map[string][]string{
-			"iot":       []string{"https://endpoint1.com", "https://endpoint2.com"},
-			"something": []string{"https://endpoint3.com"},
+			"iot":       {"https://endpoint1.com", "https://endpoint2.com"},
+			"something": {"https://endpoint3.com"},
 		},
 		o.eventEndpoints(),
 	)
