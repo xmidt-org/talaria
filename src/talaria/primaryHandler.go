@@ -57,5 +57,14 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		}),
 	)
 
+	apiHandler.Handle(
+		"/device/{deviceID}/stat",
+		&device.StatHandler{
+			Logger:   logger,
+			Registry: manager,
+			Variable: "deviceID",
+		},
+	)
+
 	return handler, nil
 }
