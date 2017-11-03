@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -68,17 +67,14 @@ func talaria(arguments []string) int {
 		v = viper.New()
 
 		logger, webPA, err = server.Initialize(applicationName, arguments, f, v)
+		infoLog            = logging.Info(logger)
+		errorLog           = logging.Error(logger)
 	)
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to initialize Viper environment: %s\n", err)
+		errorLog.Log(logging.MessageKey(), "Unable to initialize Viper environment", logging.ErrorKey(), err)
 		return 1
 	}
-
-	var (
-		infoLog  = logging.Info(logger)
-		errorLog = logging.Error(logger)
-	)
 
 	//
 	// Initialize the manager first, as if it fails we don't want to advertise this service
@@ -87,14 +83,14 @@ func talaria(arguments []string) int {
 	health := webPA.Health.NewHealth(logger, devicehealth.Options...)
 	primaryHandler, manager, err := startDeviceManagement(logger, health, v)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to start device management: %s\n", err)
+		errorLog.Log(logging.MessageKey(), "Unable to start device management", logging.ErrorKey(), err)
 		return 1
 	}
 
 	_, talariaServer := webPA.Prepare(logger, health, primaryHandler)
 	waitGroup, shutdown, err := concurrent.Execute(talariaServer)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to start device manager: %s\n", err)
+		errorLog.Log(logging.MessageKey(), "Unable to start device manager", logging.ErrorKey(), err)
 		return 1
 	}
 
@@ -104,20 +100,20 @@ func talaria(arguments []string) int {
 
 	serviceOptions, err := service.FromViper(service.Sub(v))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to read service discovery options: %s\n", err)
+		errorLog.Log(logging.MessageKey(), "Unable to read service discovery options", logging.ErrorKey(), err)
 		return 2
 	}
 
 	serviceOptions.Logger = logger
 	services, err := service.New(serviceOptions)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to initialize service discovery: %s\n", err)
+		errorLog.Log(logging.MessageKey(), "Unable to initialize service discovery", logging.ErrorKey(), err)
 		return 2
 	}
 
 	instancer, err := services.NewInstancer()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to obtain service discovery instancer: %s\n", err)
+		errorLog.Log(logging.MessageKey(), "Unable to obtain service discovery instancer", logging.ErrorKey(), err)
 		return 2
 	}
 
