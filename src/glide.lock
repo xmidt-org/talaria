@@ -1,5 +1,5 @@
-hash: 711d1b130d0fc9db485741c526ef2a995006dd609f6eeaa6917ae9725d773379
-updated: 2017-11-06T14:10:14.853679147-08:00
+hash: d77ef89ba9ffa088364907895fc7cbe6e35c2c7c7357a38b8c3cf1b5b91eec8d
+updated: 2017-11-07T23:21:00.254362282-08:00
 imports:
 - name: github.com/billhathaway/consistentHash
   version: addea16d2229dba874111898b45be7f4a78af631
@@ -8,9 +8,11 @@ imports:
   subpackages:
   - linux
 - name: github.com/Comcast/webpa-common
-  version: d7cd7bae673761bd86384d676b691de170d46781
+  version: 7511c17f36c4326fc9fd1e77b1ef252bc20e36c2
   subpackages:
   - concurrent
+  - convey
+  - convey/conveyhttp
   - device
   - device/devicehealth
   - health
@@ -78,7 +80,7 @@ imports:
 - name: github.com/spf13/viper
   version: 25b30aa063fc18e48662b86996252eabdcf2f0c7
 - name: github.com/ugorji/go
-  version: d23841a297e5489e787e72fceffabf9d2994b52a
+  version: 00a57e09e383d445aeef6c6cd642969dc4360231
   subpackages:
   - codec
 - name: golang.org/x/sys
