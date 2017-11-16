@@ -21,6 +21,8 @@ import (
 	"net/http"
 
 	"github.com/Comcast/webpa-common/device"
+	"github.com/Comcast/webpa-common/secure"
+	"github.com/Comcast/webpa-common/secure/handler"
 	"github.com/Comcast/webpa-common/wrp"
 	"github.com/go-kit/kit/log"
 	"github.com/gorilla/mux"
@@ -39,32 +41,42 @@ const (
 
 func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper) (http.Handler, error) {
 	var (
-		handler    = mux.NewRouter()
-		apiHandler = handler.PathPrefix(fmt.Sprintf("%s/%s", baseURI, version)).Subrouter()
+		authKey                = v.GetString("inbound.authKey")
+		r                      = mux.NewRouter()
+		apiHandler             = r.PathPrefix(fmt.Sprintf("%s/%s", baseURI, version)).Subrouter()
+		authorizationDecorator = func(h http.Handler) http.Handler { return h }
 	)
 
-	apiHandler.Handle("/device/send", &device.MessageHandler{
+	if len(authKey) > 0 {
+		authorizationDecorator = handler.AuthorizationHandler{
+			Logger:    logger,
+			Validator: secure.ExactMatchValidator(authKey),
+		}.Decorate
+	}
+
+	apiHandler.Handle("/device/send", authorizationDecorator(&device.MessageHandler{
 		Logger:   logger,
 		Decoders: wrp.NewDecoderPool(poolSize, wrp.JSON),
 		Router:   manager,
-	}).
+	})).
 		Methods("POST", "PATCH").
 		Headers("Content-Type", wrp.JSON.ContentType())
 
-	apiHandler.Handle("/device/send", &device.MessageHandler{
+	apiHandler.Handle("/device/send", authorizationDecorator(&device.MessageHandler{
 		Logger:   logger,
 		Decoders: wrp.NewDecoderPool(poolSize, wrp.Msgpack),
 		Router:   manager,
-	}).
+	})).
 		Methods("POST", "PATCH").
 		Headers("Content-Type", wrp.Msgpack.ContentType())
 
-	apiHandler.Handle("/devices", &device.ListHandler{
+	apiHandler.Handle("/devices", authorizationDecorator(&device.ListHandler{
 		Logger:   logger,
 		Registry: manager,
-	}).
+	})).
 		Methods("GET")
 
+	// the connect handler is not decorated for authorization
 	apiHandler.Handle(
 		"/device",
 		device.UseID.FromHeader(&device.ConnectHandler{
@@ -75,12 +87,12 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 
 	apiHandler.Handle(
 		"/device/{deviceID}/stat",
-		&device.StatHandler{
+		authorizationDecorator(&device.StatHandler{
 			Logger:   logger,
 			Registry: manager,
 			Variable: "deviceID",
-		},
+		}),
 	)
 
-	return handler, nil
+	return r, nil
 }
