@@ -83,7 +83,7 @@ case "$1" in
 	[ -f /var/lock/subsys/talaria ] && restart
 	;;
   status)
-	status supervisord
+	status talaria
 	RETVAL=$?
 	;;
   *)
