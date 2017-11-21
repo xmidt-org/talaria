@@ -59,7 +59,9 @@ start() {
 
 stop() {
 	echo -n $"Stopping talaria: "
-	killproc supervisord
+	kill $(cat /var/run/talaria.pid)
+	RETVAL=$?
+	rm -f /var/run/talaria.pid
 	echo
 	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/talaria
 }
