@@ -31,6 +31,7 @@ import (
 	"github.com/Comcast/webpa-common/server"
 	"github.com/Comcast/webpa-common/service"
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
@@ -144,27 +145,31 @@ func talaria(arguments []string) int {
 	)
 
 	go func() {
-		first := true
+		var (
+			first           = true
+			subscriptionLog = log.With(logger, "subscription", subscription)
+		)
+
 		for {
 			select {
 			case u := <-subscription.Updates():
 				// throw away the first Accessor, as that is just the initial set of talarias
 				if first {
 					first = false
-					infoLog.Log(logging.MessageKey(), "discarding initial service discovery event")
+					subscriptionLog.Log(level.Key(), level.InfoValue(), logging.MessageKey(), "discarding initial service discovery event")
 					continue
 				}
 
-				infoLog.Log(logging.MessageKey(), "new talaria instances")
+				subscriptionLog.Log(level.Key(), level.InfoValue(), logging.MessageKey(), "new talaria instances")
 				manager.DisconnectIf(func(candidate device.ID) bool {
 					instance, err := u.Get(candidate.Bytes())
 					if err != nil {
-						errorLog.Log(logging.MessageKey(), "Error while attempting to rehash device", "deviceID", candidate, logging.ErrorKey(), err)
+						subscriptionLog.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Error while attempting to rehash device", "deviceID", candidate, logging.ErrorKey(), err)
 						return true
 					}
 
 					if instance != serviceOptions.Registration {
-						infoLog.Log(logging.MessageKey(), "service discovery rehash", "deviceID", candidate)
+						subscriptionLog.Log(level.Key(), level.InfoValue(), logging.MessageKey(), "service discovery rehash", "deviceID", candidate)
 						return true
 					}
 
@@ -172,6 +177,7 @@ func talaria(arguments []string) int {
 				})
 
 			case <-subscription.Stopped():
+				subscriptionLog.Log(level.Key(), level.InfoValue(), logging.MessageKey(), "service discovery subscription stopped")
 				return
 			}
 		}
