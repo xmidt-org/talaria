@@ -183,7 +183,7 @@ func talaria(arguments []string) int {
 		}
 	}()
 
-	signal.Notify(signals)
+	signal.Notify(signals, os.Interrupt, os.Kill)
 	s := <-signals
 	infoLog.Log(logging.MessageKey(), "received signal, shutting down", "signal", s)
 	close(shutdown)
