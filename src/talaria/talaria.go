@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -177,7 +178,8 @@ func talaria(arguments []string) int {
 	}()
 
 	signal.Notify(signals)
-	<-signals
+	s := <-signals
+	infoLog.Log(logging.MessageKey(), "received signal, shutting down", "signal", s)
 	close(shutdown)
 	waitGroup.Wait()
 
@@ -185,5 +187,11 @@ func talaria(arguments []string) int {
 }
 
 func main() {
-	os.Exit(talaria(os.Args))
+	os.Exit(
+		func() int {
+			result := talaria(os.Args)
+			fmt.Printf("exiting with code: %d\n", result)
+			return result
+		}(),
+	)
 }
