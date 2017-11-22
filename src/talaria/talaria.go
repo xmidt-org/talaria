@@ -187,6 +187,12 @@ func talaria(arguments []string) int {
 }
 
 func main() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("shutting down due to panic: %s", r)
+		}
+	}()
+
 	os.Exit(
 		func() int {
 			result := talaria(os.Args)
