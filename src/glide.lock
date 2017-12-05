@@ -1,5 +1,5 @@
 hash: 90e7bf9b1e3df46f03377660e49337c65cf9c4611458bdde6e557809200e61e8
-updated: 2017-11-27T18:59:58.521726455-08:00
+updated: 2017-12-04T16:30:41.057080169-08:00
 imports:
 - name: github.com/billhathaway/consistentHash
   version: addea16d2229dba874111898b45be7f4a78af631
@@ -52,7 +52,7 @@ imports:
 - name: github.com/gorilla/websocket
   version: 3ab3a8b8831546bd18fd182c20687ca853b2bb13
 - name: github.com/hashicorp/hcl
-  version: 8f6b1344a92ff8877cf24a5de9177bf7d0a2a187
+  version: 23c074d0eceb2b8a5bfdbb271ab780cde70f05a8
   subpackages:
   - hcl/ast
   - hcl/parser
@@ -67,11 +67,11 @@ imports:
 - name: github.com/kr/logfmt
   version: b84e30acd515aadc4b783ad4ff83aff3299bdfe0
 - name: github.com/magiconair/properties
-  version: 8d7837e64d3c1ee4e54a880c5a920ab4316fc90a
+  version: 49d762b9817ba1c2e9d0c69183c2b4a8b8f1d934
 - name: github.com/mitchellh/mapstructure
-  version: d0303fe809921458f417bcf828397a65db30a7e4
+  version: 06020f85339e21b2478f756a78e295255ffa4d6a
 - name: github.com/pelletier/go-toml
-  version: 9c1b4e331f1e3d98e72600677699fbe212cd6d16
+  version: 4e9e0ee19b60b13eb79915933f44d8ed5f268bdd
 - name: github.com/pmezard/go-difflib
   version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
   subpackages:
@@ -89,7 +89,7 @@ imports:
 - name: github.com/spaolacci/murmur3
   version: 0d12bf811670bf6a1a63828dfbd003eded177fce
 - name: github.com/spf13/afero
-  version: ee1bd8ee15a1306d1f9201acc41ef39cd9f99a1b
+  version: 5660eeed305fe5f69c8fc6cf899132a459a97064
   subpackages:
   - mem
 - name: github.com/spf13/cast
@@ -114,11 +114,11 @@ imports:
   subpackages:
   - codec
 - name: golang.org/x/sys
-  version: 7ddbeae9ae08c6a06a59597f0c9edbc5ff2444ce
+  version: 95c6576299259db960f6c5b9b69ea52422860fce
   subpackages:
   - unix
 - name: golang.org/x/text
-  version: bd91bbf73e9a4a801adbfb97133c992678533126
+  version: 3cfc6c0d6bf80d724d98c26c4822f4a35d37598e
   subpackages:
   - transform
   - unicode/norm
