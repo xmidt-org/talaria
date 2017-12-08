@@ -25,3 +25,16 @@ rpm --import https://github.com/Comcast/talaria/releases/download/0.0.1-65/RPM-G
 yum install https://github.com/Comcast/talaria/releases/download/0.0.1-65/talaria-0.0.1-65.el6.x86_64.rpm
 ```
 
+# How to update glide
+
+```
+update glide.yaml
+```
+
+then
+
+```
+$ glide update --strip-vendor
+```
+
+then commit glide.log
