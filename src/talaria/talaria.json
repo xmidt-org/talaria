@@ -23,6 +23,10 @@
 		"manager": {
 		},
 		"outbound": {
+			"eventEndpoints": {
+				"default": ["http://localhost:8080/api/v2/notify"],
+				"raw.kestrel.reports.InterfaceDevicesWifi": ["http://localhost:8080/api/v2/notify/kestrel"]
+			}
 		}
 	},
 	

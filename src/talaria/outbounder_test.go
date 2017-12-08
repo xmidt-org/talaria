@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/Comcast/webpa-common/device"
+	"github.com/Comcast/webpa-common/event"
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/Comcast/webpa-common/wrp"
 	"github.com/spf13/viper"
@@ -122,7 +123,11 @@ func testOutbounderDefaults(t *testing.T) {
 		assert.Equal(DefaultRequestTimeout, o.requestTimeout())
 		assert.Equal(DefaultDefaultScheme, o.defaultScheme())
 		assert.Equal(map[string]bool{DefaultAllowedScheme: true}, o.allowedSchemes())
-		assert.Empty(o.eventEndpoints())
+
+		m, err := o.eventMap()
+		assert.Empty(m)
+		assert.NoError(err)
+
 		assert.Equal(DefaultOutboundQueueSize, o.outboundQueueSize())
 		assert.Equal(DefaultWorkerPoolSize, o.workerPoolSize())
 		assert.Equal(DefaultMaxIdleConns, o.maxIdleConns())
@@ -170,12 +175,15 @@ func testOutbounderConfiguration(t *testing.T) {
 	assert.Equal(30*time.Second, o.requestTimeout())
 	assert.Equal("ftp", o.defaultScheme())
 	assert.Equal(map[string]bool{"nntp": true, "ftp": true}, o.allowedSchemes())
+
+	m, err := o.eventMap()
+	assert.NoError(err)
 	assert.Equal(
-		map[string][]string{
+		event.MultiMap{
 			"iot":       {"https://endpoint1.com", "https://endpoint2.com"},
 			"something": {"https://endpoint3.com"},
 		},
-		o.eventEndpoints(),
+		m,
 	)
 	assert.Equal(uint(281), o.outboundQueueSize())
 	assert.Equal(uint(17), o.workerPoolSize())
