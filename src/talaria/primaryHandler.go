@@ -67,8 +67,8 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 			Validator: secure.ExactMatchValidator(authKey),
 		}.Decorate
 	}
-	
-	if v.IsSet("jwtValidtors") {
+
+	if v.IsSet("jwtValidators") {
 		var validator secure.Validator
 		var cfg_validators []JWTValidator
 
@@ -86,7 +86,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 				validators = append(
 					validators,
 					secure.JWSValidator{
-						DefaultKeyId:  DefaultKeyId,  // todo: where is this defined?
+						DefaultKeyId:  DefaultKeyId,
 						Resolver:      keyResolver,
 						JWTValidators: []*jwt.Validator{validatorDescriptor.Custom.New()},
 					},
