@@ -88,57 +88,57 @@ func testDispatcherOnDeviceEventDispatchEvent(t *testing.T) {
 				expectedEndpoints: map[string]bool{},
 			},
 			{
-				outbounder:        &Outbounder{Method: "BADMETHOD&%*(!@(&%(", EventEndpoints: map[string][]string{"iot": {"http://endpoint1.com"}}},
+				outbounder:        &Outbounder{Method: "BADMETHOD&%*(!@(&%(", EventEndpoints: map[string]interface{}{"iot": []string{"http://endpoint1.com"}}},
 				destination:       "event:iot",
 				expectedEndpoints: map[string]bool{},
 			},
 			{
-				outbounder:        &Outbounder{EventEndpoints: map[string][]string{"another": {"http://endpoint1.com"}}},
+				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"another": []string{"http://endpoint1.com"}}},
 				destination:       "event:iot",
 				expectedEndpoints: map[string]bool{},
 			},
 			{
-				outbounder:        &Outbounder{EventEndpoints: map[string][]string{"another": {"http://endpoint1.com"}}},
+				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"another": []string{"http://endpoint1.com"}}},
 				destination:       "event:iot",
 				expectedEndpoints: map[string]bool{},
 			},
 			{
-				outbounder:        &Outbounder{EventEndpoints: map[string][]string{"default": {"http://endpoint1.com"}}},
+				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com"}}},
 				destination:       "event:iot",
 				expectedEndpoints: map[string]bool{"http://endpoint1.com": true},
 			},
 			{
-				outbounder:        &Outbounder{Method: "PATCH", EventEndpoints: map[string][]string{"default": {"http://endpoint1.com"}}},
+				outbounder:        &Outbounder{Method: "PATCH", EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com"}}},
 				destination:       "event:iot",
 				expectedEndpoints: map[string]bool{"http://endpoint1.com": true},
 			},
 			{
-				outbounder:        &Outbounder{EventEndpoints: map[string][]string{"default": {"http://endpoint1.com", "http://endpoint2.com"}}},
+				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com", "http://endpoint2.com"}}},
 				destination:       "event:iot",
 				expectedEndpoints: map[string]bool{"http://endpoint1.com": true, "http://endpoint2.com": true},
 			},
 			{
-				outbounder:        &Outbounder{Method: "PATCH", EventEndpoints: map[string][]string{"default": {"http://endpoint1.com", "http://endpoint2.com"}}},
+				outbounder:        &Outbounder{Method: "PATCH", EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com", "http://endpoint2.com"}}},
 				destination:       "event:iot",
 				expectedEndpoints: map[string]bool{"http://endpoint1.com": true, "http://endpoint2.com": true},
 			},
 			{
-				outbounder:        &Outbounder{EventEndpoints: map[string][]string{"iot": {"http://endpoint1.com"}}},
+				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"iot": []string{"http://endpoint1.com"}}},
 				destination:       "event:iot",
 				expectedEndpoints: map[string]bool{"http://endpoint1.com": true},
 			},
 			{
-				outbounder:        &Outbounder{Method: "PATCH", EventEndpoints: map[string][]string{"iot": {"http://endpoint1.com"}}},
+				outbounder:        &Outbounder{Method: "PATCH", EventEndpoints: map[string]interface{}{"iot": []string{"http://endpoint1.com"}}},
 				destination:       "event:iot",
 				expectedEndpoints: map[string]bool{"http://endpoint1.com": true},
 			},
 			{
-				outbounder:        &Outbounder{EventEndpoints: map[string][]string{"iot": {"http://endpoint1.com", "http://endpoint2.com"}}},
+				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"iot": []string{"http://endpoint1.com", "http://endpoint2.com"}}},
 				destination:       "event:iot",
 				expectedEndpoints: map[string]bool{"http://endpoint1.com": true, "http://endpoint2.com": true},
 			},
 			{
-				outbounder:        &Outbounder{Method: "PATCH", EventEndpoints: map[string][]string{"iot": {"http://endpoint1.com", "http://endpoint2.com"}}},
+				outbounder:        &Outbounder{Method: "PATCH", EventEndpoints: map[string]interface{}{"iot": []string{"http://endpoint1.com", "http://endpoint2.com"}}},
 				destination:       "event:iot",
 				expectedEndpoints: map[string]bool{"http://endpoint1.com": true, "http://endpoint2.com": true},
 			},
@@ -200,7 +200,7 @@ func testDispatcherOnDeviceEventEventTimeout(t *testing.T) {
 		require    = require.New(t)
 		outbounder = &Outbounder{
 			RequestTimeout: 100 * time.Millisecond,
-			EventEndpoints: map[string][]string{"default": {"nowhere.com"}},
+			EventEndpoints: map[string]interface{}{"default": []string{"nowhere.com"}},
 		}
 
 		d, _, err = NewDispatcher(outbounder, nil)

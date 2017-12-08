@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/Comcast/webpa-common/device"
+	"github.com/Comcast/webpa-common/event"
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/go-kit/kit/log"
 	"github.com/spf13/viper"
@@ -53,19 +54,19 @@ const (
 // Outbounder encapsulates the configuration necessary for handling outbound traffic
 // and grants the ability to start the outbounding infrastructure.
 type Outbounder struct {
-	Method              string              `json:"method"`
-	RequestTimeout      time.Duration       `json:"requestTimeout"`
-	DefaultScheme       string              `json:"defaultScheme"`
-	AllowedSchemes      []string            `json:"allowedSchemes"`
-	EventEndpoints      map[string][]string `json:"eventEndpoints"`
-	OutboundQueueSize   uint                `json:"outboundQueueSize"`
-	WorkerPoolSize      uint                `json:"workerPoolSize"`
-	ClientTimeout       time.Duration       `json:"clientTimeout"`
-	MaxIdleConns        int                 `json:"maxIdleConns"`
-	MaxIdleConnsPerHost int                 `json:"maxIdleConnsPerHost"`
-	IdleConnTimeout     time.Duration       `json:"idleConnTimeout"`
-	AuthKey             []string            `json:"authKey"`
-	Logger              log.Logger          `json:"-"`
+	Method              string                 `json:"method"`
+	RequestTimeout      time.Duration          `json:"requestTimeout"`
+	DefaultScheme       string                 `json:"defaultScheme"`
+	AllowedSchemes      []string               `json:"allowedSchemes"`
+	EventEndpoints      map[string]interface{} `json:"eventEndpoints"`
+	OutboundQueueSize   uint                   `json:"outboundQueueSize"`
+	WorkerPoolSize      uint                   `json:"workerPoolSize"`
+	ClientTimeout       time.Duration          `json:"clientTimeout"`
+	MaxIdleConns        int                    `json:"maxIdleConns"`
+	MaxIdleConnsPerHost int                    `json:"maxIdleConnsPerHost"`
+	IdleConnTimeout     time.Duration          `json:"idleConnTimeout"`
+	AuthKey             []string               `json:"authKey"`
+	Logger              log.Logger             `json:"-"`
 }
 
 // NewOutbounder returns an Outbounder unmarshalled from a Viper environment.
@@ -147,14 +148,14 @@ func (o *Outbounder) allowedSchemes() map[string]bool {
 	return map[string]bool{DefaultAllowedScheme: true}
 }
 
-func (o *Outbounder) eventEndpoints() map[string][]string {
+func (o *Outbounder) eventMap() (event.MultiMap, error) {
 	if o != nil {
-		return o.EventEndpoints
+		return event.NestedToMultiMap(".", o.EventEndpoints)
 	}
 
 	// don't return nil, as we want to make sure client code can
 	// always do lookups for event types
-	return map[string][]string{}
+	return event.MultiMap{}, nil
 }
 
 func (o *Outbounder) outboundQueueSize() uint {

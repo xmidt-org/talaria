@@ -26,9 +26,11 @@ import (
 	"time"
 
 	"github.com/Comcast/webpa-common/device"
+	"github.com/Comcast/webpa-common/event"
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/Comcast/webpa-common/wrp"
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 )
 
 // outboundEnvelope is a tuple of information related to handling an asynchronous HTTP request
@@ -52,7 +54,7 @@ type dispatcher struct {
 	method            string
 	timeout           time.Duration
 	authorizationKeys []string
-	eventEndpoints    map[string][]string
+	eventMap          event.MultiMap
 	outbounds         chan<- *outboundEnvelope
 }
 
@@ -69,13 +71,20 @@ func NewDispatcher(o *Outbounder, urlFilter URLFilter) (Dispatcher, <-chan *outb
 
 	outbounds := make(chan *outboundEnvelope, o.outboundQueueSize())
 	logger := o.logger()
+	eventMap, err := o.eventMap()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	logger.Log(level.Key(), level.InfoValue(), "eventMap", eventMap)
+
 	return &dispatcher{
 		errorLog:          logging.Error(logger),
 		urlFilter:         urlFilter,
 		method:            o.method(),
 		timeout:           o.requestTimeout(),
 		authorizationKeys: o.authKey(),
-		eventEndpoints:    o.eventEndpoints(),
+		eventMap:          eventMap,
 		outbounds:         outbounds,
 	}, outbounds, nil
 }
@@ -115,12 +124,8 @@ func (d *dispatcher) newRequest(url, contentType string, body io.Reader) (*http.
 }
 
 func (d *dispatcher) dispatchEvent(eventType, contentType string, contents []byte) error {
-	endpoints := d.eventEndpoints[eventType]
-	if len(endpoints) == 0 {
-		endpoints = d.eventEndpoints[DefaultEventType]
-	}
-
-	if len(endpoints) == 0 {
+	endpoints, ok := d.eventMap.Get(eventType, DefaultEventType)
+	if !ok {
 		// allow no endpoints, but log an error since this means that we're dropping
 		// traffic explicitly because of configuration
 		return fmt.Errorf("No endpoints configured for event: %s", eventType)
