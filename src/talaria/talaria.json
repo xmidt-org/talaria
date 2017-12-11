@@ -7,8 +7,12 @@
 		"address": ":7001"
 	},
 
-	"pprof": {
+	"metric": {
 		"address": ":7002"
+	},
+
+	"pprof": {
+		"address": ":7003"
 	},
 	
 	"service": {
