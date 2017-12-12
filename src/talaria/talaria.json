@@ -8,7 +8,11 @@
 	},
 
 	"metric": {
-		"address": ":7002"
+		"address": ":7002",
+		"metricsOptions": {
+			"namespace": "xmidt",
+			"subsystem": "talaria"
+		}
 	},
 
 	"pprof": {
