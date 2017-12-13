@@ -83,7 +83,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 			for _, validatorDescriptor := range cfg_validators {
 				keyResolver, err := validatorDescriptor.Keys.NewResolver()
 				if err != nil {
-					return nil, err
+					return nil, fmt.Errorf("Unable to create key resolver: %s", err)
 				}
 
 				validators = append(
