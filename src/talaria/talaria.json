@@ -37,6 +37,10 @@
 			}
 		}
 	},
+
+	"inbound": {
+		"authKey": "YWxhZGRpbjpvcGVuIHNlc2FtZQ=="
+	},
 	
 	"log" : {
 		"file"      : "stdout",
