@@ -56,18 +56,23 @@ type JWTValidator struct {
 
 func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper) (http.Handler, error) {
 	var (
-		authKey                      = v.GetString("inbound.authKey")
+		authKeys                     = v.GetStringSlice("inbound.authKey")
 		r                            = mux.NewRouter()
 		apiHandler                   = r.PathPrefix(fmt.Sprintf("%s/%s", baseURI, version)).Subrouter()
 		authorizationDecorator       = func(h http.Handler) http.Handler { return h }
 		authorizationDecoratorDevice = func(h http.Handler) http.Handler { return h }
 	)
 
-	if len(authKey) > 0 {
-		logger.Log(level.Key(), level.InfoValue(), logging.MessageKey(), "using basic auth")
+	if len(authKeys) > 0 {
+		logger.Log(level.Key(), level.InfoValue(), logging.MessageKey(), "using basic auth", "keyCount", len(authKeys))
+		validators := secure.Validators{}
+		for _, k := range authKeys {
+			validators = append(validators, secure.ExactMatchValidator(k))
+		}
+
 		authorizationDecorator = handler.AuthorizationHandler{
 			Logger:    logger,
-			Validator: secure.ExactMatchValidator(authKey),
+			Validator: validators,
 		}.Decorate
 	}
 
