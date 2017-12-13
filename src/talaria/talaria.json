@@ -49,7 +49,7 @@
 					"uri": "https://sat-prod.codebig2.net/keys/{keyId}"
 				},
 				"purpose": 0,
-				"updateInterval": 3600
+				"updateInterval": 604800000000000
 			}
 		}
 	],
