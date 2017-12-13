@@ -76,7 +76,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		var cfg_validators []JWTValidator
 
 		if err := v.UnmarshalKey("jwtValidators", &cfg_validators); err != nil {
-			validator = make(secure.Validators, 0, 0)
+			return nil, err
 		} else {
 			validators := make(secure.Validators, 0, len(cfg_validators))
 

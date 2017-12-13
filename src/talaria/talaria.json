@@ -41,7 +41,16 @@
 	"inbound": {
 		"authKey": "YWxhZGRpbjpvcGVuIHNlc2FtZQ=="
 	},
-	
+
+	"jwtValidators": [
+		{ "keys": {
+			"uri": "https://sat-prod.codebig2.net/keys/{keyId}",
+			"purpose": "verify",
+			"updateInterval": "168h"
+			}
+		}
+	],
+
 	"log" : {
 		"file"      : "stdout",
 		"level"     : "DEBUG",
