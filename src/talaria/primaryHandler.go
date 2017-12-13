@@ -21,13 +21,15 @@ import (
 	"net/http"
 
 	"github.com/Comcast/webpa-common/device"
+	"github.com/Comcast/webpa-common/logging"
 	"github.com/Comcast/webpa-common/secure"
 	"github.com/Comcast/webpa-common/secure/handler"
 	"github.com/Comcast/webpa-common/secure/key"
 	"github.com/Comcast/webpa-common/wrp"
-	"github.com/go-kit/kit/log"
-	"github.com/gorilla/mux"
 	"github.com/SermoDigital/jose/jwt"
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
+	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 )
 
@@ -39,7 +41,7 @@ const (
 
 	// TODO: This should be configurable at some point
 	poolSize = 1000
-	
+
 	DefaultKeyId = "current"
 )
 
@@ -62,6 +64,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 	)
 
 	if len(authKey) > 0 {
+		logger.Log(level.Key(), level.InfoValue(), logging.MessageKey(), "using basic auth")
 		authorizationDecorator = handler.AuthorizationHandler{
 			Logger:    logger,
 			Validator: secure.ExactMatchValidator(authKey),
@@ -76,7 +79,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 			validator = make(secure.Validators, 0, 0)
 		} else {
 			validators := make(secure.Validators, 0, len(cfg_validators))
-			
+
 			for _, validatorDescriptor := range cfg_validators {
 				keyResolver, err := validatorDescriptor.Keys.NewResolver()
 				if err != nil {
