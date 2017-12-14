@@ -6,6 +6,7 @@ src/vendor
 *.out
 *.a
 *.so
+*.bak
 +src/talaria/talaria
 +src/talaria/debug
 +src/talaria/output
