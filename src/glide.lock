@@ -1,5 +1,5 @@
-hash: a427c6ab0faa56c3fc8c66ad8ee28760f0c1c4febc8a5f4e7413d4865f5eae75
-updated: 2017-12-14T07:33:19.153160987-08:00
+hash: c86c1d18e61f70dd7e9899efab128244efc6ce1d4179431502615c3a6ec041aa
+updated: 2017-12-18T05:43:11.597877874-08:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -12,7 +12,7 @@ imports:
   subpackages:
   - linux
 - name: github.com/Comcast/webpa-common
-  version: d57f1d86dd88e6af5051c5928f6988f252ed6ac0
+  version: 1c7649af38a0618a95015f49324a067632f4a43c
   subpackages:
   - concurrent
   - convey
@@ -21,7 +21,6 @@ imports:
   - device/devicehealth
   - event
   - health
-  - httperror
   - logging
   - resource
   - secure
@@ -31,6 +30,7 @@ imports:
   - service
   - types
   - wrp
+  - xhttp
   - xmetrics
 - name: github.com/davecgh/go-spew
   version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
