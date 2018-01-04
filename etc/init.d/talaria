@@ -59,9 +59,8 @@ start() {
 
 stop() {
 	echo -n $"Stopping talaria: "
-	kill $(cat /var/run/talaria.pid)
+	supervisorctl -c /etc/talaria/supervisord.conf shutdown > /dev/null
 	RETVAL=$?
-	rm -f /var/run/talaria.pid
 	echo
 	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/talaria
 }
@@ -85,7 +84,7 @@ case "$1" in
 	[ -f /var/lock/subsys/talaria ] && restart
 	;;
   status)
-	status talaria
+	supervisorctl -c /etc/talaria/supervisord.conf status
 	RETVAL=$?
 	;;
   *)
