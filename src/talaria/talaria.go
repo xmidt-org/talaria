@@ -140,7 +140,7 @@ func talaria(arguments []string) int {
 
 	var (
 		subscription = service.Subscribe(serviceOptions, instancer)
-		signals      = make(chan os.Signal, 1)
+		signals      = make(chan os.Signal, 10)
 	)
 
 	go func() {
@@ -182,9 +182,9 @@ func talaria(arguments []string) int {
 		}
 	}()
 
-	signal.Notify(signals, os.Interrupt, os.Kill)
-	s := <-signals
-	infoLog.Log(logging.MessageKey(), "received signal, shutting down", "signal", s)
+	signal.Notify(signals)
+	s := server.SignalWait(infoLog, signals)
+	errorLog.Log(logging.MessageKey(), "exiting due to signal", "signal", s)
 	close(shutdown)
 	waitGroup.Wait()
 
