@@ -29,12 +29,8 @@ import (
 // NewTransactor returns a closure which can handle HTTP transactions.
 func NewTransactor(o *Outbounder) func(*http.Request) (*http.Response, error) {
 	client := &http.Client{
-		Transport: &http.Transport{
-			MaxIdleConns:        o.maxIdleConns(),
-			MaxIdleConnsPerHost: o.maxIdleConnsPerHost(),
-			IdleConnTimeout:     o.idleConnTimeout(),
-		},
-		Timeout: o.clientTimeout(),
+		Transport: o.transport(),
+		Timeout:   o.clientTimeout(),
 	}
 
 	return client.Do

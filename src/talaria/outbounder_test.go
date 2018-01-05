@@ -130,9 +130,11 @@ func testOutbounderDefaults(t *testing.T) {
 
 		assert.Equal(DefaultOutboundQueueSize, o.outboundQueueSize())
 		assert.Equal(DefaultWorkerPoolSize, o.workerPoolSize())
-		assert.Equal(DefaultMaxIdleConns, o.maxIdleConns())
-		assert.Equal(DefaultMaxIdleConnsPerHost, o.maxIdleConnsPerHost())
-		assert.Equal(DefaultIdleConnTimeout, o.idleConnTimeout())
+
+		transport := o.transport()
+		assert.Equal(DefaultMaxIdleConns, transport.MaxIdleConns)
+		assert.Equal(DefaultMaxIdleConnsPerHost, transport.MaxIdleConnsPerHost)
+		assert.Equal(DefaultIdleConnTimeout, transport.IdleConnTimeout)
 		assert.Equal(DefaultClientTimeout, o.clientTimeout())
 	}
 }
@@ -155,9 +157,11 @@ func testOutbounderConfiguration(t *testing.T) {
 			"outboundQueueSize": 281,
 			"workerPoolSize": 17,
 			"clientTimeout": "1m10s",
-			"maxIdleConns": 5681,
-			"maxIdleConnsPerHost": 99,
-			"idleConnTimeout": "2m17s"
+			"transport": {
+				"maxIdleConns": 5681,
+				"maxIdleConnsPerHost": 99,
+				"idleConnTimeout": "2m17s"
+			}
 		}`)
 
 		v = viper.New()
@@ -188,9 +192,11 @@ func testOutbounderConfiguration(t *testing.T) {
 	assert.Equal(uint(281), o.outboundQueueSize())
 	assert.Equal(uint(17), o.workerPoolSize())
 	assert.Equal(time.Minute+10*time.Second, o.clientTimeout())
-	assert.Equal(5681, o.maxIdleConns())
-	assert.Equal(99, o.maxIdleConnsPerHost())
-	assert.Equal(2*time.Minute+17*time.Second, o.idleConnTimeout())
+
+	transport := o.transport()
+	assert.Equal(5681, transport.MaxIdleConns)
+	assert.Equal(99, transport.MaxIdleConnsPerHost)
+	assert.Equal(2*time.Minute+17*time.Second, transport.IdleConnTimeout)
 }
 
 func testOutbounderStartError(t *testing.T) {
