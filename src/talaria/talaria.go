@@ -57,7 +57,7 @@ func startDeviceManagement(logger log.Logger, h *health.Health, r xmetrics.Regis
 		return nil, nil, err
 	}
 
-	outboundListener, err := outbounder.Start()
+	outboundListener, err := outbounder.Start(NewOutboundMeasures(r))
 	if err != nil {
 		return nil, nil, err
 	}

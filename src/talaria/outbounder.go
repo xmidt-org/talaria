@@ -219,14 +219,14 @@ func (o *Outbounder) clientTimeout() time.Duration {
 }
 
 // Start spawns all necessary goroutines and returns a device.Listener
-func (o *Outbounder) Start() (device.Listener, error) {
+func (o *Outbounder) Start(om OutboundMeasures) (device.Listener, error) {
 	logging.Info(o.logger()).Log(logging.MessageKey(), "Starting outbounder")
 	dispatcher, outbounds, err := NewDispatcher(o, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	workerPool := NewWorkerPool(o, outbounds)
+	workerPool := NewWorkerPool(om, o, outbounds)
 	workerPool.Run()
 
 	return dispatcher.OnDeviceEvent, nil

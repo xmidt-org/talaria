@@ -26,16 +26,6 @@ import (
 	"github.com/go-kit/kit/log"
 )
 
-// NewTransactor returns a closure which can handle HTTP transactions.
-func NewTransactor(o *Outbounder) func(*http.Request) (*http.Response, error) {
-	client := &http.Client{
-		Transport: o.transport(),
-		Timeout:   o.clientTimeout(),
-	}
-
-	return client.Do
-}
-
 // WorkerPool describes a pool of goroutines that dispatch http.Request objects to
 // a transactor function
 type WorkerPool struct {
@@ -48,14 +38,17 @@ type WorkerPool struct {
 	runOnce sync.Once
 }
 
-func NewWorkerPool(o *Outbounder, outbounds <-chan *outboundEnvelope) *WorkerPool {
+func NewWorkerPool(om OutboundMeasures, o *Outbounder, outbounds <-chan *outboundEnvelope) *WorkerPool {
 	logger := o.logger()
 	return &WorkerPool{
 		errorLog:       logging.Error(logger),
 		debugLog:       logging.Debug(logger),
 		outbounds:      outbounds,
 		workerPoolSize: o.workerPoolSize(),
-		transactor:     NewTransactor(o),
+		transactor: (&http.Client{
+			Transport: NewOutboundRoundTripper(om, o),
+			Timeout:   o.clientTimeout(),
+		}).Do,
 	}
 }
 

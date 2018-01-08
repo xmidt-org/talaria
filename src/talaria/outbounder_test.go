@@ -30,6 +30,7 @@ import (
 	"github.com/Comcast/webpa-common/event"
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/Comcast/webpa-common/wrp"
+	"github.com/Comcast/webpa-common/xmetrics"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -49,6 +50,12 @@ func ExampleOutbounder() {
 	)
 
 	defer server.Close()
+
+	metricsRegistry, err := xmetrics.NewRegistry(nil, Metrics)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	var (
 		// set the workerPoolSize to 1 so that output order is deterministic
@@ -77,7 +84,7 @@ func ExampleOutbounder() {
 		return
 	}
 
-	listener, err := o.Start()
+	listener, err := o.Start(NewOutboundMeasures(metricsRegistry))
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -206,7 +213,7 @@ func testOutbounderStartError(t *testing.T) {
 			DefaultScheme: "ftp",
 		}
 
-		listener, err = badOutbounder.Start()
+		listener, err = badOutbounder.Start(OutboundMeasures{})
 	)
 
 	assert.Nil(listener)
