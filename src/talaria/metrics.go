@@ -27,14 +27,14 @@ func Metrics() []xmetrics.Metric {
 			Name:       OutboundRequestDuration,
 			Type:       "histogram",
 			Help:       "The durations of outbound requests from devices",
-			LabelNames: []string{"uri"},
+			LabelNames: []string{"eventType", "uri"},
 			Buckets:    []float64{.25, .5, 1, 2.5, 5, 10},
 		},
 		xmetrics.Metric{
 			Name:       OutboundRequestCounter,
 			Type:       "counter",
 			Help:       "The count of outbound requests",
-			LabelNames: []string{"code", "uri"},
+			LabelNames: []string{"code", "eventType", "uri"},
 		},
 	}
 }
@@ -58,7 +58,10 @@ func InstrumentOutboundDuration(obs prometheus.ObserverVec, next http.RoundTripp
 		start := time.Now()
 		response, err := next.RoundTrip(request)
 		if err == nil {
-			obs.With(prometheus.Labels{"uri": request.URL.String()}).Observe(time.Since(start).Seconds())
+			eventType, _ := request.Context().Value(eventTypeContextKey{}).(string)
+			obs.
+				With(prometheus.Labels{"eventType": eventType, "uri": request.URL.String()}).
+				Observe(time.Since(start).Seconds())
 		}
 
 		return response, err
@@ -69,8 +72,10 @@ func InstrumentOutboundCounter(counter *prometheus.CounterVec, next http.RoundTr
 	return promhttp.RoundTripperFunc(func(request *http.Request) (*http.Response, error) {
 		response, err := next.RoundTrip(request)
 		if err == nil {
+			eventType, _ := request.Context().Value(eventTypeContextKey{}).(string)
+
 			// use "200" as the result from a 0 or negative status code, to be consistent with other golang APIs
-			labels := prometheus.Labels{"code": "200", "uri": request.URL.String()}
+			labels := prometheus.Labels{"code": "200", "eventType": eventType, "uri": request.URL.String()}
 			if response.StatusCode > 0 {
 				labels["code"] = strconv.Itoa(response.StatusCode)
 			}

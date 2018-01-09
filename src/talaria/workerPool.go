@@ -31,14 +31,14 @@ import (
 type WorkerPool struct {
 	errorLog       log.Logger
 	debugLog       log.Logger
-	outbounds      <-chan *outboundEnvelope
+	outbounds      <-chan outboundEnvelope
 	workerPoolSize uint
 	transactor     func(*http.Request) (*http.Response, error)
 
 	runOnce sync.Once
 }
 
-func NewWorkerPool(om OutboundMeasures, o *Outbounder, outbounds <-chan *outboundEnvelope) *WorkerPool {
+func NewWorkerPool(om OutboundMeasures, o *Outbounder, outbounds <-chan outboundEnvelope) *WorkerPool {
 	logger := o.logger()
 	return &WorkerPool{
 		errorLog:       logging.Error(logger),
@@ -64,8 +64,14 @@ func (wp *WorkerPool) Run() {
 
 // transact performs all the logic necessary to fulfill an outbound request.
 // This method ensures that the Context associated with the request is properly cancelled.
-func (wp *WorkerPool) transact(e *outboundEnvelope) {
+func (wp *WorkerPool) transact(e outboundEnvelope) {
 	defer e.cancel()
+
+	// bail out early if the request has been on the queue too long
+	if err := e.request.Context().Err(); err != nil {
+		wp.errorLog.Log(logging.MessageKey(), "Outbound message expired while on queue", logging.ErrorKey(), err)
+		return
+	}
 
 	response, err := wp.transactor(e.request)
 	if err != nil {

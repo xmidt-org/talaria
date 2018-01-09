@@ -39,6 +39,9 @@ type outboundEnvelope struct {
 	cancel  func()
 }
 
+// eventTypeContextKey is the internal key type for storing the event type
+type eventTypeContextKey struct{}
+
 // Dispatcher handles the creation and routing of HTTP requests in response to device events.
 // A Dispatcher represents the send side for enqueuing HTTP requests.
 type Dispatcher interface {
@@ -55,12 +58,12 @@ type dispatcher struct {
 	timeout           time.Duration
 	authorizationKeys []string
 	eventMap          event.MultiMap
-	outbounds         chan<- *outboundEnvelope
+	outbounds         chan<- outboundEnvelope
 }
 
 // NewDispatcher constructs a Dispatcher which sends envelopes via the returned channel.
 // The channel may be used to spawn one or more workers to process the envelopes.
-func NewDispatcher(o *Outbounder, urlFilter URLFilter) (Dispatcher, <-chan *outboundEnvelope, error) {
+func NewDispatcher(o *Outbounder, urlFilter URLFilter) (Dispatcher, <-chan outboundEnvelope, error) {
 	if urlFilter == nil {
 		var err error
 		urlFilter, err = NewURLFilter(o)
@@ -69,7 +72,7 @@ func NewDispatcher(o *Outbounder, urlFilter URLFilter) (Dispatcher, <-chan *outb
 		}
 	}
 
-	outbounds := make(chan *outboundEnvelope, o.outboundQueueSize())
+	outbounds := make(chan outboundEnvelope, o.outboundQueueSize())
 	logger := o.logger()
 	eventMap, err := o.eventMap()
 	if err != nil {
@@ -94,16 +97,13 @@ func NewDispatcher(o *Outbounder, urlFilter URLFilter) (Dispatcher, <-chan *outb
 // block on the outbound channel only as long as the context is not cancelled, i.e. does not time out.
 // If the context is cancelled before the envelope can be queued, this method drops the message
 // and returns an error.
-func (d *dispatcher) send(request *http.Request) error {
-	var (
-		ctx, cancel = context.WithTimeout(request.Context(), d.timeout)
-		envelope    = &outboundEnvelope{request.WithContext(ctx), cancel}
-	)
+func (d *dispatcher) send(parent context.Context, request *http.Request) error {
+	ctx, cancel := context.WithTimeout(parent, d.timeout)
 
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
-	case d.outbounds <- envelope:
+	case d.outbounds <- outboundEnvelope{request.WithContext(ctx), cancel}:
 		return nil
 	}
 }
@@ -131,13 +131,18 @@ func (d *dispatcher) dispatchEvent(eventType, contentType string, contents []byt
 		return fmt.Errorf("No endpoints configured for event: %s", eventType)
 	}
 
+	ctx := context.WithValue(
+		context.Background(), eventTypeContextKey{},
+		eventType,
+	)
+
 	for _, url := range endpoints {
 		request, err := d.newRequest(url, contentType, bytes.NewReader(contents))
 		if err != nil {
 			return err
 		}
 
-		if err := d.send(request); err != nil {
+		if err := d.send(ctx, request); err != nil {
 			return err
 		}
 	}
@@ -156,7 +161,10 @@ func (d *dispatcher) dispatchTo(unfiltered string, contentType string, contents 
 		return err
 	}
 
-	return d.send(request)
+	return d.send(
+		context.WithValue(context.Background(), eventTypeContextKey{}, DNSPrefix),
+		request,
+	)
 }
 
 func (d *dispatcher) OnDeviceEvent(event *device.Event) {

@@ -209,7 +209,7 @@ func testDispatcherOnDeviceEventEventTimeout(t *testing.T) {
 	require.NotNil(d)
 	require.NoError(err)
 
-	d.(*dispatcher).outbounds = make(chan *outboundEnvelope)
+	d.(*dispatcher).outbounds = make(chan outboundEnvelope)
 	d.OnDeviceEvent(&device.Event{
 		Type:     device.MessageReceived,
 		Message:  &wrp.Message{Destination: "event:iot"},
