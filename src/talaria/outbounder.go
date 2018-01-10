@@ -18,6 +18,7 @@ package main
 
 import (
 	"encoding/json"
+	"net/http"
 	"time"
 
 	"github.com/Comcast/webpa-common/device"
@@ -54,19 +55,17 @@ const (
 // Outbounder encapsulates the configuration necessary for handling outbound traffic
 // and grants the ability to start the outbounding infrastructure.
 type Outbounder struct {
-	Method              string                 `json:"method"`
-	RequestTimeout      time.Duration          `json:"requestTimeout"`
-	DefaultScheme       string                 `json:"defaultScheme"`
-	AllowedSchemes      []string               `json:"allowedSchemes"`
-	EventEndpoints      map[string]interface{} `json:"eventEndpoints"`
-	OutboundQueueSize   uint                   `json:"outboundQueueSize"`
-	WorkerPoolSize      uint                   `json:"workerPoolSize"`
-	ClientTimeout       time.Duration          `json:"clientTimeout"`
-	MaxIdleConns        int                    `json:"maxIdleConns"`
-	MaxIdleConnsPerHost int                    `json:"maxIdleConnsPerHost"`
-	IdleConnTimeout     time.Duration          `json:"idleConnTimeout"`
-	AuthKey             []string               `json:"authKey"`
-	Logger              log.Logger             `json:"-"`
+	Method            string                 `json:"method"`
+	RequestTimeout    time.Duration          `json:"requestTimeout"`
+	DefaultScheme     string                 `json:"defaultScheme"`
+	AllowedSchemes    []string               `json:"allowedSchemes"`
+	EventEndpoints    map[string]interface{} `json:"eventEndpoints"`
+	OutboundQueueSize uint                   `json:"outboundQueueSize"`
+	WorkerPoolSize    uint                   `json:"workerPoolSize"`
+	Transport         http.Transport         `json:"transport"`
+	ClientTimeout     time.Duration          `json:"clientTimeout"`
+	AuthKey           []string               `json:"authKey"`
+	Logger            log.Logger             `json:"-"`
 }
 
 // NewOutbounder returns an Outbounder unmarshalled from a Viper environment.
@@ -74,17 +73,19 @@ type Outbounder struct {
 // Outbounder is returned.
 func NewOutbounder(logger log.Logger, v *viper.Viper) (o *Outbounder, err error) {
 	o = &Outbounder{
-		Method:              DefaultMethod,
-		RequestTimeout:      DefaultRequestTimeout,
-		DefaultScheme:       DefaultDefaultScheme,
-		AllowedSchemes:      []string{DefaultAllowedScheme},
-		OutboundQueueSize:   DefaultOutboundQueueSize,
-		WorkerPoolSize:      DefaultWorkerPoolSize,
-		ClientTimeout:       DefaultClientTimeout,
-		MaxIdleConns:        DefaultMaxIdleConns,
-		MaxIdleConnsPerHost: DefaultMaxIdleConnsPerHost,
-		IdleConnTimeout:     DefaultIdleConnTimeout,
-		Logger:              logger,
+		Method:            DefaultMethod,
+		RequestTimeout:    DefaultRequestTimeout,
+		DefaultScheme:     DefaultDefaultScheme,
+		AllowedSchemes:    []string{DefaultAllowedScheme},
+		OutboundQueueSize: DefaultOutboundQueueSize,
+		WorkerPoolSize:    DefaultWorkerPoolSize,
+		Transport: http.Transport{
+			MaxIdleConns:        DefaultMaxIdleConns,
+			MaxIdleConnsPerHost: DefaultMaxIdleConnsPerHost,
+			IdleConnTimeout:     DefaultIdleConnTimeout,
+		},
+		ClientTimeout: DefaultClientTimeout,
+		Logger:        logger,
 	}
 
 	if v != nil {
@@ -174,20 +175,31 @@ func (o *Outbounder) workerPoolSize() uint {
 	return DefaultWorkerPoolSize
 }
 
-func (o *Outbounder) maxIdleConns() int {
-	if o != nil && o.MaxIdleConns > 0 {
-		return o.MaxIdleConns
+func (o *Outbounder) transport() *http.Transport {
+	if o != nil {
+		copyOf := new(http.Transport)
+		*copyOf = o.Transport
+
+		if copyOf.MaxIdleConns <= 0 {
+			copyOf.MaxIdleConns = DefaultMaxIdleConns
+		}
+
+		if copyOf.MaxIdleConnsPerHost <= 0 {
+			copyOf.MaxIdleConnsPerHost = DefaultMaxIdleConnsPerHost
+		}
+
+		if copyOf.IdleConnTimeout <= 0 {
+			copyOf.IdleConnTimeout = DefaultIdleConnTimeout
+		}
+
+		return copyOf
 	}
 
-	return DefaultMaxIdleConns
-}
-
-func (o *Outbounder) maxIdleConnsPerHost() int {
-	if o != nil && o.MaxIdleConnsPerHost > 0 {
-		return o.MaxIdleConnsPerHost
+	return &http.Transport{
+		MaxIdleConns:        DefaultMaxIdleConns,
+		MaxIdleConnsPerHost: DefaultMaxIdleConnsPerHost,
+		IdleConnTimeout:     DefaultIdleConnTimeout,
 	}
-
-	return DefaultMaxIdleConnsPerHost
 }
 
 func (o *Outbounder) authKey() []string {
@@ -196,14 +208,6 @@ func (o *Outbounder) authKey() []string {
 	}
 
 	return nil
-}
-
-func (o *Outbounder) idleConnTimeout() time.Duration {
-	if o != nil && o.IdleConnTimeout > 0 {
-		return o.IdleConnTimeout
-	}
-
-	return DefaultIdleConnTimeout
 }
 
 func (o *Outbounder) clientTimeout() time.Duration {
@@ -215,14 +219,14 @@ func (o *Outbounder) clientTimeout() time.Duration {
 }
 
 // Start spawns all necessary goroutines and returns a device.Listener
-func (o *Outbounder) Start() (device.Listener, error) {
+func (o *Outbounder) Start(om OutboundMeasures) (device.Listener, error) {
 	logging.Info(o.logger()).Log(logging.MessageKey(), "Starting outbounder")
-	dispatcher, outbounds, err := NewDispatcher(o, nil)
+	dispatcher, outbounds, err := NewDispatcher(om, o, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	workerPool := NewWorkerPool(o, outbounds)
+	workerPool := NewWorkerPool(om, o, outbounds)
 	workerPool.Run()
 
 	return dispatcher.OnDeviceEvent, nil

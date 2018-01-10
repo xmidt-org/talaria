@@ -33,7 +33,7 @@ func testWorkerPoolTransactTransactorError(t *testing.T) {
 		assert          = assert.New(t)
 		logger          = logging.NewTestLogger(nil, t)
 		expectedRequest = httptest.NewRequest("POST", "/", nil)
-		envelope        = &outboundEnvelope{expectedRequest, func() {}}
+		envelope        = outboundEnvelope{expectedRequest, func() {}}
 
 		wp = &WorkerPool{
 			errorLog: logging.Error(logger),
@@ -53,7 +53,7 @@ func testWorkerPoolTransactHTTPSuccess(t *testing.T) {
 		assert          = assert.New(t)
 		logger          = logging.NewTestLogger(nil, t)
 		expectedRequest = httptest.NewRequest("POST", "/", nil)
-		envelope        = &outboundEnvelope{expectedRequest, func() {}}
+		envelope        = outboundEnvelope{expectedRequest, func() {}}
 
 		wp = &WorkerPool{
 			errorLog: logging.Error(logger),
@@ -77,7 +77,7 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 		assert          = assert.New(t)
 		logger          = logging.NewTestLogger(nil, t)
 		expectedRequest = httptest.NewRequest("POST", "/", nil)
-		envelope        = &outboundEnvelope{expectedRequest, func() {}}
+		envelope        = outboundEnvelope{expectedRequest, func() {}}
 
 		wp = &WorkerPool{
 			errorLog: logging.Error(logger),

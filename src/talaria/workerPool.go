@@ -24,42 +24,34 @@ import (
 
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/metrics"
 )
-
-// NewTransactor returns a closure which can handle HTTP transactions.
-func NewTransactor(o *Outbounder) func(*http.Request) (*http.Response, error) {
-	client := &http.Client{
-		Transport: &http.Transport{
-			MaxIdleConns:        o.maxIdleConns(),
-			MaxIdleConnsPerHost: o.maxIdleConnsPerHost(),
-			IdleConnTimeout:     o.idleConnTimeout(),
-		},
-		Timeout: o.clientTimeout(),
-	}
-
-	return client.Do
-}
 
 // WorkerPool describes a pool of goroutines that dispatch http.Request objects to
 // a transactor function
 type WorkerPool struct {
 	errorLog       log.Logger
 	debugLog       log.Logger
-	outbounds      <-chan *outboundEnvelope
+	outbounds      <-chan outboundEnvelope
 	workerPoolSize uint
+	queueSize      metrics.Gauge
 	transactor     func(*http.Request) (*http.Response, error)
 
 	runOnce sync.Once
 }
 
-func NewWorkerPool(o *Outbounder, outbounds <-chan *outboundEnvelope) *WorkerPool {
+func NewWorkerPool(om OutboundMeasures, o *Outbounder, outbounds <-chan outboundEnvelope) *WorkerPool {
 	logger := o.logger()
 	return &WorkerPool{
 		errorLog:       logging.Error(logger),
 		debugLog:       logging.Debug(logger),
 		outbounds:      outbounds,
 		workerPoolSize: o.workerPoolSize(),
-		transactor:     NewTransactor(o),
+		queueSize:      om.QueueSize,
+		transactor: (&http.Client{
+			Transport: NewOutboundRoundTripper(om, o),
+			Timeout:   o.clientTimeout(),
+		}).Do,
 	}
 }
 
@@ -75,8 +67,14 @@ func (wp *WorkerPool) Run() {
 
 // transact performs all the logic necessary to fulfill an outbound request.
 // This method ensures that the Context associated with the request is properly cancelled.
-func (wp *WorkerPool) transact(e *outboundEnvelope) {
+func (wp *WorkerPool) transact(e outboundEnvelope) {
 	defer e.cancel()
+
+	// bail out early if the request has been on the queue too long
+	if err := e.request.Context().Err(); err != nil {
+		wp.errorLog.Log(logging.MessageKey(), "Outbound message expired while on queue", logging.ErrorKey(), err)
+		return
+	}
 
 	response, err := wp.transactor(e.request)
 	if err != nil {
@@ -98,6 +96,7 @@ func (wp *WorkerPool) transact(e *outboundEnvelope) {
 // This method simply invokes transact for each *outboundEnvelope
 func (wp *WorkerPool) worker() {
 	for e := range wp.outbounds {
+		wp.queueSize.Add(-1.0)
 		wp.transact(e)
 	}
 }

@@ -57,7 +57,7 @@ func startDeviceManagement(logger log.Logger, h *health.Health, r xmetrics.Regis
 		return nil, nil, err
 	}
 
-	outboundListener, err := outbounder.Start()
+	outboundListener, err := outbounder.Start(NewOutboundMeasures(r))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -83,7 +83,7 @@ func talaria(arguments []string) int {
 		f = pflag.NewFlagSet(applicationName, pflag.ContinueOnError)
 		v = viper.New()
 
-		logger, metricsRegistry, webPA, err = server.Initialize(applicationName, arguments, f, v)
+		logger, metricsRegistry, webPA, err = server.Initialize(applicationName, arguments, f, v, Metrics, device.Metrics)
 		infoLog                             = logging.Info(logger)
 		errorLog                            = logging.Error(logger)
 	)
@@ -139,8 +139,9 @@ func talaria(arguments []string) int {
 	infoLog.Log("configurationFile", v.ConfigFileUsed(), "serviceOptions", serviceOptions)
 
 	var (
-		subscription = service.Subscribe(serviceOptions, instancer)
-		signals      = make(chan os.Signal, 10)
+		subscription                  = service.Subscribe(serviceOptions, instancer)
+		signals                       = make(chan os.Signal, 10)
+		serviceDiscoveryUpdateCounter = metricsRegistry.NewCounter(ServiceDisoveryUpdateCounter)
 	)
 
 	go func() {
@@ -152,6 +153,8 @@ func talaria(arguments []string) int {
 		for {
 			select {
 			case u := <-subscription.Updates():
+				serviceDiscoveryUpdateCounter.Add(1.0)
+
 				// throw away the first Accessor, as that is just the initial set of talarias
 				if first {
 					first = false
@@ -176,14 +179,14 @@ func talaria(arguments []string) int {
 				})
 
 			case <-subscription.Stopped():
-				subscriptionLog.Log(level.Key(), level.InfoValue(), logging.MessageKey(), "service discovery subscription stopped")
+				subscriptionLog.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "service discovery subscription stopped")
 				return
 			}
 		}
 	}()
 
 	signal.Notify(signals)
-	s := server.SignalWait(infoLog, signals)
+	s := server.SignalWait(infoLog, signals, os.Interrupt, os.Kill)
 	errorLog.Log(logging.MessageKey(), "exiting due to signal", "signal", s)
 	close(shutdown)
 	waitGroup.Wait()
