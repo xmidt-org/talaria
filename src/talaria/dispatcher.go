@@ -31,6 +31,7 @@ import (
 	"github.com/Comcast/webpa-common/wrp"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/kit/metrics"
 )
 
 // outboundEnvelope is a tuple of information related to handling an asynchronous HTTP request
@@ -58,12 +59,13 @@ type dispatcher struct {
 	timeout           time.Duration
 	authorizationKeys []string
 	eventMap          event.MultiMap
+	queueSize         metrics.Gauge
 	outbounds         chan<- outboundEnvelope
 }
 
 // NewDispatcher constructs a Dispatcher which sends envelopes via the returned channel.
 // The channel may be used to spawn one or more workers to process the envelopes.
-func NewDispatcher(o *Outbounder, urlFilter URLFilter) (Dispatcher, <-chan outboundEnvelope, error) {
+func NewDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFilter) (Dispatcher, <-chan outboundEnvelope, error) {
 	if urlFilter == nil {
 		var err error
 		urlFilter, err = NewURLFilter(o)
@@ -88,6 +90,7 @@ func NewDispatcher(o *Outbounder, urlFilter URLFilter) (Dispatcher, <-chan outbo
 		timeout:           o.requestTimeout(),
 		authorizationKeys: o.authKey(),
 		eventMap:          eventMap,
+		queueSize:         om.QueueSize,
 		outbounds:         outbounds,
 	}, outbounds, nil
 }
@@ -98,12 +101,18 @@ func NewDispatcher(o *Outbounder, urlFilter URLFilter) (Dispatcher, <-chan outbo
 // If the context is cancelled before the envelope can be queued, this method drops the message
 // and returns an error.
 func (d *dispatcher) send(parent context.Context, request *http.Request) error {
+	// count anything blocked waiting on the queue as an enqueued message
+	d.queueSize.Add(1.0)
 	ctx, cancel := context.WithTimeout(parent, d.timeout)
 
 	select {
 	case <-ctx.Done():
+		// the message never made it to the queue in this case
+		d.queueSize.Add(-1.0)
 		return ctx.Err()
+
 	case d.outbounds <- outboundEnvelope{request.WithContext(ctx), cancel}:
+		// the message is on the queue, but let the worker decrement the gauge
 		return nil
 	}
 }

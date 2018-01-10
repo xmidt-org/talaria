@@ -24,6 +24,7 @@ import (
 
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/metrics"
 )
 
 // WorkerPool describes a pool of goroutines that dispatch http.Request objects to
@@ -33,6 +34,7 @@ type WorkerPool struct {
 	debugLog       log.Logger
 	outbounds      <-chan outboundEnvelope
 	workerPoolSize uint
+	queueSize      metrics.Gauge
 	transactor     func(*http.Request) (*http.Response, error)
 
 	runOnce sync.Once
@@ -45,6 +47,7 @@ func NewWorkerPool(om OutboundMeasures, o *Outbounder, outbounds <-chan outbound
 		debugLog:       logging.Debug(logger),
 		outbounds:      outbounds,
 		workerPoolSize: o.workerPoolSize(),
+		queueSize:      om.QueueSize,
 		transactor: (&http.Client{
 			Transport: NewOutboundRoundTripper(om, o),
 			Timeout:   o.clientTimeout(),
@@ -93,6 +96,7 @@ func (wp *WorkerPool) transact(e outboundEnvelope) {
 // This method simply invokes transact for each *outboundEnvelope
 func (wp *WorkerPool) worker() {
 	for e := range wp.outbounds {
+		wp.queueSize.Add(-1.0)
 		wp.transact(e)
 	}
 }

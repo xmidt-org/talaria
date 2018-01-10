@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Comcast/webpa-common/xmetrics"
+	"github.com/go-kit/kit/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -14,6 +15,7 @@ const (
 	OutboundInFlightGauge        = "outbound_inflight"
 	OutboundRequestDuration      = "outbound_request_duration_seconds"
 	OutboundRequestCounter       = "outbound_requests"
+	OutboundQueueSize            = "outbound_queue_size"
 	ServiceDisoveryUpdateCounter = "service_discovery_updates"
 )
 
@@ -38,6 +40,11 @@ func Metrics() []xmetrics.Metric {
 			LabelNames: []string{"code", "eventType", "url"},
 		},
 		xmetrics.Metric{
+			Name: OutboundQueueSize,
+			Type: "gauge",
+			Help: "The current number of requests waiting to be sent outbound",
+		},
+		xmetrics.Metric{
 			Name: ServiceDisoveryUpdateCounter,
 			Type: "counter",
 			Help: "The number of times service discovery (zookeeper) has updated the list of talarias",
@@ -49,6 +56,7 @@ type OutboundMeasures struct {
 	InFlight        prometheus.Gauge
 	RequestDuration prometheus.ObserverVec
 	RequestCounter  *prometheus.CounterVec
+	QueueSize       metrics.Gauge
 }
 
 func NewOutboundMeasures(r xmetrics.Registry) OutboundMeasures {
@@ -56,6 +64,7 @@ func NewOutboundMeasures(r xmetrics.Registry) OutboundMeasures {
 		InFlight:        r.NewGaugeVec(OutboundInFlightGauge).WithLabelValues(),
 		RequestDuration: r.NewHistogramVec(OutboundRequestDuration),
 		RequestCounter:  r.NewCounterVec(OutboundRequestCounter),
+		QueueSize:       r.NewGauge(OutboundQueueSize),
 	}
 }
 
