@@ -24,7 +24,6 @@ import (
 
 	"github.com/Comcast/webpa-common/device"
 	"github.com/Comcast/webpa-common/wrp"
-	"github.com/go-kit/kit/metrics/generic"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,7 +32,7 @@ func testDispatcherIgnoredEvent(t *testing.T) {
 	var (
 		assert                     = assert.New(t)
 		require                    = require.New(t)
-		dispatcher, outbounds, err = NewDispatcher(OutboundMeasures{QueueSize: generic.NewGauge(OutboundQueueSize)}, nil, nil)
+		dispatcher, outbounds, err = NewDispatcher(NewTestOutboundMeasures(), nil, nil)
 	)
 
 	require.NotNil(dispatcher)
@@ -48,7 +47,7 @@ func testDispatcherUnroutable(t *testing.T) {
 	var (
 		assert                     = assert.New(t)
 		require                    = require.New(t)
-		dispatcher, outbounds, err = NewDispatcher(OutboundMeasures{QueueSize: generic.NewGauge(OutboundQueueSize)}, nil, nil)
+		dispatcher, outbounds, err = NewDispatcher(NewTestOutboundMeasures(), nil, nil)
 	)
 
 	require.NotNil(dispatcher)
@@ -66,7 +65,7 @@ func testDispatcherUnroutable(t *testing.T) {
 func testDispatcherBadURLFilter(t *testing.T) {
 	var (
 		assert                     = assert.New(t)
-		dispatcher, outbounds, err = NewDispatcher(OutboundMeasures{}, &Outbounder{DefaultScheme: "bad"}, nil)
+		dispatcher, outbounds, err = NewDispatcher(NewTestOutboundMeasures(), &Outbounder{DefaultScheme: "bad"}, nil)
 	)
 
 	assert.Nil(dispatcher)
@@ -153,7 +152,7 @@ func testDispatcherOnDeviceEventDispatchEvent(t *testing.T) {
 			var (
 				expectedContents           = []byte{1, 2, 3, 4}
 				urlFilter                  = new(mockURLFilter)
-				dispatcher, outbounds, err = NewDispatcher(OutboundMeasures{QueueSize: generic.NewGauge(OutboundQueueSize)}, record.outbounder, urlFilter)
+				dispatcher, outbounds, err = NewDispatcher(NewTestOutboundMeasures(), record.outbounder, urlFilter)
 			)
 
 			require.NotNil(dispatcher)
@@ -204,7 +203,7 @@ func testDispatcherOnDeviceEventEventTimeout(t *testing.T) {
 			EventEndpoints: map[string]interface{}{"default": []string{"nowhere.com"}},
 		}
 
-		d, _, err = NewDispatcher(OutboundMeasures{QueueSize: generic.NewGauge(OutboundQueueSize)}, outbounder, nil)
+		d, _, err = NewDispatcher(NewTestOutboundMeasures(), outbounder, nil)
 	)
 
 	require.NotNil(d)
@@ -225,7 +224,7 @@ func testDispatcherOnDeviceEventFilterError(t *testing.T) {
 		urlFilter     = new(mockURLFilter)
 		expectedError = errors.New("expected")
 
-		dispatcher, outbounds, err = NewDispatcher(OutboundMeasures{QueueSize: generic.NewGauge(OutboundQueueSize)}, nil, urlFilter)
+		dispatcher, outbounds, err = NewDispatcher(NewTestOutboundMeasures(), nil, urlFilter)
 	)
 
 	require.NotNil(dispatcher)
@@ -300,7 +299,7 @@ func testDispatcherOnDeviceEventDispatchTo(t *testing.T) {
 			var (
 				expectedContents           = []byte{4, 7, 8, 1}
 				urlFilter                  = new(mockURLFilter)
-				dispatcher, outbounds, err = NewDispatcher(OutboundMeasures{QueueSize: generic.NewGauge(OutboundQueueSize)}, record.outbounder, urlFilter)
+				dispatcher, outbounds, err = NewDispatcher(NewTestOutboundMeasures(), record.outbounder, urlFilter)
 			)
 
 			require.NotNil(dispatcher)

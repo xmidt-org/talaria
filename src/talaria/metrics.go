@@ -12,11 +12,12 @@ import (
 )
 
 const (
-	OutboundInFlightGauge        = "outbound_inflight"
-	OutboundRequestDuration      = "outbound_request_duration_seconds"
-	OutboundRequestCounter       = "outbound_requests"
-	OutboundQueueSize            = "outbound_queue_size"
-	ServiceDisoveryUpdateCounter = "service_discovery_updates"
+	OutboundInFlightGauge         = "outbound_inflight"
+	OutboundRequestDuration       = "outbound_request_duration_seconds"
+	OutboundRequestCounter        = "outbound_requests"
+	OutboundQueueSize             = "outbound_queue_size"
+	OutboundDroppedMessageCounter = "outbound_dropped_messages"
+	ServiceDisoveryUpdateCounter  = "service_discovery_updates"
 )
 
 func Metrics() []xmetrics.Metric {
@@ -45,6 +46,11 @@ func Metrics() []xmetrics.Metric {
 			Help: "The current number of requests waiting to be sent outbound",
 		},
 		xmetrics.Metric{
+			Name: OutboundDroppedMessageCounter,
+			Type: "counter",
+			Help: "The total count of messages dropped due to a full outbound queue",
+		},
+		xmetrics.Metric{
 			Name: ServiceDisoveryUpdateCounter,
 			Type: "counter",
 			Help: "The number of times service discovery (zookeeper) has updated the list of talarias",
@@ -57,6 +63,7 @@ type OutboundMeasures struct {
 	RequestDuration prometheus.ObserverVec
 	RequestCounter  *prometheus.CounterVec
 	QueueSize       metrics.Gauge
+	DroppedMessages metrics.Counter
 }
 
 func NewOutboundMeasures(r xmetrics.Registry) OutboundMeasures {
@@ -65,6 +72,7 @@ func NewOutboundMeasures(r xmetrics.Registry) OutboundMeasures {
 		RequestDuration: r.NewHistogramVec(OutboundRequestDuration),
 		RequestCounter:  r.NewCounterVec(OutboundRequestCounter),
 		QueueSize:       r.NewGauge(OutboundQueueSize),
+		DroppedMessages: r.NewCounter(OutboundDroppedMessageCounter),
 	}
 }
 
