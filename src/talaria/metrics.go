@@ -11,9 +11,10 @@ import (
 )
 
 const (
-	OutboundInFlightGauge   = "outbound_inflight"
-	OutboundRequestDuration = "outbound_request_duration_seconds"
-	OutboundRequestCounter  = "outbound_requests"
+	OutboundInFlightGauge        = "outbound_inflight"
+	OutboundRequestDuration      = "outbound_request_duration_seconds"
+	OutboundRequestCounter       = "outbound_requests"
+	ServiceDisoveryUpdateCounter = "service_discovery_updates"
 )
 
 func Metrics() []xmetrics.Metric {
@@ -35,6 +36,11 @@ func Metrics() []xmetrics.Metric {
 			Type:       "counter",
 			Help:       "The count of outbound requests",
 			LabelNames: []string{"code", "eventType", "uri"},
+		},
+		xmetrics.Metric{
+			Name: ServiceDisoveryUpdateCounter,
+			Type: "counter",
+			Help: "The number of times service discovery (zookeeper) has updated the list of talarias",
 		},
 	}
 }
