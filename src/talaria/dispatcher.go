@@ -19,6 +19,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -33,6 +34,8 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/go-kit/kit/metrics"
 )
+
+var ErrOutboundQueueFull = errors.New("Outbound message queue full")
 
 // outboundEnvelope is a tuple of information related to handling an asynchronous HTTP request
 type outboundEnvelope struct {
@@ -60,6 +63,7 @@ type dispatcher struct {
 	authorizationKeys []string
 	eventMap          event.MultiMap
 	queueSize         metrics.Gauge
+	droppedMessages   metrics.Counter
 	outbounds         chan<- outboundEnvelope
 }
 
@@ -91,6 +95,7 @@ func NewDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFilter) (Dis
 		authorizationKeys: o.authKey(),
 		eventMap:          eventMap,
 		queueSize:         om.QueueSize,
+		droppedMessages:   om.DroppedMessages,
 		outbounds:         outbounds,
 	}, outbounds, nil
 }
@@ -101,19 +106,18 @@ func NewDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFilter) (Dis
 // If the context is cancelled before the envelope can be queued, this method drops the message
 // and returns an error.
 func (d *dispatcher) send(parent context.Context, request *http.Request) error {
-	// count anything blocked waiting on the queue as an enqueued message
+	// increment the queue size first, so that we always keep a positive queue size
 	d.queueSize.Add(1.0)
 	ctx, cancel := context.WithTimeout(parent, d.timeout)
 
 	select {
-	case <-ctx.Done():
-		// the message never made it to the queue in this case
-		d.queueSize.Add(-1.0)
-		return ctx.Err()
-
 	case d.outbounds <- outboundEnvelope{request.WithContext(ctx), cancel}:
-		// the message is on the queue, but let the worker decrement the gauge
 		return nil
+
+	default:
+		d.queueSize.Add(-1.0) // the message never made it to the queue
+		d.droppedMessages.Add(1.0)
+		return ErrOutboundQueueFull
 	}
 }
 
