@@ -1,5 +1,5 @@
-hash: 594d4886515462eedba5de6980bfe73c42da05fa3649d626de139c54214f4842
-updated: 2018-01-09T19:03:30.782156893-08:00
+hash: d1fcbd44053e3d9176312bf34827c711cdbd89957bab4cf87c9db8cc2ea6a668
+updated: 2018-01-11T17:49:14.548257693-08:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -12,7 +12,7 @@ imports:
   subpackages:
   - linux
 - name: github.com/Comcast/webpa-common
-  version: 2cb6ba46b858588c2c6682c0e50ff5900fc8e4d1
+  version: ec7910349b900d3b01b8309479cad0a60acda4ea
   subpackages:
   - concurrent
   - convey
@@ -37,7 +37,7 @@ imports:
   subpackages:
   - spew
 - name: github.com/fsnotify/fsnotify
-  version: 4da3e2cfbabc9f751898f250b49f2439785783a1
+  version: c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9
 - name: github.com/go-kit/kit
   version: a9ca6725cbbea455e61c6bc8a1ed28e81eb3493b
   subpackages:
@@ -86,7 +86,7 @@ imports:
   - json/scanner
   - json/token
 - name: github.com/influxdata/influxdb
-  version: 3108eea3307f4b0d46aa9ffc7c74c590bad9832e
+  version: d610a79487e2cee1d0fa8cdd3ec59d511c24f0dc
   subpackages:
   - client/v2
   - models
@@ -104,7 +104,7 @@ imports:
   subpackages:
   - pbutil
 - name: github.com/mitchellh/mapstructure
-  version: 06020f85339e21b2478f756a78e295255ffa4d6a
+  version: b4575eea38cca1123ec2dc90c26529b5c5acfcff
 - name: github.com/pelletier/go-toml
   version: 0131db6d737cfbbfb678f8b7d92e55e27ce46224
 - name: github.com/pmezard/go-difflib
@@ -121,7 +121,7 @@ imports:
   subpackages:
   - go
 - name: github.com/prometheus/common
-  version: 2e54d0b93cba2fd133edc32211dcc32c06ef72ca
+  version: 89604d197083d4781071d3c65855d24ecfb0a563
   subpackages:
   - expfmt
   - internal/bitbucket.org/ww/goautoneg
@@ -170,7 +170,7 @@ imports:
 - name: github.com/VividCortex/gohistogram
   version: 51564d9861991fb0ad0f531c99ef602d0f9866e6
 - name: golang.org/x/sys
-  version: b9cf5f96b68d9eaa53d5db5fef235718767f416a
+  version: 810d7000345868fc619eb81f46307107118f4ae1
   subpackages:
   - unix
 - name: golang.org/x/text
