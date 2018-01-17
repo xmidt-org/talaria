@@ -25,7 +25,6 @@ import (
 	"github.com/Comcast/webpa-common/secure"
 	"github.com/Comcast/webpa-common/secure/handler"
 	"github.com/Comcast/webpa-common/secure/key"
-	"github.com/Comcast/webpa-common/wrp"
 	"github.com/SermoDigital/jose/jwt"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -111,26 +110,14 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 	}
 
 	apiHandler.Handle("/device/send", authorizationDecorator(&device.MessageHandler{
-		Logger:   logger,
-		Decoders: wrp.NewDecoderPool(poolSize, wrp.JSON),
-		Router:   manager,
-	})).
-		Methods("POST", "PATCH").
-		Headers("Content-Type", wrp.JSON.ContentType())
-
-	apiHandler.Handle("/device/send", authorizationDecorator(&device.MessageHandler{
-		Logger:   logger,
-		Decoders: wrp.NewDecoderPool(poolSize, wrp.Msgpack),
-		Router:   manager,
-	})).
-		Methods("POST", "PATCH").
-		Headers("Content-Type", wrp.Msgpack.ContentType())
+		Logger: logger,
+		Router: manager,
+	})).Methods("POST", "PATCH")
 
 	apiHandler.Handle("/devices", authorizationDecorator(&device.ListHandler{
 		Logger:   logger,
 		Registry: manager,
-	})).
-		Methods("GET")
+	})).Methods("GET")
 
 	// the connect handler decorated for authorization
 	apiHandler.Handle(
