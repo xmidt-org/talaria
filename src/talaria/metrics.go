@@ -31,14 +31,14 @@ func Metrics() []xmetrics.Metric {
 			Name:       OutboundRequestDuration,
 			Type:       "histogram",
 			Help:       "The durations of outbound requests from devices",
-			LabelNames: []string{"eventType", "url"},
+			LabelNames: []string{"event", "url"},
 			Buckets:    []float64{.25, .5, 1, 2.5, 5, 10},
 		},
 		xmetrics.Metric{
 			Name:       OutboundRequestCounter,
 			Type:       "counter",
 			Help:       "The count of outbound requests",
-			LabelNames: []string{"code", "eventType", "url"},
+			LabelNames: []string{"code", "event", "url"},
 		},
 		xmetrics.Metric{
 			Name: OutboundQueueSize,
@@ -83,7 +83,7 @@ func InstrumentOutboundDuration(obs prometheus.ObserverVec, next http.RoundTripp
 		if err == nil {
 			eventType, _ := request.Context().Value(eventTypeContextKey{}).(string)
 			obs.
-				With(prometheus.Labels{"eventType": eventType, "url": request.URL.String()}).
+				With(prometheus.Labels{"event": eventType, "url": request.URL.String()}).
 				Observe(time.Since(start).Seconds())
 		}
 
@@ -98,7 +98,7 @@ func InstrumentOutboundCounter(counter *prometheus.CounterVec, next http.RoundTr
 			eventType, _ := request.Context().Value(eventTypeContextKey{}).(string)
 
 			// use "200" as the result from a 0 or negative status code, to be consistent with other golang APIs
-			labels := prometheus.Labels{"code": "200", "eventType": eventType, "url": request.URL.String()}
+			labels := prometheus.Labels{"code": "200", "event": eventType, "url": request.URL.String()}
 			if response.StatusCode > 0 {
 				labels["code"] = strconv.Itoa(response.StatusCode)
 			}
