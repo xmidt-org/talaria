@@ -101,14 +101,14 @@ func talaria(arguments []string) int {
 	primaryHandler, manager, err := startDeviceManagement(logger, health, metricsRegistry, v)
 	if err != nil {
 		errorLog.Log(logging.MessageKey(), "Unable to start device management", logging.ErrorKey(), err)
-		return 1
+		return 2
 	}
 
 	_, talariaServer := webPA.Prepare(logger, health, metricsRegistry, primaryHandler)
 	waitGroup, shutdown, err := concurrent.Execute(talariaServer)
 	if err != nil {
 		errorLog.Log(logging.MessageKey(), "Unable to start device manager", logging.ErrorKey(), err)
-		return 1
+		return 3
 	}
 
 	//
@@ -118,20 +118,20 @@ func talaria(arguments []string) int {
 	serviceOptions, err := service.FromViper(service.Sub(v))
 	if err != nil {
 		errorLog.Log(logging.MessageKey(), "Unable to read service discovery options", logging.ErrorKey(), err)
-		return 2
+		return 4
 	}
 
 	serviceOptions.Logger = logger
 	services, err := service.New(serviceOptions)
 	if err != nil {
 		errorLog.Log(logging.MessageKey(), "Unable to initialize service discovery", logging.ErrorKey(), err)
-		return 2
+		return 5
 	}
 
 	instancer, err := services.NewInstancer()
 	if err != nil {
 		errorLog.Log(logging.MessageKey(), "Unable to obtain service discovery instancer", logging.ErrorKey(), err)
-		return 2
+		return 6
 	}
 
 	defer services.Deregister()

@@ -1,6 +1,7 @@
 {
 	"primary": {
-		"address": ":7000"
+		"address": ":7000",
+		"maxConnections": 20000
 	},
 
 	"health": {
