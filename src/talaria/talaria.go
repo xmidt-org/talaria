@@ -67,7 +67,7 @@ func startDeviceManagement(logger log.Logger, h *health.Health, r xmetrics.Regis
 		outboundListener,
 	}
 
-	manager := device.NewManager(deviceOptions, nil)
+	manager := device.NewManager(deviceOptions)
 	primaryHandler, err := NewPrimaryHandler(logger, manager, v)
 	return primaryHandler, manager, err
 }

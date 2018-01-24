@@ -1,5 +1,5 @@
-hash: 71c2cb6427223064ba1d29133943fa7987aad09dff6556af659f27c2ce309400
-updated: 2018-01-22T15:03:24.072081657-08:00
+hash: 3b9ecbff2e38e019461c57b2923643b89117b31c3a6a2f45306397b36ad2ed35
+updated: 2018-01-24T13:19:58.395698923-08:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -12,7 +12,7 @@ imports:
   subpackages:
   - linux
 - name: github.com/Comcast/webpa-common
-  version: 08f634a920c9c24ba44d9ae97bb923e31ecdf948
+  version: 13cbaa3f5fc586a335f8f873b56626577be743eb
   subpackages:
   - concurrent
   - convey
@@ -73,7 +73,7 @@ imports:
 - name: github.com/gorilla/mux
   version: 392c28fe23e1c45ddba891b0320b3b5df220beea
 - name: github.com/gorilla/websocket
-  version: 3ab3a8b8831546bd18fd182c20687ca853b2bb13
+  version: ea4d1f681babbce9545c9c5f3d5194a789c89f5b
 - name: github.com/hashicorp/hcl
   version: 23c074d0eceb2b8a5bfdbb271ab780cde70f05a8
   subpackages:
@@ -127,7 +127,7 @@ imports:
   - internal/bitbucket.org/ww/goautoneg
   - model
 - name: github.com/prometheus/procfs
-  version: b15cd069a83443be3154b719d0cc9fe8117f09fb
+  version: a6e9df898b1336106c743392c48ee0b71f5c4efa
   subpackages:
   - xfs
 - name: github.com/samuel/go-zookeeper
