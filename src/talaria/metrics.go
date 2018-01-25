@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Comcast/webpa-common/xhttp"
 	"github.com/Comcast/webpa-common/xmetrics"
 	"github.com/go-kit/kit/metrics"
 	"github.com/prometheus/client_golang/prometheus"
@@ -113,11 +114,15 @@ func InstrumentOutboundCounter(counter *prometheus.CounterVec, next http.RoundTr
 // NewOutboundRoundTripper produces an http.RoundTripper from the configured Outbounder
 // that is also decorated with appropriate metrics.
 func NewOutboundRoundTripper(om OutboundMeasures, o *Outbounder) http.RoundTripper {
-	return InstrumentOutboundCounter(
-		om.RequestCounter,
-		InstrumentOutboundDuration(
-			om.RequestDuration,
-			promhttp.InstrumentRoundTripperInFlight(om.InFlight, o.transport()),
+	return promhttp.RoundTripperFunc(xhttp.RetryTransactor(
+		o.retryCount(),
+		nil, // take the default
+		InstrumentOutboundCounter(
+			om.RequestCounter,
+			InstrumentOutboundDuration(
+				om.RequestDuration,
+				promhttp.InstrumentRoundTripperInFlight(om.InFlight, o.transport()),
+			),
 		),
-	)
+	))
 }
