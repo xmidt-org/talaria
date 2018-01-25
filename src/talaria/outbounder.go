@@ -43,7 +43,7 @@ const (
 
 	DefaultEventType                         = "default"
 	DefaultMethod                            = "POST"
-	DefaultRetryCount                        = 1
+	DefaultRetries                           = 1
 	DefaultWorkerPoolSize      uint          = 100
 	DefaultOutboundQueueSize   uint          = 1000
 	DefaultRequestTimeout      time.Duration = 15 * time.Second
@@ -57,7 +57,7 @@ const (
 // and grants the ability to start the outbounding infrastructure.
 type Outbounder struct {
 	Method            string                 `json:"method"`
-	RetryCount        int                    `json:"retryCount"`
+	Retries           int                    `json:"retries"`
 	RequestTimeout    time.Duration          `json:"requestTimeout"`
 	DefaultScheme     string                 `json:"defaultScheme"`
 	AllowedSchemes    []string               `json:"allowedSchemes"`
@@ -122,12 +122,12 @@ func (o *Outbounder) method() string {
 	return DefaultMethod
 }
 
-func (o *Outbounder) retryCount() int {
-	if o != nil && o.RetryCount > 0 {
-		return o.RetryCount
+func (o *Outbounder) retries() int {
+	if o != nil && o.Retries > 0 {
+		return o.Retries
 	}
 
-	return DefaultRetryCount
+	return DefaultRetries
 }
 
 func (o *Outbounder) requestTimeout() time.Duration {

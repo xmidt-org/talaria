@@ -18,6 +18,7 @@ const (
 	OutboundRequestCounter        = "outbound_requests"
 	OutboundQueueSize             = "outbound_queue_size"
 	OutboundDroppedMessageCounter = "outbound_dropped_messages"
+	OutboundRetries               = "outbound_retries"
 	ServiceDisoveryUpdateCounter  = "service_discovery_updates"
 )
 
@@ -52,6 +53,11 @@ func Metrics() []xmetrics.Metric {
 			Help: "The total count of messages dropped due to a full outbound queue",
 		},
 		xmetrics.Metric{
+			Name: OutboundRetries,
+			Type: "counter",
+			Help: "The total count of outbound HTTP retries",
+		},
+		xmetrics.Metric{
 			Name: ServiceDisoveryUpdateCounter,
 			Type: "counter",
 			Help: "The number of times service discovery (zookeeper) has updated the list of talarias",
@@ -64,6 +70,7 @@ type OutboundMeasures struct {
 	RequestDuration prometheus.ObserverVec
 	RequestCounter  *prometheus.CounterVec
 	QueueSize       metrics.Gauge
+	Retries         metrics.Counter
 	DroppedMessages metrics.Counter
 }
 
@@ -73,6 +80,7 @@ func NewOutboundMeasures(r xmetrics.Registry) OutboundMeasures {
 		RequestDuration: r.NewHistogramVec(OutboundRequestDuration),
 		RequestCounter:  r.NewCounterVec(OutboundRequestCounter),
 		QueueSize:       r.NewGauge(OutboundQueueSize),
+		Retries:         r.NewCounter(OutboundRetries),
 		DroppedMessages: r.NewCounter(OutboundDroppedMessageCounter),
 	}
 }
@@ -115,8 +123,12 @@ func InstrumentOutboundCounter(counter *prometheus.CounterVec, next http.RoundTr
 // that is also decorated with appropriate metrics.
 func NewOutboundRoundTripper(om OutboundMeasures, o *Outbounder) http.RoundTripper {
 	return promhttp.RoundTripperFunc(xhttp.RetryTransactor(
-		o.retryCount(),
-		nil, // take the default
+		// use the default should retry predicate ...
+		xhttp.RetryOptions{
+			Logger:  o.logger(),
+			Retries: o.retries(),
+			Counter: om.Retries,
+		},
 		InstrumentOutboundCounter(
 			om.RequestCounter,
 			InstrumentOutboundDuration(
