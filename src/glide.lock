@@ -1,5 +1,5 @@
-hash: 06dc043b56a8710d73e82e575c2ed5321847ffb2c46e6dfc3809ace9a4edd220
-updated: 2018-01-24T14:15:33.061103586-08:00
+hash: 34627e475f76389ae42303e76326728b1b0bfc409ce27cbc7d3f794a19c67476
+updated: 2018-01-24T18:47:08.675782157-08:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -12,7 +12,7 @@ imports:
   subpackages:
   - linux
 - name: github.com/Comcast/webpa-common
-  version: 775f46418d9ef8fb6f0b0c67de33883930c81b01
+  version: ebcd48b64116048b662b19b7364cb6fa903ada6a
   subpackages:
   - concurrent
   - convey
