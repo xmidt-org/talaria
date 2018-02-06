@@ -30,17 +30,16 @@ func Metrics() []xmetrics.Metric {
 			Help: "The number of active, in-flight requests from devices",
 		},
 		xmetrics.Metric{
-			Name:       OutboundRequestDuration,
-			Type:       "histogram",
-			Help:       "The durations of outbound requests from devices",
-			LabelNames: []string{"event"},
-			Buckets:    []float64{.25, .5, 1, 2.5, 5, 10},
+			Name:    OutboundRequestDuration,
+			Type:    "histogram",
+			Help:    "The durations of outbound requests from devices",
+			Buckets: []float64{.25, .5, 1, 2.5, 5, 10},
 		},
 		xmetrics.Metric{
 			Name:       OutboundRequestCounter,
 			Type:       "counter",
 			Help:       "The count of outbound requests",
-			LabelNames: []string{"code", "event"},
+			LabelNames: []string{"code"},
 		},
 		xmetrics.Metric{
 			Name: OutboundQueueSize,
@@ -67,7 +66,7 @@ func Metrics() []xmetrics.Metric {
 
 type OutboundMeasures struct {
 	InFlight        prometheus.Gauge
-	RequestDuration prometheus.ObserverVec
+	RequestDuration prometheus.Observer
 	RequestCounter  *prometheus.CounterVec
 	QueueSize       metrics.Gauge
 	Retries         metrics.Counter
@@ -77,7 +76,7 @@ type OutboundMeasures struct {
 func NewOutboundMeasures(r xmetrics.Registry) OutboundMeasures {
 	return OutboundMeasures{
 		InFlight:        r.NewGaugeVec(OutboundInFlightGauge).WithLabelValues(),
-		RequestDuration: r.NewHistogramVec(OutboundRequestDuration),
+		RequestDuration: r.NewHistogramVec(OutboundRequestDuration).WithLabelValues(),
 		RequestCounter:  r.NewCounterVec(OutboundRequestCounter),
 		QueueSize:       r.NewGauge(OutboundQueueSize),
 		Retries:         r.NewCounter(OutboundRetries),
@@ -85,15 +84,12 @@ func NewOutboundMeasures(r xmetrics.Registry) OutboundMeasures {
 	}
 }
 
-func InstrumentOutboundDuration(obs prometheus.ObserverVec, next http.RoundTripper) promhttp.RoundTripperFunc {
+func InstrumentOutboundDuration(obs prometheus.Observer, next http.RoundTripper) promhttp.RoundTripperFunc {
 	return promhttp.RoundTripperFunc(func(request *http.Request) (*http.Response, error) {
 		start := time.Now()
 		response, err := next.RoundTrip(request)
 		if err == nil {
-			eventType, _ := request.Context().Value(eventTypeContextKey{}).(string)
-			obs.
-				With(prometheus.Labels{"event": eventType}).
-				Observe(time.Since(start).Seconds())
+			obs.Observe(time.Since(start).Seconds())
 		}
 
 		return response, err
@@ -104,10 +100,8 @@ func InstrumentOutboundCounter(counter *prometheus.CounterVec, next http.RoundTr
 	return promhttp.RoundTripperFunc(func(request *http.Request) (*http.Response, error) {
 		response, err := next.RoundTrip(request)
 		if err == nil {
-			eventType, _ := request.Context().Value(eventTypeContextKey{}).(string)
-
 			// use "200" as the result from a 0 or negative status code, to be consistent with other golang APIs
-			labels := prometheus.Labels{"code": "200", "event": eventType}
+			labels := prometheus.Labels{"code": "200"}
 			if response.StatusCode > 0 {
 				labels["code"] = strconv.Itoa(response.StatusCode)
 			}
