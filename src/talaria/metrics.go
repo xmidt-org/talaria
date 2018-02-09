@@ -19,7 +19,6 @@ const (
 	OutboundQueueSize             = "outbound_queue_size"
 	OutboundDroppedMessageCounter = "outbound_dropped_messages"
 	OutboundRetries               = "outbound_retries"
-	ServiceDisoveryUpdateCounter  = "service_discovery_updates"
 )
 
 func Metrics() []xmetrics.Metric {
@@ -55,11 +54,6 @@ func Metrics() []xmetrics.Metric {
 			Name: OutboundRetries,
 			Type: "counter",
 			Help: "The total count of outbound HTTP retries",
-		},
-		xmetrics.Metric{
-			Name: ServiceDisoveryUpdateCounter,
-			Type: "counter",
-			Help: "The number of times service discovery (zookeeper) has updated the list of talarias",
 		},
 	}
 }

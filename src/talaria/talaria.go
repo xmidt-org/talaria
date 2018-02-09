@@ -83,7 +83,7 @@ func talaria(arguments []string) int {
 		f = pflag.NewFlagSet(applicationName, pflag.ContinueOnError)
 		v = viper.New()
 
-		logger, metricsRegistry, webPA, err = server.Initialize(applicationName, arguments, f, v, Metrics, device.Metrics)
+		logger, metricsRegistry, webPA, err = server.Initialize(applicationName, arguments, f, v, Metrics, device.Metrics, service.Metrics)
 		infoLog                             = logging.Info(logger)
 		errorLog                            = logging.Error(logger)
 	)
@@ -122,6 +122,7 @@ func talaria(arguments []string) int {
 	}
 
 	serviceOptions.Logger = logger
+	serviceOptions.MetricsProvider = metricsRegistry
 	services, err := service.New(serviceOptions)
 	if err != nil {
 		errorLog.Log(logging.MessageKey(), "Unable to initialize service discovery", logging.ErrorKey(), err)
@@ -139,9 +140,8 @@ func talaria(arguments []string) int {
 	infoLog.Log("configurationFile", v.ConfigFileUsed(), "serviceOptions", serviceOptions)
 
 	var (
-		subscription                  = service.Subscribe(serviceOptions, instancer)
-		signals                       = make(chan os.Signal, 10)
-		serviceDiscoveryUpdateCounter = metricsRegistry.NewCounter(ServiceDisoveryUpdateCounter)
+		subscription = service.Subscribe(serviceOptions, instancer)
+		signals      = make(chan os.Signal, 10)
 	)
 
 	go func() {
@@ -153,7 +153,6 @@ func talaria(arguments []string) int {
 		for {
 			select {
 			case u := <-subscription.Updates():
-				serviceDiscoveryUpdateCounter.Add(1.0)
 
 				// throw away the first Accessor, as that is just the initial set of talarias
 				if first {
