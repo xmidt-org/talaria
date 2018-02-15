@@ -1,5 +1,5 @@
-hash: bb3782a38c0b93a3ce0038d82c2345f5b19a5e94994ba7e3514680870140461e
-updated: 2018-02-09T00:08:02.480270991-08:00
+hash: b3cd594c314ba507de2b503fc7d9f67989961315d45f3ee8f3024b26766c44f1
+updated: 2018-02-14T23:11:46.860083312-08:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -12,7 +12,7 @@ imports:
   subpackages:
   - linux
 - name: github.com/Comcast/webpa-common
-  version: 46b42ed45a7f6d8624dd1890b4683fe9f246282f
+  version: 22ab2a2a2faf9a1f46a3c2a983a776a28af72203
   subpackages:
   - concurrent
   - convey
@@ -31,6 +31,7 @@ imports:
   - types
   - wrp
   - xhttp
+  - xlistener
   - xmetrics
 - name: github.com/davecgh/go-spew
   version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
@@ -65,13 +66,13 @@ imports:
 - name: github.com/go-stack/stack
   version: 817915b46b97fd7bb80e8ab6b69f01a53ac3eebf
 - name: github.com/golang/protobuf
-  version: c65a0412e71e8b9b3bfd22925720d23c0f054237
+  version: 1e59b77b52bf8e4b449a57e6f79f21226d571845
   subpackages:
   - proto
 - name: github.com/gorilla/context
   version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
 - name: github.com/gorilla/mux
-  version: 392c28fe23e1c45ddba891b0320b3b5df220beea
+  version: 53c1911da2b537f792e7cafcb446b05ffe33b996
 - name: github.com/gorilla/websocket
   version: ea4d1f681babbce9545c9c5f3d5194a789c89f5b
 - name: github.com/hashicorp/hcl
@@ -131,7 +132,7 @@ imports:
   subpackages:
   - xfs
 - name: github.com/samuel/go-zookeeper
-  version: e6b59f6144beb8570562539c1898a0b1fea34b41
+  version: c4fab1ac1bec58281ad0667dc3f0907a9476ac47
   subpackages:
   - zk
 - name: github.com/SermoDigital/jose
@@ -169,16 +170,12 @@ imports:
   - codec
 - name: github.com/VividCortex/gohistogram
   version: 51564d9861991fb0ad0f531c99ef602d0f9866e6
-- name: golang.org/x/net
-  version: 5ccada7d0a7ba9aeb5d3aca8d3501b4c2a509fec
-  subpackages:
-  - netutil
 - name: golang.org/x/sys
   version: af50095a40f9041b3b38960738837185c26e9419
   subpackages:
   - unix
 - name: golang.org/x/text
-  version: e19ae1496984b1c655b8044a65c0300a3c878dd3
+  version: a71fd10341b064c10f4a81ceac72bcf70f26ea34
   subpackages:
   - transform
   - unicode/norm
