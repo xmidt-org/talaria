@@ -1,5 +1,5 @@
-hash: b3cd594c314ba507de2b503fc7d9f67989961315d45f3ee8f3024b26766c44f1
-updated: 2018-02-14T23:11:46.860083312-08:00
+hash: ab92eed03ae59ffc897e1e92e14d0d2ba1cc9dc73294aeed39d2a4a0a5c68321
+updated: 2018-02-15T17:44:41.075131007-08:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -12,7 +12,7 @@ imports:
   subpackages:
   - linux
 - name: github.com/Comcast/webpa-common
-  version: 22ab2a2a2faf9a1f46a3c2a983a776a28af72203
+  version: 75d21caa5da8a1fb952c1c507f8250b0c1eb57a6
   subpackages:
   - concurrent
   - convey
@@ -175,7 +175,7 @@ imports:
   subpackages:
   - unix
 - name: golang.org/x/text
-  version: a71fd10341b064c10f4a81ceac72bcf70f26ea34
+  version: e19ae1496984b1c655b8044a65c0300a3c878dd3
   subpackages:
   - transform
   - unicode/norm
