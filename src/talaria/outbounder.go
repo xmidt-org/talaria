@@ -46,8 +46,8 @@ const (
 	DefaultRetries                           = 1
 	DefaultWorkerPoolSize      uint          = 100
 	DefaultOutboundQueueSize   uint          = 1000
-	DefaultRequestTimeout      time.Duration = 15 * time.Second
-	DefaultClientTimeout       time.Duration = 3 * time.Second
+	DefaultRequestTimeout      time.Duration = 125 * time.Second
+	DefaultClientTimeout       time.Duration = 160 * time.Second
 	DefaultMaxIdleConns                      = 0
 	DefaultMaxIdleConnsPerHost               = 100
 	DefaultIdleConnTimeout     time.Duration = 0
