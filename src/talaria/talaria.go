@@ -26,13 +26,15 @@ import (
 	"github.com/Comcast/webpa-common/concurrent"
 	"github.com/Comcast/webpa-common/device"
 	"github.com/Comcast/webpa-common/device/devicehealth"
+	"github.com/Comcast/webpa-common/device/rehasher"
 	"github.com/Comcast/webpa-common/health"
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/Comcast/webpa-common/server"
 	"github.com/Comcast/webpa-common/service"
+	"github.com/Comcast/webpa-common/service/monitor"
+	"github.com/Comcast/webpa-common/service/servicecfg"
 	"github.com/Comcast/webpa-common/xmetrics"
 	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
@@ -115,75 +117,41 @@ func talaria(arguments []string) int {
 	// Now, initialize the service discovery infrastructure
 	//
 
-	serviceOptions, err := service.FromViper(service.Sub(v))
+	e, err := servicecfg.NewEnvironment(logger, v.Sub("service"))
 	if err != nil {
-		errorLog.Log(logging.MessageKey(), "Unable to read service discovery options", logging.ErrorKey(), err)
+		errorLog.Log(logging.MessageKey(), "Unable to initialize service discovery environment", logging.ErrorKey(), err)
 		return 4
 	}
 
-	serviceOptions.Logger = logger
-	serviceOptions.MetricsProvider = metricsRegistry
-	services, err := service.New(serviceOptions)
-	if err != nil {
-		errorLog.Log(logging.MessageKey(), "Unable to initialize service discovery", logging.ErrorKey(), err)
-		return 5
-	}
+	if e != nil {
+		defer e.Close()
+		infoLog.Log("configurationFile", v.ConfigFileUsed())
 
-	instancer, err := services.NewInstancer()
-	if err != nil {
-		errorLog.Log(logging.MessageKey(), "Unable to obtain service discovery instancer", logging.ErrorKey(), err)
-		return 6
-	}
+		_, err = monitor.New(
+			monitor.WithLogger(logger),
+			monitor.WithFilter(monitor.NewNormalizeFilter(e.DefaultScheme())),
+			monitor.WithEnvironment(e),
+			monitor.WithListeners(
+				monitor.NewMetricsListener(metricsRegistry),
 
-	defer services.Deregister()
-	services.Register()
-	infoLog.Log("configurationFile", v.ConfigFileUsed(), "serviceOptions", serviceOptions)
-
-	var (
-		subscription = service.Subscribe(serviceOptions, instancer)
-		signals      = make(chan os.Signal, 10)
-	)
-
-	go func() {
-		var (
-			first           = true
-			subscriptionLog = log.With(logger, "subscription", subscription)
+				// this rehasher will handle device disconnects in response to service discovery events
+				rehasher.New(
+					manager,
+					rehasher.WithLogger(logger),
+					rehasher.WithEnvironment(e),
+				),
+			),
 		)
 
-		for {
-			select {
-			case u := <-subscription.Updates():
-
-				// throw away the first Accessor, as that is just the initial set of talarias
-				if first {
-					first = false
-					subscriptionLog.Log(level.Key(), level.InfoValue(), logging.MessageKey(), "discarding initial service discovery event")
-					continue
-				}
-
-				subscriptionLog.Log(level.Key(), level.InfoValue(), logging.MessageKey(), "new talaria instances")
-				manager.DisconnectIf(func(candidate device.ID) bool {
-					instance, err := u.Get(candidate.Bytes())
-					if err != nil {
-						subscriptionLog.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Error while attempting to rehash device", "deviceID", candidate, logging.ErrorKey(), err)
-						return true
-					}
-
-					if instance != serviceOptions.Registration {
-						subscriptionLog.Log(level.Key(), level.InfoValue(), logging.MessageKey(), "service discovery rehash", "deviceID", candidate)
-						return true
-					}
-
-					return false
-				})
-
-			case <-subscription.Stopped():
-				subscriptionLog.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "service discovery subscription stopped")
-				return
-			}
+		if err != nil {
+			errorLog.Log(logging.MessageKey(), "Unable to start service discovery monitor", logging.ErrorKey(), err)
+			return 5
 		}
-	}()
+	} else {
+		infoLog.Log(logging.MessageKey(), "no service discovery configured")
+	}
 
+	signals := make(chan os.Signal, 10)
 	signal.Notify(signals)
 	s := server.SignalWait(infoLog, signals, os.Interrupt, os.Kill)
 	errorLog.Log(logging.MessageKey(), "exiting due to signal", "signal", s)
@@ -194,12 +162,6 @@ func talaria(arguments []string) int {
 }
 
 func main() {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Printf("shutting down due to panic: %s", r)
-		}
-	}()
-
 	os.Exit(
 		func() int {
 			result := talaria(os.Args)
