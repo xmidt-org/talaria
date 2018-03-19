@@ -125,6 +125,7 @@ func talaria(arguments []string) int {
 
 	if e != nil {
 		defer e.Close()
+		e.Register()
 		infoLog.Log("configurationFile", v.ConfigFileUsed())
 
 		_, err = monitor.New(
