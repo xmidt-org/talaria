@@ -1,5 +1,5 @@
-hash: 2fe83f78af55b312fa96e5d557ab54dfe671aaf4b7fe2cc91e63ada8210f12b7
-updated: 2018-03-17T21:54:21.301316517-07:00
+hash: 8165278778ce82bbcc0519dd34aa7178299779f89bbd8cac1a6799fa4d706bf6
+updated: 2018-03-26T15:52:14.642051558-07:00
 imports:
 - name: github.com/armon/go-metrics
   version: 783273d703149aaeb9897cf58613d5af48861c25
@@ -14,7 +14,7 @@ imports:
   subpackages:
   - linux
 - name: github.com/Comcast/webpa-common
-  version: c751a5bdb565be91e3e21cd622e2619e6fd88da3
+  version: 4ee68f50cb2a89d84f8c199101d25bc6ca713e69
   subpackages:
   - concurrent
   - convey
@@ -99,7 +99,7 @@ imports:
   subpackages:
   - simplelru
 - name: github.com/hashicorp/hcl
-  version: 23c074d0eceb2b8a5bfdbb271ab780cde70f05a8
+  version: f40e974e75af4e271d97ce0fc917af5898ae7bda
   subpackages:
   - hcl/ast
   - hcl/parser
@@ -114,7 +114,7 @@ imports:
   subpackages:
   - coordinate
 - name: github.com/influxdata/influxdb
-  version: a65e51e295525fd4ffd03937750841e26bf89bde
+  version: ef2ba80ce2a1ad95a99aac3cc76f5b75a0a0e758
   subpackages:
   - client/v2
   - models
@@ -136,7 +136,7 @@ imports:
 - name: github.com/mitchellh/mapstructure
   version: 00c29f56e2386353d58c599509e8dc3801b0d716
 - name: github.com/pelletier/go-toml
-  version: 05bcc0fb0d3e60da4b8dd5bd7e0ea563eb4ca943
+  version: 66540cf1fcd2c3aee6f6787dfa32a6ae9a870f12
 - name: github.com/pmezard/go-difflib
   version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
   subpackages:
@@ -173,7 +173,7 @@ imports:
 - name: github.com/spaolacci/murmur3
   version: 0d12bf811670bf6a1a63828dfbd003eded177fce
 - name: github.com/spf13/afero
-  version: bbf41cb36dffe15dff5bf7e18c447801e7ffe163
+  version: a880a37ed1804d98f64b3b7d58b5e3f8fbf421c4
   subpackages:
   - mem
 - name: github.com/spf13/cast
@@ -211,5 +211,5 @@ imports:
 - name: gopkg.in/natefinch/lumberjack.v2
   version: a96e63847dc3c67d17befa69c303767e2f84e54f
 - name: gopkg.in/yaml.v2
-  version: 7f97868eec74b32b0982dd158a51a446d1da7eb5
+  version: 86f5ed62f8a0ee96bd888d2efdfd6d4fb100a4eb
 testImports: []
