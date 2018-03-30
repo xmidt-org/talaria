@@ -24,7 +24,7 @@
 		"consul": {
 			"client": {
 				"address": "127.0.0.1:8500",
-				"scheme": "https"
+				"scheme": "http"
 			},
 			"watches": [
 				{
@@ -41,8 +41,10 @@
 					"scheme": "http",
 					"checks": [
 						{
-							"checkID": "talaria-dev:ttl",
-							"ttl": "30s"
+							"checkID": "talaria-dev:http",
+							"http": "http://127.0.0.1:7001/health",
+							"interval": "30s",
+							"deregisterCriticalServiceAfter": "60s"
 						}
 					]
 				}
@@ -79,7 +81,7 @@
 
 	"log" : {
 		"file"      : "stdout",
-		"level"     : "DEBUG",
+		"level"     : "INFO",
 		"json": true
 	}
 }
