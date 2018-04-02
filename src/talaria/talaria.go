@@ -126,6 +126,7 @@ func talaria(arguments []string) int {
 	if e != nil {
 		defer e.Close()
 		infoLog.Log("configurationFile", v.ConfigFileUsed())
+		e.Register()
 
 		_, err = monitor.New(
 			monitor.WithLogger(logger),
@@ -133,7 +134,7 @@ func talaria(arguments []string) int {
 			monitor.WithEnvironment(e),
 			monitor.WithListeners(
 				monitor.NewMetricsListener(metricsRegistry),
-				monitor.NewRegistrarListener(logger, e),
+				monitor.NewRegistrarListener(logger, e, true),
 
 				// this rehasher will handle device disconnects in response to service discovery events
 				rehasher.New(
