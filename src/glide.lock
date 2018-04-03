@@ -1,5 +1,5 @@
-hash: def4987f1430470adf6146936b864cbecdca4c52cb06b530eb8e4e7e8fcb855e
-updated: 2018-04-02T13:34:36.435516099-07:00
+hash: 294367d74ad021c00df5d6b36512b1ed0ef987a04fc39920c17ca1202d2bacad
+updated: 2018-04-02T16:55:06.340908648-07:00
 imports:
 - name: github.com/armon/go-metrics
   version: 783273d703149aaeb9897cf58613d5af48861c25
@@ -14,7 +14,7 @@ imports:
   subpackages:
   - linux
 - name: github.com/Comcast/webpa-common
-  version: 0f11d5b1c40b07fcce048b1b1d54be4412da24bf
+  version: 3e14c713c8f3e9c2d1a38353a6da3783840a2807
   subpackages:
   - concurrent
   - convey
@@ -114,7 +114,7 @@ imports:
   subpackages:
   - coordinate
 - name: github.com/influxdata/influxdb
-  version: 891736d22b4970c2e5d3ba0ab015393ed960e1ef
+  version: 729c8ad135069629fc01ae415b77b5e8977c39b5
   subpackages:
   - client/v2
   - models
