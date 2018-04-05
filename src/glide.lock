@@ -1,5 +1,5 @@
-hash: 294367d74ad021c00df5d6b36512b1ed0ef987a04fc39920c17ca1202d2bacad
-updated: 2018-04-02T16:55:06.340908648-07:00
+hash: dcd93bd90f9535a46c54985b084820fe1ce02f7fea1e380fd7751c5be1afff2a
+updated: 2018-04-05T11:59:43.623428199-07:00
 imports:
 - name: github.com/armon/go-metrics
   version: 783273d703149aaeb9897cf58613d5af48861c25
@@ -14,7 +14,7 @@ imports:
   subpackages:
   - linux
 - name: github.com/Comcast/webpa-common
-  version: 3e14c713c8f3e9c2d1a38353a6da3783840a2807
+  version: c6470e878633ac672f00816219eed1d05e937abb
   subpackages:
   - concurrent
   - convey
@@ -99,7 +99,7 @@ imports:
   subpackages:
   - simplelru
 - name: github.com/hashicorp/hcl
-  version: f40e974e75af4e271d97ce0fc917af5898ae7bda
+  version: ef8a98b0bbce4a65b5aa4c368430a80ddc533168
   subpackages:
   - hcl/ast
   - hcl/parser
@@ -114,7 +114,7 @@ imports:
   subpackages:
   - coordinate
 - name: github.com/influxdata/influxdb
-  version: 729c8ad135069629fc01ae415b77b5e8977c39b5
+  version: 38d2d29f79f249b4f7647b441355cbc03e9fec1a
   subpackages:
   - client/v2
   - models
