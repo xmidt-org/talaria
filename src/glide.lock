@@ -1,10 +1,10 @@
-hash: dcd93bd90f9535a46c54985b084820fe1ce02f7fea1e380fd7751c5be1afff2a
-updated: 2018-04-05T11:59:43.623428199-07:00
+hash: e228ffd0eb9d543760fc7ed768dbd6005bf89d6cbe27c93aae4366b5c9301e2c
+updated: 2018-04-19T17:59:18.67074551-07:00
 imports:
 - name: github.com/armon/go-metrics
   version: 783273d703149aaeb9897cf58613d5af48861c25
 - name: github.com/beorn7/perks
-  version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
+  version: 3a771d992973f24aa725d07868b467d1ddfceafb
   subpackages:
   - quantile
 - name: github.com/billhathaway/consistentHash
@@ -14,7 +14,7 @@ imports:
   subpackages:
   - linux
 - name: github.com/Comcast/webpa-common
-  version: c6470e878633ac672f00816219eed1d05e937abb
+  version: f425c7b62fc6a008a9a35c49a51e886c0ea2990e
   subpackages:
   - concurrent
   - convey
@@ -75,7 +75,7 @@ imports:
 - name: github.com/go-stack/stack
   version: 817915b46b97fd7bb80e8ab6b69f01a53ac3eebf
 - name: github.com/golang/protobuf
-  version: 1e59b77b52bf8e4b449a57e6f79f21226d571845
+  version: e09c5db296004fbe3f74490e84dcd62c3c5ddb1b
   subpackages:
   - proto
 - name: github.com/gorilla/context
@@ -110,11 +110,11 @@ imports:
   - json/scanner
   - json/token
 - name: github.com/hashicorp/serf
-  version: 3b250ce4404edb266330f53fcfc8ad0d0dacfae7
+  version: fc4bdedf2366c64984e280c6eefc703ca7812585
   subpackages:
   - coordinate
 - name: github.com/influxdata/influxdb
-  version: 38d2d29f79f249b4f7647b441355cbc03e9fec1a
+  version: 232be14aef2a283175ba2e7061b4ce75595054e7
   subpackages:
   - client/v2
   - models
@@ -151,14 +151,16 @@ imports:
   subpackages:
   - go
 - name: github.com/prometheus/common
-  version: 2e54d0b93cba2fd133edc32211dcc32c06ef72ca
+  version: d0f7cd64bda49e08b22ae8a730aa57aa0db125d6
   subpackages:
   - expfmt
   - internal/bitbucket.org/ww/goautoneg
   - model
 - name: github.com/prometheus/procfs
-  version: a6e9df898b1336106c743392c48ee0b71f5c4efa
+  version: 54d17b57dd7d4a3aa092476596b3f8a933bde349
   subpackages:
+  - internal/util
+  - nfs
   - xfs
 - name: github.com/samuel/go-zookeeper
   version: c4fab1ac1bec58281ad0667dc3f0907a9476ac47
@@ -200,11 +202,11 @@ imports:
 - name: github.com/VividCortex/gohistogram
   version: 51564d9861991fb0ad0f531c99ef602d0f9866e6
 - name: golang.org/x/sys
-  version: 062cd7e4e68206d8bab9b18396626e855c992658
+  version: a2a45943ae67364d56c5d7d62dee78cff16c8dc8
   subpackages:
   - unix
 - name: golang.org/x/text
-  version: a71fd10341b064c10f4a81ceac72bcf70f26ea34
+  version: 7922cc490dd5a7dbaa7fd5d6196b49db59ac042f
   subpackages:
   - transform
   - unicode/norm
