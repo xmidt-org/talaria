@@ -85,7 +85,7 @@ func talaria(arguments []string) int {
 		f = pflag.NewFlagSet(applicationName, pflag.ContinueOnError)
 		v = viper.New()
 
-		logger, metricsRegistry, webPA, err = server.Initialize(applicationName, arguments, f, v, Metrics, device.Metrics, service.Metrics)
+		logger, metricsRegistry, webPA, err = server.Initialize(applicationName, arguments, f, v, Metrics, device.Metrics, rehasher.Metrics, service.Metrics)
 		infoLog                             = logging.Info(logger)
 		errorLog                            = logging.Error(logger)
 	)
@@ -141,6 +141,7 @@ func talaria(arguments []string) int {
 					manager,
 					rehasher.WithLogger(logger),
 					rehasher.WithEnvironment(e),
+					rehasher.WithMetricsProvider(metricsRegistry),
 				),
 			),
 		)
