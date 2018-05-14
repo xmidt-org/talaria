@@ -30,9 +30,12 @@ import (
 
 func testDispatcherIgnoredEvent(t *testing.T) {
 	var (
-		assert                     = assert.New(t)
-		require                    = require.New(t)
-		dispatcher, outbounds, err = NewDispatcher(NewTestOutboundMeasures(), nil, nil)
+		assert     = assert.New(t)
+		require    = require.New(t)
+		outbounder = &Outbounder{
+			EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com"}},
+		}
+		dispatcher, outbounds, err = NewDispatcher(NewTestOutboundMeasures(), outbounder, nil)
 	)
 
 	require.NotNil(dispatcher)
@@ -338,6 +341,28 @@ func testDispatcherOnDeviceEventDispatchTo(t *testing.T) {
 	}
 }
 
+func testDispatcherOnDeviceEventEnabledEventType(t *testing.T) {
+	var (
+		assert     = assert.New(t)
+		require    = require.New(t)
+		outbounder = &Outbounder{
+			EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com"}},
+			ServerEventsToDispatch: []string{
+				"Disconnect",
+				"Connect",
+			},
+		}
+		dispatcher, outbounds, err = NewDispatcher(NewTestOutboundMeasures(), outbounder, nil)
+	)
+
+	require.NotNil(dispatcher)
+	require.NotNil(outbounds)
+	require.NoError(err)
+
+	dispatcher.OnDeviceEvent(&device.Event{Type: device.Connect})
+	assert.Equal(1, len(outbounds))
+}
+
 func TestDispatcher(t *testing.T) {
 	t.Run("IgnoredEvent", testDispatcherIgnoredEvent)
 	t.Run("Unroutable", testDispatcherUnroutable)
@@ -347,5 +372,6 @@ func TestDispatcher(t *testing.T) {
 		t.Run("EventTimeout", testDispatcherOnDeviceEventEventTimeout)
 		t.Run("FilterError", testDispatcherOnDeviceEventFilterError)
 		t.Run("DispatchTo", testDispatcherOnDeviceEventDispatchTo)
+		t.Run("EnabledEventType", testDispatcherOnDeviceEventEnabledEventType)
 	})
 }

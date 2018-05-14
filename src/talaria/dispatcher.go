@@ -56,15 +56,16 @@ type Dispatcher interface {
 
 // dispatcher is the internal Dispatcher implementation
 type dispatcher struct {
-	errorLog          log.Logger
-	urlFilter         URLFilter
-	method            string
-	timeout           time.Duration
-	authorizationKeys []string
-	eventMap          event.MultiMap
-	queueSize         metrics.Gauge
-	droppedMessages   metrics.Counter
-	outbounds         chan<- outboundEnvelope
+	errorLog               log.Logger
+	urlFilter              URLFilter
+	method                 string
+	timeout                time.Duration
+	authorizationKeys      []string
+	eventMap               event.MultiMap
+	queueSize              metrics.Gauge
+	droppedMessages        metrics.Counter
+	outbounds              chan<- outboundEnvelope
+	serverEventsToDispatch map[string]struct{}
 }
 
 // NewDispatcher constructs a Dispatcher which sends envelopes via the returned channel.
@@ -88,15 +89,16 @@ func NewDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFilter) (Dis
 	logger.Log(level.Key(), level.InfoValue(), "eventMap", eventMap)
 
 	return &dispatcher{
-		errorLog:          logging.Error(logger),
-		urlFilter:         urlFilter,
-		method:            o.method(),
-		timeout:           o.requestTimeout(),
-		authorizationKeys: o.authKey(),
-		eventMap:          eventMap,
-		queueSize:         om.QueueSize,
-		droppedMessages:   om.DroppedMessages,
-		outbounds:         outbounds,
+		errorLog:               logging.Error(logger),
+		urlFilter:              urlFilter,
+		method:                 o.method(),
+		timeout:                o.requestTimeout(),
+		authorizationKeys:      o.authKey(),
+		eventMap:               eventMap,
+		queueSize:              om.QueueSize,
+		droppedMessages:        om.DroppedMessages,
+		outbounds:              outbounds,
+		serverEventsToDispatch: o.serverEventsToDispatch(),
 	}, outbounds, nil
 }
 
@@ -182,27 +184,33 @@ func (d *dispatcher) dispatchTo(unfiltered string, contentType string, contents 
 
 func (d *dispatcher) OnDeviceEvent(event *device.Event) {
 	if event.Type != device.MessageReceived {
-		return
+		if _, ok := d.serverEventsToDispatch[event.Type.String()]; ok {
+			if err := d.dispatchEvent(event.Type.String(), event.Format.ContentType(), event.Contents); err != nil {
+				d.errorLog.Log(logging.MessageKey(), "Error dispatching server event", "type", event.Type, logging.ErrorKey(), err)
+			}
+		}
 	}
 
-	if routable, ok := event.Message.(wrp.Routable); ok {
-		var (
-			destination = routable.To()
-			contentType = event.Format.ContentType()
-		)
+	if event.Type == device.MessageReceived {
+		if routable, ok := event.Message.(wrp.Routable); ok {
+			var (
+				destination = routable.To()
+				contentType = event.Format.ContentType()
+			)
 
-		if strings.HasPrefix(destination, EventPrefix) {
-			eventType := destination[len(EventPrefix):]
-			if err := d.dispatchEvent(eventType, contentType, event.Contents); err != nil {
-				d.errorLog.Log(logging.MessageKey(), "Error dispatching event", "destination", destination, logging.ErrorKey(), err)
+			if strings.HasPrefix(destination, EventPrefix) {
+				eventType := destination[len(EventPrefix):]
+				if err := d.dispatchEvent(eventType, contentType, event.Contents); err != nil {
+					d.errorLog.Log(logging.MessageKey(), "Error dispatching event", "destination", destination, logging.ErrorKey(), err)
+				}
+			} else if strings.HasPrefix(destination, DNSPrefix) {
+				unfilteredURL := destination[len(DNSPrefix):]
+				if err := d.dispatchTo(unfilteredURL, contentType, event.Contents); err != nil {
+					d.errorLog.Log(logging.MessageKey(), "Error dispatching to endpoint", "destination", destination, logging.ErrorKey(), err)
+				}
+			} else {
+				d.errorLog.Log(logging.MessageKey(), "Unroutable destination", "destination", destination)
 			}
-		} else if strings.HasPrefix(destination, DNSPrefix) {
-			unfilteredURL := destination[len(DNSPrefix):]
-			if err := d.dispatchTo(unfilteredURL, contentType, event.Contents); err != nil {
-				d.errorLog.Log(logging.MessageKey(), "Error dispatching to endpoint", "destination", destination, logging.ErrorKey(), err)
-			}
-		} else {
-			d.errorLog.Log(logging.MessageKey(), "Unroutable destination", "destination", destination)
 		}
 	}
 }
