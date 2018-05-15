@@ -183,15 +183,18 @@ func (d *dispatcher) dispatchTo(unfiltered string, contentType string, contents 
 }
 
 func (d *dispatcher) OnDeviceEvent(event *device.Event) {
+	shouldDispatch := event.Type == device.MessageReceived
 	if event.Type != device.MessageReceived {
 		if _, ok := d.serverEventsToDispatch[event.Type.String()]; ok {
-			if err := d.dispatchEvent(event.Type.String(), event.Format.ContentType(), event.Contents); err != nil {
-				d.errorLog.Log(logging.MessageKey(), "Error dispatching server event", "type", event.Type, logging.ErrorKey(), err)
+			shouldDispatch = true
+			if event.Message == nil {
+				// It's not a wrp message, let's create one
+				d.GenerateEventMessage(event)
 			}
 		}
 	}
 
-	if event.Type == device.MessageReceived {
+	if shouldDispatch {
 		if routable, ok := event.Message.(wrp.Routable); ok {
 			var (
 				destination = routable.To()
@@ -213,4 +216,27 @@ func (d *dispatcher) OnDeviceEvent(event *device.Event) {
 			}
 		}
 	}
+}
+
+func (d *dispatcher) GenerateEventMessage(event *device.Event) {
+	var (
+		contents []byte
+		id       string
+		encoder  = wrp.NewEncoderBytes(&contents, wrp.Msgpack)
+	)
+	if event.Device != nil {
+		id = string(event.Device.ID())
+	}
+	wrpMessage := &wrp.SimpleEvent{
+		Destination: EventPrefix + event.Type.String(),
+		Source:      id,
+		Payload:     event.Contents,
+		ContentType: event.Format.ContentType(),
+		Type:        wrp.SimpleEventMessageType,
+	}
+	encoder.Encode(wrpMessage)
+
+	event.Message = wrpMessage
+	event.Contents = contents
+	event.Format = wrp.Msgpack
 }

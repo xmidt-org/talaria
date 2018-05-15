@@ -17,6 +17,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"io/ioutil"
 	"testing"
@@ -343,7 +344,6 @@ func testDispatcherOnDeviceEventDispatchTo(t *testing.T) {
 
 func testDispatcherOnDeviceEventEnabledEventType(t *testing.T) {
 	var (
-		assert     = assert.New(t)
 		require    = require.New(t)
 		outbounder = &Outbounder{
 			EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com"}},
@@ -360,7 +360,59 @@ func testDispatcherOnDeviceEventEnabledEventType(t *testing.T) {
 	require.NoError(err)
 
 	dispatcher.OnDeviceEvent(&device.Event{Type: device.Connect})
-	assert.Equal(1, len(outbounds))
+	require.Equal(1, len(outbounds))
+}
+
+func testDispatcherOnDeviceEventMessageGenerated(t *testing.T) {
+	var (
+		assert     = assert.New(t)
+		require    = require.New(t)
+		outbounder = &Outbounder{
+			EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com"}},
+			ServerEventsToDispatch: []string{
+				"Disconnect",
+				"Connect",
+			},
+		}
+		dispatcher, outbounds, err = NewDispatcher(NewTestOutboundMeasures(), outbounder, nil)
+	)
+
+	require.NotNil(dispatcher)
+	require.NotNil(outbounds)
+	require.NoError(err)
+
+	stringContents := `{"bootstrap": "1234"}`
+	byteContents := []byte(stringContents)
+
+	dispatcher.OnDeviceEvent(&device.Event{
+		Type:     device.Connect,
+		Format:   wrp.JSON,
+		Contents: byteContents,
+	})
+	require.Equal(1, len(outbounds))
+
+	envelope := <-outbounds
+	assert.Equal("application/msgpack", envelope.request.Header.Get("Content-Type"))
+
+	read, err := envelope.request.GetBody()
+	assert.Nil(err)
+
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(read)
+	bytes := buf.Bytes()
+
+	require.True(len(bytes) > 0)
+
+	var (
+		message = new(wrp.Message)
+		decoder = wrp.NewDecoderBytes(bytes, wrp.Msgpack)
+	)
+	err = decoder.Decode(message)
+	assert.Nil(err)
+
+	assert.Equal("event:Connect", message.Destination)
+	assert.Equal("application/json", message.ContentType)
+	assert.Equal(stringContents, string(message.Payload))
 }
 
 func TestDispatcher(t *testing.T) {
@@ -373,5 +425,6 @@ func TestDispatcher(t *testing.T) {
 		t.Run("FilterError", testDispatcherOnDeviceEventFilterError)
 		t.Run("DispatchTo", testDispatcherOnDeviceEventDispatchTo)
 		t.Run("EnabledEventType", testDispatcherOnDeviceEventEnabledEventType)
+		t.Run("MessageGenerated", testDispatcherOnDeviceEventMessageGenerated)
 	})
 }
