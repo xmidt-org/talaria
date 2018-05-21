@@ -189,7 +189,9 @@ func (d *dispatcher) OnDeviceEvent(event *device.Event) {
 			shouldDispatch = true
 			if event.Message == nil {
 				// It's not a wrp message, let's create one
-				d.GenerateEventMessage(event)
+				if err := d.GenerateEventMessage(event); err != nil {
+					d.errorLog.Log(logging.MessageKey(), "Error generating WRP message", "eventType", event.Type.String(), logging.ErrorKey(), err)
+				}
 			}
 		}
 	}
@@ -218,7 +220,7 @@ func (d *dispatcher) OnDeviceEvent(event *device.Event) {
 	}
 }
 
-func (d *dispatcher) GenerateEventMessage(event *device.Event) {
+func (d *dispatcher) GenerateEventMessage(event *device.Event) error {
 	var (
 		contents []byte
 		id       string
@@ -234,9 +236,13 @@ func (d *dispatcher) GenerateEventMessage(event *device.Event) {
 		ContentType: event.Format.ContentType(),
 		Type:        wrp.SimpleEventMessageType,
 	}
-	encoder.Encode(wrpMessage)
+	if err := encoder.Encode(wrpMessage); err != nil {
+		return err
+	}
 
 	event.Message = wrpMessage
 	event.Contents = contents
 	event.Format = wrp.Msgpack
+
+	return nil
 }

@@ -415,6 +415,53 @@ func testDispatcherOnDeviceEventMessageGenerated(t *testing.T) {
 	assert.Equal(stringContents, string(message.Payload))
 }
 
+func testDispatcherOnDeviceEventWithoutContents(t *testing.T) {
+	var (
+		assert     = assert.New(t)
+		require    = require.New(t)
+		outbounder = &Outbounder{
+			EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com"}},
+			ServerEventsToDispatch: []string{
+				"Disconnect",
+				"Connect",
+			},
+		}
+		dispatcher, outbounds, err = NewDispatcher(NewTestOutboundMeasures(), outbounder, nil)
+	)
+
+	require.NotNil(dispatcher)
+	require.NotNil(outbounds)
+	require.NoError(err)
+
+	dispatcher.OnDeviceEvent(&device.Event{
+		Type:   device.Connect,
+		Format: wrp.JSON,
+	})
+	require.Equal(1, len(outbounds))
+
+	envelope := <-outbounds
+	assert.Equal("application/msgpack", envelope.request.Header.Get("Content-Type"))
+
+	read, err := envelope.request.GetBody()
+	assert.Nil(err)
+
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(read)
+	bytes := buf.Bytes()
+
+	require.True(len(bytes) > 0)
+
+	var (
+		message = new(wrp.Message)
+		decoder = wrp.NewDecoderBytes(bytes, wrp.Msgpack)
+	)
+	err = decoder.Decode(message)
+	assert.Nil(err)
+
+	assert.Equal("event:Connect", message.Destination)
+	assert.Equal("application/json", message.ContentType)
+}
+
 func TestDispatcher(t *testing.T) {
 	t.Run("IgnoredEvent", testDispatcherIgnoredEvent)
 	t.Run("Unroutable", testDispatcherUnroutable)
@@ -426,5 +473,6 @@ func TestDispatcher(t *testing.T) {
 		t.Run("DispatchTo", testDispatcherOnDeviceEventDispatchTo)
 		t.Run("EnabledEventType", testDispatcherOnDeviceEventEnabledEventType)
 		t.Run("MessageGenerated", testDispatcherOnDeviceEventMessageGenerated)
+		t.Run("WithoutContents", testDispatcherOnDeviceEventWithoutContents)
 	})
 }
