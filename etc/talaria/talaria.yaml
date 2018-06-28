@@ -1,0 +1,14 @@
+---
+    primary:
+        address: ":6000"
+    health:
+        address: ":6001"
+    pprof:
+        address: ":6002"
+
+    log:
+        file      : "talaria.log"
+        level     : "DEBUG"
+        maxSize   : 50
+        maxBackup : 3
+
