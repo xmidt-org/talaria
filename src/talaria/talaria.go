@@ -91,6 +91,7 @@ func talaria(arguments []string) int {
 	)
 
 	if err != nil {
+		fmt.Printf("Unable to initialize Viper environment.  Error: %+v\n", err)
 		errorLog.Log(logging.MessageKey(), "Unable to initialize Viper environment", logging.ErrorKey(), err)
 		return 1
 	}
