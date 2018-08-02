@@ -1,5 +1,5 @@
-hash: c0401d1d1fd5abcf2ad8b0a85efcfcbcfd3a5d617723692974b0d3efc2045acc
-updated: 2018-08-01T17:56:01.715364121-07:00
+hash: 08016b7fb6f128c4a1a3282b61ae9eea5fa6983d9070b38ebf46a36217d4048f
+updated: 2018-08-02T15:21:10.539320999-07:00
 imports:
 - name: github.com/armon/go-metrics
   version: 3c58d8115a78a6879e5df75ae900846768d36895
@@ -14,7 +14,7 @@ imports:
   subpackages:
   - linux
 - name: github.com/Comcast/webpa-common
-  version: 0a7ebe5e53fa78d4f682a57266eb397a77c2d989
+  version: c23b0b0da39e5bf128974cd9b5cdc8c0cc852041
   subpackages:
   - concurrent
   - convey
@@ -25,6 +25,7 @@ imports:
   - event
   - health
   - logging
+  - logging/logginghttp
   - resource
   - secure
   - secure/handler
@@ -38,6 +39,8 @@ imports:
   - types
   - wrp
   - xhttp
+  - xhttp/gate
+  - xhttp/xcontext
   - xlistener
   - xmetrics
   - xviper
@@ -202,11 +205,11 @@ imports:
 - name: github.com/VividCortex/gohistogram
   version: 51564d9861991fb0ad0f531c99ef602d0f9866e6
 - name: golang.org/x/sys
-  version: 3dc4335d56c789b04b0ba99b7a37249d9b614314
+  version: 0ffbfd41fbef8ffcf9b62b0b0aa3a5873ed7a4fe
   subpackages:
   - unix
 - name: golang.org/x/text
-  version: 0605a8320aceb4207a5fb3521281e17ec2075476
+  version: 96e34ec0e18a62a1e59880c7bf617b655efecb66
   subpackages:
   - transform
   - unicode/norm
