@@ -155,6 +155,8 @@ func talaria(arguments []string) int {
 		infoLog.Log(logging.MessageKey(), "no service discovery configured")
 	}
 
+	StartControlServer(logger, v)
+
 	signals := make(chan os.Signal, 10)
 	signal.Notify(signals)
 	s := server.SignalWait(infoLog, signals, os.Interrupt, os.Kill)
