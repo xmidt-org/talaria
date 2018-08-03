@@ -48,7 +48,7 @@ const (
 // startDeviceManagement handles the configuration and initialization of the device management subsystem
 // for talaria.  The returned HTTP handler can be used for device connections and messages, while the returned
 // Manager can be used to route and administer the set of connected devices.
-func startDeviceManagement(logger log.Logger, h *health.Health, r xmetrics.Registry, v *viper.Viper) (http.Handler, device.Manager, error) {
+func startDeviceManagement(logger log.Logger, h *health.Health, r xmetrics.Registry, v *viper.Viper, c func(http.Handler) http.Handler) (http.Handler, device.Manager, error) {
 	deviceOptions, err := device.NewOptions(logger, v.Sub(device.DeviceManagerKey))
 	if err != nil {
 		return nil, nil, err
@@ -70,7 +70,7 @@ func startDeviceManagement(logger log.Logger, h *health.Health, r xmetrics.Regis
 	}
 
 	manager := device.NewManager(deviceOptions)
-	primaryHandler, err := NewPrimaryHandler(logger, manager, v)
+	primaryHandler, err := NewPrimaryHandler(logger, manager, v, c)
 	return primaryHandler, manager, err
 }
 
@@ -91,8 +91,13 @@ func talaria(arguments []string) int {
 	)
 
 	if err != nil {
-		fmt.Printf("Unable to initialize Viper environment.  Error: %+v\n", err)
 		errorLog.Log(logging.MessageKey(), "Unable to initialize Viper environment", logging.ErrorKey(), err)
+		return 1
+	}
+
+	controlConstructor, err := StartControlServer(logger, v)
+	if err != nil {
+		errorLog.Log(logging.MessageKey(), "Unable to create control server", logging.ErrorKey(), err)
 		return 1
 	}
 
@@ -101,7 +106,7 @@ func talaria(arguments []string) int {
 	//
 
 	health := webPA.Health.NewHealth(logger, devicehealth.Options...)
-	primaryHandler, manager, err := startDeviceManagement(logger, health, metricsRegistry, v)
+	primaryHandler, manager, err := startDeviceManagement(logger, health, metricsRegistry, v, controlConstructor)
 	if err != nil {
 		errorLog.Log(logging.MessageKey(), "Unable to start device management", logging.ErrorKey(), err)
 		return 2
@@ -154,8 +159,6 @@ func talaria(arguments []string) int {
 	} else {
 		infoLog.Log(logging.MessageKey(), "no service discovery configured")
 	}
-
-	StartControlServer(logger, v)
 
 	signals := make(chan os.Signal, 10)
 	signal.Notify(signals)

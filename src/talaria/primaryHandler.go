@@ -53,7 +53,7 @@ type JWTValidator struct {
 	Custom secure.JWTValidatorFactory `json:"custom"`
 }
 
-func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper) (http.Handler, error) {
+func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper, c func(http.Handler) http.Handler) (http.Handler, error) {
 	var (
 		authKeys                     = v.GetStringSlice("inbound.authKey")
 		r                            = mux.NewRouter()
