@@ -29,6 +29,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
+	"github.com/justinas/alice"
 	"github.com/spf13/viper"
 )
 
@@ -53,7 +54,7 @@ type JWTValidator struct {
 	Custom secure.JWTValidatorFactory `json:"custom"`
 }
 
-func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper) (http.Handler, error) {
+func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper, controlConstructor func(http.Handler) http.Handler) (http.Handler, error) {
 	var (
 		authKeys                     = v.GetStringSlice("inbound.authKey")
 		r                            = mux.NewRouter()
@@ -133,10 +134,11 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 	// the connect handler is not decorated for authorization
 	apiHandler.Handle(
 		"/device",
-		device.UseID.FromHeader(&device.ConnectHandler{
-			Logger:    logger,
-			Connector: manager,
-		}),
+		alice.New(controlConstructor, device.UseID.FromHeader).Then(
+			&device.ConnectHandler{
+				Logger:    logger,
+				Connector: manager,
+			}),
 	)
 
 	apiHandler.Handle(

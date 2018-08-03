@@ -19,6 +19,10 @@
 	"pprof": {
 		"address": ":7003"
 	},
+
+	"control": {
+		"address": ":9999"
+	},
 	
 	"service": {
 		"consul": {
