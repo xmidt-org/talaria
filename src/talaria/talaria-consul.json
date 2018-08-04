@@ -21,7 +21,7 @@
 	},
 
 	"control": {
-		"address": ":9999"
+		"address": ":8081"
 	},
 	
 	"service": {

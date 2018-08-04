@@ -19,6 +19,7 @@ const (
 	OutboundQueueSize             = "outbound_queue_size"
 	OutboundDroppedMessageCounter = "outbound_dropped_messages"
 	OutboundRetries               = "outbound_retries"
+	GateStatus                    = "gate_status"
 )
 
 func Metrics() []xmetrics.Metric {
@@ -54,6 +55,11 @@ func Metrics() []xmetrics.Metric {
 			Name: OutboundRetries,
 			Type: "counter",
 			Help: "The total count of outbound HTTP retries",
+		},
+		xmetrics.Metric{
+			Name: GateStatus,
+			Type: "gauge",
+			Help: "Indicates whether the device gate is open (1.0) or closed (0.0)",
 		},
 	}
 }

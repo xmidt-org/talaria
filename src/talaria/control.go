@@ -9,6 +9,7 @@ import (
 	"github.com/Comcast/webpa-common/xhttp"
 	"github.com/Comcast/webpa-common/xhttp/gate"
 	"github.com/Comcast/webpa-common/xhttp/xcontext"
+	"github.com/Comcast/webpa-common/xmetrics"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
@@ -19,7 +20,7 @@ const (
 	ControlKey = "control"
 )
 
-func StartControlServer(logger log.Logger, v *viper.Viper) (func(http.Handler) http.Handler, error) {
+func StartControlServer(logger log.Logger, registry xmetrics.Registry, v *viper.Viper) (func(http.Handler) http.Handler, error) {
 	if !v.IsSet(ControlKey) {
 		return xhttp.NilConstructor, nil
 	}
@@ -32,7 +33,11 @@ func StartControlServer(logger log.Logger, v *viper.Viper) (func(http.Handler) h
 	options.Logger = logger
 
 	var (
-		g          = gate.New(gate.Open)
+		g = gate.New(
+			true,
+			gate.WithGauge(registry.NewGauge(GateStatus)),
+		)
+
 		r          = mux.NewRouter()
 		apiHandler = r.PathPrefix(fmt.Sprintf("%s/%s", baseURI, version)).Subrouter()
 	)
