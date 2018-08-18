@@ -20,6 +20,8 @@ const (
 	OutboundDroppedMessageCounter = "outbound_dropped_messages"
 	OutboundRetries               = "outbound_retries"
 	GateStatus                    = "gate_status"
+	DrainStatus                   = "drain_status"
+	DrainCounter                  = "drain_count"
 )
 
 func Metrics() []xmetrics.Metric {
@@ -60,6 +62,16 @@ func Metrics() []xmetrics.Metric {
 			Name: GateStatus,
 			Type: "gauge",
 			Help: "Indicates whether the device gate is open (1.0) or closed (0.0)",
+		},
+		xmetrics.Metric{
+			Name: DrainStatus,
+			Type: "gauge",
+			Help: "Indicates whether a device drain operation is currently running",
+		},
+		xmetrics.Metric{
+			Name: DrainCounter,
+			Type: "counter",
+			Help: "The total count of devices disconnected due to a drain since the server started",
 		},
 	}
 }
