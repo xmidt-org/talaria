@@ -93,7 +93,7 @@ func talaria(arguments []string) int {
 		return 2
 	}
 
-	controlConstructor, err := StartControlServer(logger, metricsRegistry, v)
+	controlConstructor, err := StartControlServer(logger, manager, metricsRegistry, v)
 	if err != nil {
 		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to create control server", logging.ErrorKey(), err)
 		return 3

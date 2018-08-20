@@ -1,5 +1,5 @@
 hash: 100ae2ecdc6ed2f6a7a5f1783187d7f3c6b00801922ae5a040132ce672cca2bb
-updated: 2018-08-17T17:57:06.341523956-07:00
+updated: 2018-08-19T21:13:49.124202945-07:00
 imports:
 - name: github.com/armon/go-metrics
   version: 3c58d8115a78a6879e5df75ae900846768d36895
@@ -21,6 +21,7 @@ imports:
   - convey/conveyhttp
   - device
   - device/devicehealth
+  - device/drain
   - device/rehasher
   - event
   - health
@@ -39,6 +40,7 @@ imports:
   - types
   - wrp
   - xhttp
+  - xhttp/converter
   - xhttp/gate
   - xhttp/xcontext
   - xlistener
@@ -85,6 +87,8 @@ imports:
   version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
 - name: github.com/gorilla/mux
   version: 53c1911da2b537f792e7cafcb446b05ffe33b996
+- name: github.com/gorilla/schema
+  version: e0e4b92809ac79a1a465c2f626c34b121e0916bd
 - name: github.com/gorilla/websocket
   version: ea4d1f681babbce9545c9c5f3d5194a789c89f5b
 - name: github.com/hashicorp/consul

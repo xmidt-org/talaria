@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/Comcast/webpa-common/device"
+	"github.com/Comcast/webpa-common/device/drain"
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/Comcast/webpa-common/logging/logginghttp"
 	"github.com/Comcast/webpa-common/xhttp"
@@ -20,7 +22,7 @@ const (
 	ControlKey = "control"
 )
 
-func StartControlServer(logger log.Logger, registry xmetrics.Registry, v *viper.Viper) (func(http.Handler) http.Handler, error) {
+func StartControlServer(logger log.Logger, manager device.Manager, registry xmetrics.Registry, v *viper.Viper) (func(http.Handler) http.Handler, error) {
 	if !v.IsSet(ControlKey) {
 		return xhttp.NilConstructor, nil
 	}
@@ -38,6 +40,13 @@ func StartControlServer(logger log.Logger, registry xmetrics.Registry, v *viper.
 			gate.WithGauge(registry.NewGauge(GateStatus)),
 		)
 
+		d = drain.New(
+			drain.WithLogger(logger),
+			drain.WithManager(manager),
+			drain.WithStateGauge(registry.NewGauge(DrainStatus)),
+			drain.WithDrainCounter(registry.NewCounter(DrainCounter)),
+		)
+
 		r          = mux.NewRouter()
 		apiHandler = r.PathPrefix(fmt.Sprintf("%s/%s", baseURI, version)).Subrouter()
 	)
@@ -46,6 +55,15 @@ func StartControlServer(logger log.Logger, registry xmetrics.Registry, v *viper.
 		Methods("POST", "PUT", "PATCH")
 
 	apiHandler.Handle("/device/gate", &gate.Status{Gate: g}).
+		Methods("GET")
+
+	apiHandler.Handle("/device/drain", &drain.Start{d}).
+		Methods("POST", "PUT", "PATCH")
+
+	apiHandler.Handle("/device/drain", &drain.Cancel{d}).
+		Methods("DELETE")
+
+	apiHandler.Handle("/device/drain", &drain.Status{d}).
 		Methods("GET")
 
 	server := xhttp.NewServer(options)
