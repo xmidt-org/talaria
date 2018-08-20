@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
@@ -27,7 +26,6 @@ import (
 	"github.com/Comcast/webpa-common/device"
 	"github.com/Comcast/webpa-common/device/devicehealth"
 	"github.com/Comcast/webpa-common/device/rehasher"
-	"github.com/Comcast/webpa-common/health"
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/Comcast/webpa-common/server"
 	"github.com/Comcast/webpa-common/service"
@@ -35,6 +33,7 @@ import (
 	"github.com/Comcast/webpa-common/service/servicecfg"
 	"github.com/Comcast/webpa-common/xmetrics"
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
@@ -45,23 +44,20 @@ const (
 	defaultVnodeCount int = 211
 )
 
-// startDeviceManagement handles the configuration and initialization of the device management subsystem
-// for talaria.  The returned HTTP handler can be used for device connections and messages, while the returned
-// Manager can be used to route and administer the set of connected devices.
-func startDeviceManagement(logger log.Logger, h *health.Health, r xmetrics.Registry, v *viper.Viper, c func(http.Handler) http.Handler) (http.Handler, device.Manager, error) {
+func newDeviceManager(logger log.Logger, r xmetrics.Registry, v *viper.Viper) (device.Manager, error) {
 	deviceOptions, err := device.NewOptions(logger, v.Sub(device.DeviceManagerKey))
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	outbounder, err := NewOutbounder(logger, v.Sub(OutbounderKey))
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	outboundListener, err := outbounder.Start(NewOutboundMeasures(r))
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	deviceOptions.MetricsProvider = r
@@ -69,9 +65,7 @@ func startDeviceManagement(logger log.Logger, h *health.Health, r xmetrics.Regis
 		outboundListener,
 	}
 
-	manager := device.NewManager(deviceOptions)
-	primaryHandler, err := NewPrimaryHandler(logger, manager, v, c)
-	return primaryHandler, manager, err
+	return device.NewManager(deviceOptions), nil
 }
 
 // talaria is the driver function for Talaria.  It performs everything main() would do,
@@ -86,19 +80,23 @@ func talaria(arguments []string) int {
 		v = viper.New()
 
 		logger, metricsRegistry, webPA, err = server.Initialize(applicationName, arguments, f, v, Metrics, device.Metrics, rehasher.Metrics, service.Metrics)
-		infoLog                             = logging.Info(logger)
-		errorLog                            = logging.Error(logger)
 	)
 
 	if err != nil {
-		errorLog.Log(logging.MessageKey(), "Unable to initialize Viper environment", logging.ErrorKey(), err)
+		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to initialize Viper environment", logging.ErrorKey(), err)
 		return 1
+	}
+
+	manager, err := newDeviceManager(logger, metricsRegistry, v)
+	if err != nil {
+		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to create device manager", logging.ErrorKey(), err)
+		return 2
 	}
 
 	controlConstructor, err := StartControlServer(logger, metricsRegistry, v)
 	if err != nil {
-		errorLog.Log(logging.MessageKey(), "Unable to create control server", logging.ErrorKey(), err)
-		return 1
+		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to create control server", logging.ErrorKey(), err)
+		return 3
 	}
 
 	//
@@ -106,17 +104,17 @@ func talaria(arguments []string) int {
 	//
 
 	health := webPA.Health.NewHealth(logger, devicehealth.Options...)
-	primaryHandler, manager, err := startDeviceManagement(logger, health, metricsRegistry, v, controlConstructor)
+	primaryHandler, err := NewPrimaryHandler(logger, manager, v, controlConstructor)
 	if err != nil {
-		errorLog.Log(logging.MessageKey(), "Unable to start device management", logging.ErrorKey(), err)
-		return 2
+		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to start device management", logging.ErrorKey(), err)
+		return 4
 	}
 
 	_, talariaServer := webPA.Prepare(logger, health, metricsRegistry, primaryHandler)
 	waitGroup, shutdown, err := concurrent.Execute(talariaServer)
 	if err != nil {
-		errorLog.Log(logging.MessageKey(), "Unable to start device manager", logging.ErrorKey(), err)
-		return 3
+		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to start device manager", logging.ErrorKey(), err)
+		return 5
 	}
 
 	//
@@ -125,13 +123,13 @@ func talaria(arguments []string) int {
 
 	e, err := servicecfg.NewEnvironment(logger, v.Sub("service"))
 	if err != nil {
-		errorLog.Log(logging.MessageKey(), "Unable to initialize service discovery environment", logging.ErrorKey(), err)
+		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to initialize service discovery environment", logging.ErrorKey(), err)
 		return 4
 	}
 
 	if e != nil {
 		defer e.Close()
-		infoLog.Log("configurationFile", v.ConfigFileUsed())
+		logger.Log(level.Key(), level.InfoValue(), "configurationFile", v.ConfigFileUsed())
 		e.Register()
 
 		_, err = monitor.New(
@@ -153,17 +151,17 @@ func talaria(arguments []string) int {
 		)
 
 		if err != nil {
-			errorLog.Log(logging.MessageKey(), "Unable to start service discovery monitor", logging.ErrorKey(), err)
+			logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to start service discovery monitor", logging.ErrorKey(), err)
 			return 5
 		}
 	} else {
-		infoLog.Log(logging.MessageKey(), "no service discovery configured")
+		logger.Log(level.Key(), level.InfoValue(), logging.MessageKey(), "no service discovery configured")
 	}
 
 	signals := make(chan os.Signal, 10)
 	signal.Notify(signals)
-	s := server.SignalWait(infoLog, signals, os.Interrupt, os.Kill)
-	errorLog.Log(logging.MessageKey(), "exiting due to signal", "signal", s)
+	s := server.SignalWait(logger, signals, os.Interrupt, os.Kill)
+	logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "exiting due to signal", "signal", s)
 	close(shutdown)
 	waitGroup.Wait()
 
