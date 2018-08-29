@@ -143,6 +143,8 @@ func testOutbounderDefaults(t *testing.T) {
 		assert.Equal(DefaultMaxIdleConnsPerHost, transport.MaxIdleConnsPerHost)
 		assert.Equal(DefaultIdleConnTimeout, transport.IdleConnTimeout)
 		assert.Equal(DefaultClientTimeout, o.clientTimeout())
+
+		assert.Equal(make(map[string]struct{}), o.serverEventsToDispatch())
 	}
 }
 
@@ -168,7 +170,11 @@ func testOutbounderConfiguration(t *testing.T) {
 				"maxIdleConns": 5681,
 				"maxIdleConnsPerHost": 99,
 				"idleConnTimeout": "2m17s"
-			}
+			},
+			"serverEventsToDispatch": [
+				"Connect",
+				"Disconnect"
+			]
 		}`)
 
 		v = viper.New()
@@ -199,6 +205,11 @@ func testOutbounderConfiguration(t *testing.T) {
 	assert.Equal(uint(281), o.outboundQueueSize())
 	assert.Equal(uint(17), o.workerPoolSize())
 	assert.Equal(time.Minute+10*time.Second, o.clientTimeout())
+
+	_, exists := o.serverEventsToDispatch()["Connect"]
+	assert.True(exists)
+	_, exists = o.serverEventsToDispatch()["Disconnect"]
+	assert.True(exists)
 
 	transport := o.transport()
 	assert.Equal(5681, transport.MaxIdleConns)

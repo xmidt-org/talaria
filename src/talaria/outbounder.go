@@ -56,18 +56,19 @@ const (
 // Outbounder encapsulates the configuration necessary for handling outbound traffic
 // and grants the ability to start the outbounding infrastructure.
 type Outbounder struct {
-	Method            string                 `json:"method"`
-	Retries           int                    `json:"retries"`
-	RequestTimeout    time.Duration          `json:"requestTimeout"`
-	DefaultScheme     string                 `json:"defaultScheme"`
-	AllowedSchemes    []string               `json:"allowedSchemes"`
-	EventEndpoints    map[string]interface{} `json:"eventEndpoints"`
-	OutboundQueueSize uint                   `json:"outboundQueueSize"`
-	WorkerPoolSize    uint                   `json:"workerPoolSize"`
-	Transport         http.Transport         `json:"transport"`
-	ClientTimeout     time.Duration          `json:"clientTimeout"`
-	AuthKey           []string               `json:"authKey"`
-	Logger            log.Logger             `json:"-"`
+	Method                 string                 `json:"method"`
+	Retries                int                    `json:"retries"`
+	RequestTimeout         time.Duration          `json:"requestTimeout"`
+	DefaultScheme          string                 `json:"defaultScheme"`
+	AllowedSchemes         []string               `json:"allowedSchemes"`
+	EventEndpoints         map[string]interface{} `json:"eventEndpoints"`
+	OutboundQueueSize      uint                   `json:"outboundQueueSize"`
+	WorkerPoolSize         uint                   `json:"workerPoolSize"`
+	Transport              http.Transport         `json:"transport"`
+	ClientTimeout          time.Duration          `json:"clientTimeout"`
+	AuthKey                []string               `json:"authKey"`
+	ServerEventsToDispatch []string               `json:"serverEventsToDispatch"`
+	Logger                 log.Logger             `json:"-"`
 }
 
 // NewOutbounder returns an Outbounder unmarshalled from a Viper environment.
@@ -86,8 +87,9 @@ func NewOutbounder(logger log.Logger, v *viper.Viper) (o *Outbounder, err error)
 			MaxIdleConnsPerHost: DefaultMaxIdleConnsPerHost,
 			IdleConnTimeout:     DefaultIdleConnTimeout,
 		},
-		ClientTimeout: DefaultClientTimeout,
-		Logger:        logger,
+		ClientTimeout:          DefaultClientTimeout,
+		ServerEventsToDispatch: []string{},
+		Logger:                 logger,
 	}
 
 	if v != nil {
@@ -226,6 +228,20 @@ func (o *Outbounder) clientTimeout() time.Duration {
 	}
 
 	return DefaultClientTimeout
+}
+
+func (o *Outbounder) serverEventsToDispatch() map[string]struct{} {
+	if o != nil && len(o.ServerEventsToDispatch) > 0 {
+		eventTypes := make(map[string]struct{})
+		var empty struct{}
+		for _, eventType := range o.ServerEventsToDispatch {
+			eventTypes[eventType] = empty
+		}
+
+		return eventTypes
+	}
+
+	return make(map[string]struct{})
 }
 
 // Start spawns all necessary goroutines and returns a device.Listener

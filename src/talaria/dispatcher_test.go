@@ -17,6 +17,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"io/ioutil"
 	"testing"
@@ -30,9 +31,12 @@ import (
 
 func testDispatcherIgnoredEvent(t *testing.T) {
 	var (
-		assert                     = assert.New(t)
-		require                    = require.New(t)
-		dispatcher, outbounds, err = NewDispatcher(NewTestOutboundMeasures(), nil, nil)
+		assert     = assert.New(t)
+		require    = require.New(t)
+		outbounder = &Outbounder{
+			EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com"}},
+		}
+		dispatcher, outbounds, err = NewDispatcher(NewTestOutboundMeasures(), outbounder, nil)
 	)
 
 	require.NotNil(dispatcher)
@@ -338,6 +342,126 @@ func testDispatcherOnDeviceEventDispatchTo(t *testing.T) {
 	}
 }
 
+func testDispatcherOnDeviceEventEnabledEventType(t *testing.T) {
+	var (
+		require    = require.New(t)
+		outbounder = &Outbounder{
+			EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com"}},
+			ServerEventsToDispatch: []string{
+				"Disconnect",
+				"Connect",
+			},
+		}
+		dispatcher, outbounds, err = NewDispatcher(NewTestOutboundMeasures(), outbounder, nil)
+	)
+
+	require.NotNil(dispatcher)
+	require.NotNil(outbounds)
+	require.NoError(err)
+
+	dispatcher.OnDeviceEvent(&device.Event{Type: device.Connect})
+	require.Equal(1, len(outbounds))
+}
+
+func testDispatcherOnDeviceEventMessageGenerated(t *testing.T) {
+	var (
+		assert     = assert.New(t)
+		require    = require.New(t)
+		outbounder = &Outbounder{
+			EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com"}},
+			ServerEventsToDispatch: []string{
+				"Disconnect",
+				"Connect",
+			},
+		}
+		dispatcher, outbounds, err = NewDispatcher(NewTestOutboundMeasures(), outbounder, nil)
+	)
+
+	require.NotNil(dispatcher)
+	require.NotNil(outbounds)
+	require.NoError(err)
+
+	stringContents := `{"bootstrap": "1234"}`
+	byteContents := []byte(stringContents)
+
+	dispatcher.OnDeviceEvent(&device.Event{
+		Type:     device.Connect,
+		Format:   wrp.JSON,
+		Contents: byteContents,
+	})
+	require.Equal(1, len(outbounds))
+
+	envelope := <-outbounds
+	assert.Equal("application/msgpack", envelope.request.Header.Get("Content-Type"))
+
+	read, err := envelope.request.GetBody()
+	assert.Nil(err)
+
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(read)
+	bytes := buf.Bytes()
+
+	require.True(len(bytes) > 0)
+
+	var (
+		message = new(wrp.Message)
+		decoder = wrp.NewDecoderBytes(bytes, wrp.Msgpack)
+	)
+	err = decoder.Decode(message)
+	assert.Nil(err)
+
+	assert.Equal("event:Connect", message.Destination)
+	assert.Equal("application/json", message.ContentType)
+	assert.Equal(stringContents, string(message.Payload))
+}
+
+func testDispatcherOnDeviceEventWithoutContents(t *testing.T) {
+	var (
+		assert     = assert.New(t)
+		require    = require.New(t)
+		outbounder = &Outbounder{
+			EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com"}},
+			ServerEventsToDispatch: []string{
+				"Disconnect",
+				"Connect",
+			},
+		}
+		dispatcher, outbounds, err = NewDispatcher(NewTestOutboundMeasures(), outbounder, nil)
+	)
+
+	require.NotNil(dispatcher)
+	require.NotNil(outbounds)
+	require.NoError(err)
+
+	dispatcher.OnDeviceEvent(&device.Event{
+		Type:   device.Connect,
+		Format: wrp.JSON,
+	})
+	require.Equal(1, len(outbounds))
+
+	envelope := <-outbounds
+	assert.Equal("application/msgpack", envelope.request.Header.Get("Content-Type"))
+
+	read, err := envelope.request.GetBody()
+	assert.Nil(err)
+
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(read)
+	bytes := buf.Bytes()
+
+	require.True(len(bytes) > 0)
+
+	var (
+		message = new(wrp.Message)
+		decoder = wrp.NewDecoderBytes(bytes, wrp.Msgpack)
+	)
+	err = decoder.Decode(message)
+	assert.Nil(err)
+
+	assert.Equal("event:Connect", message.Destination)
+	assert.Equal("application/json", message.ContentType)
+}
+
 func TestDispatcher(t *testing.T) {
 	t.Run("IgnoredEvent", testDispatcherIgnoredEvent)
 	t.Run("Unroutable", testDispatcherUnroutable)
@@ -347,5 +471,8 @@ func TestDispatcher(t *testing.T) {
 		t.Run("EventTimeout", testDispatcherOnDeviceEventEventTimeout)
 		t.Run("FilterError", testDispatcherOnDeviceEventFilterError)
 		t.Run("DispatchTo", testDispatcherOnDeviceEventDispatchTo)
+		t.Run("EnabledEventType", testDispatcherOnDeviceEventEnabledEventType)
+		t.Run("MessageGenerated", testDispatcherOnDeviceEventMessageGenerated)
+		t.Run("WithoutContents", testDispatcherOnDeviceEventWithoutContents)
 	})
 }
