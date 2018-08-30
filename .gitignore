@@ -49,3 +49,7 @@ _testmain.go
 *.exe
 *.test
 *.prof
+
+.idea/
+.idea/*.xml
+.idea/*.iml

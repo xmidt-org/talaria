@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Comcast/webpa-common/wrp"
 	"io"
 	"net/http"
 	"strings"
@@ -29,13 +30,18 @@ import (
 	"github.com/Comcast/webpa-common/device"
 	"github.com/Comcast/webpa-common/event"
 	"github.com/Comcast/webpa-common/logging"
-	"github.com/Comcast/webpa-common/wrp"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/go-kit/kit/metrics"
 )
 
 var ErrOutboundQueueFull = errors.New("Outbound message queue full")
+
+const (
+	MessageReceivedDispatcher = "messageReceived"
+	ConnectDispatcher = "connect"
+	DisconnectDispatcher = "disconnect"
+)
 
 // outboundEnvelope is a tuple of information related to handling an asynchronous HTTP request
 type outboundEnvelope struct {
@@ -49,6 +55,8 @@ type eventTypeContextKey struct{}
 // Dispatcher handles the creation and routing of HTTP requests in response to device events.
 // A Dispatcher represents the send side for enqueuing HTTP requests.
 type Dispatcher interface {
+	// DispatcherName returns the dispatcher name
+	DispatcherName() string
 	// OnDeviceEvent is the device.Listener function that processes outbound events.  Inject
 	// this function as a device listener for a manager.
 	OnDeviceEvent(*device.Event)
@@ -65,6 +73,19 @@ type dispatcher struct {
 	queueSize         metrics.Gauge
 	droppedMessages   metrics.Counter
 	outbounds         chan<- outboundEnvelope
+	dispatcherName    string
+}
+
+// connectDispatcher is the internal Dispatcher implementation for connect events.
+// 'Inherits' from the dispatcher struct so that we can reuse the same dispatcher methods.
+type connectDispatcher struct {
+	*dispatcher
+}
+
+// disconnectDispatcher is the internal Dispatcher implementation for disconnect events
+// 'Inherits' from the dispatcher struct so that we can reuse the same dispatcher methods.
+type disconnectDispatcher struct {
+	*dispatcher
 }
 
 // NewDispatcher constructs a Dispatcher which sends envelopes via the returned channel.
@@ -97,7 +118,78 @@ func NewDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFilter) (Dis
 		queueSize:         om.QueueSize,
 		droppedMessages:   om.DroppedMessages,
 		outbounds:         outbounds,
+		dispatcherName:    MessageReceivedDispatcher,
 	}, outbounds, nil
+}
+
+// NewConnectDispatcher constructs a Dispatcher which sends envelopes of connect type via the returned channel.
+func NewConnectDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFilter) (Dispatcher, <-chan outboundEnvelope, error) {
+	if urlFilter == nil {
+		var err error
+		urlFilter, err = NewURLFilter(o)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	outbounds := make(chan outboundEnvelope, o.outboundQueueSize())
+	logger := o.logger()
+	eventMap, err := o.eventMap()
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	logger.Log(level.Key(), level.InfoValue(), "eventMap", eventMap)
+
+	return &connectDispatcher {
+		dispatcher: &dispatcher {
+			errorLog:          logging.Error(logger),
+			urlFilter:         urlFilter,
+			method:            o.method(),
+			timeout:           o.requestTimeout(),
+			authorizationKeys: o.authKey(),
+			eventMap:          eventMap,
+			queueSize:         om.QueueSize,
+			droppedMessages:   om.DroppedMessages,
+			outbounds:         outbounds,
+			dispatcherName:    ConnectDispatcher,
+	}}, outbounds, nil
+}
+
+// NewDisconnectDispatcher constructs a Dispatcher which sends envelopes of disconnect type via the returned channel.
+func NewDisconnectDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFilter) (Dispatcher, <-chan outboundEnvelope, error) {
+	if urlFilter == nil {
+		var err error
+		urlFilter, err = NewURLFilter(o)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	outbounds := make(chan outboundEnvelope, o.outboundQueueSize())
+	logger := o.logger()
+	eventMap, err := o.eventMap()
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	logger.Log(level.Key(), level.InfoValue(), "eventMap", eventMap)
+
+	return &disconnectDispatcher {
+		dispatcher: &dispatcher {
+			errorLog:          logging.Error(logger),
+			urlFilter:         urlFilter,
+			method:            o.method(),
+			timeout:           o.requestTimeout(),
+			authorizationKeys: o.authKey(),
+			eventMap:          eventMap,
+			queueSize:         om.QueueSize,
+			droppedMessages:   om.DroppedMessages,
+			outbounds:         outbounds,
+			dispatcherName:    DisconnectDispatcher,
+		}}, outbounds, nil
 }
 
 // send wraps the given request in an outboundEnvelope together with a cancellable context,
@@ -180,11 +272,7 @@ func (d *dispatcher) dispatchTo(unfiltered string, contentType string, contents 
 	)
 }
 
-func (d *dispatcher) OnDeviceEvent(event *device.Event) {
-	if event.Type != device.MessageReceived {
-		return
-	}
-
+func (d *dispatcher) routeMessage(event *device.Event) {
 	if routable, ok := event.Message.(wrp.Routable); ok {
 		var (
 			destination = routable.To()
@@ -205,4 +293,40 @@ func (d *dispatcher) OnDeviceEvent(event *device.Event) {
 			d.errorLog.Log(logging.MessageKey(), "Unroutable destination", "destination", destination)
 		}
 	}
+}
+
+func (d * dispatcher) DispatcherName() string {
+	return d.dispatcherName
+}
+
+func (d * connectDispatcher) DispatcherName() string {
+	return d.dispatcher.dispatcherName
+}
+
+func (d * disconnectDispatcher) DispatcherName() string {
+	return d.dispatcher.dispatcherName
+}
+
+func (d *dispatcher) OnDeviceEvent(event *device.Event) {
+	if event.Type != device.MessageReceived {
+		return
+	}
+
+	d.routeMessage(event);
+}
+
+func (d *connectDispatcher) OnDeviceEvent(event *device.Event)  {
+	if event.Type != device.Connect {
+		return
+	}
+
+	d.dispatcher.routeMessage(event);
+}
+
+func (d *disconnectDispatcher) OnDeviceEvent(event *device.Event)  {
+	if event.Type != device.Disconnect {
+		return
+	}
+
+	d.dispatcher.routeMessage(event);
 }
