@@ -44,25 +44,62 @@ const (
 	defaultVnodeCount int = 211
 )
 
+var availableListeners = []string { MessageReceivedDispatcher, ConnectDispatcher, DisconnectDispatcher }
+
 func newDeviceManager(logger log.Logger, r xmetrics.Registry, v *viper.Viper) (device.Manager, error) {
 	deviceOptions, err := device.NewOptions(logger, v.Sub(device.DeviceManagerKey))
 	if err != nil {
 		return nil, err
 	}
 
-	outbounder, err := NewOutbounder(logger, v.Sub(OutbounderKey))
-	if err != nil {
-		return nil, err
+	deviceListenerConfig := v.Sub(OutbounderKey)
+	factory := NewDispatcherFactory(logger)
+	listeners := make([]device.Listener, 0, len(availableListeners))
+
+	// for each configured listener, start a new outbounder
+	for _, l := range availableListeners {
+
+		listenerConfig := deviceListenerConfig.Sub(l)
+		
+		if listenerConfig == nil {
+			continue
+		}
+		
+		outbounder, err := NewOutbounder(logger, listenerConfig)
+
+		if err != nil {
+			return nil, err
+		}
+
+		outboundListener, err := outbounder.Start(NewOutboundMeasures(r), factory, l)
+
+		if err != nil {
+			return nil, err
+		}
+
+		listeners = append(listeners, outboundListener)
 	}
 
-	outboundListener, err := outbounder.Start(NewOutboundMeasures(r))
-	if err != nil {
-		return nil, err
-	}
+	if len(listeners)  > 0 {
+		deviceOptions.Listeners = listeners
+	} else {
+		// so that old configs remain compatible, create the default listener
+		outbounder, err := NewOutbounder(logger, deviceListenerConfig)
 
-	deviceOptions.MetricsProvider = r
-	deviceOptions.Listeners = []device.Listener{
-		outboundListener,
+		if err != nil {
+			return nil, err
+		}
+
+		outboundListener, err := outbounder.Start(NewOutboundMeasures(r), factory, MessageReceivedDispatcher)
+
+		if err != nil {
+			return nil, err
+		}
+
+		deviceOptions.MetricsProvider = r
+		deviceOptions.Listeners = []device.Listener {
+			outboundListener,
+		}
 	}
 
 	return device.NewManager(deviceOptions), nil

@@ -38,7 +38,7 @@ import (
 var ErrOutboundQueueFull = errors.New("Outbound message queue full")
 
 const (
-	MessageReceivedDispatcher = "messageReceived"
+	MessageReceivedDispatcher = "received"
 	ConnectDispatcher = "connect"
 	DisconnectDispatcher = "disconnect"
 )

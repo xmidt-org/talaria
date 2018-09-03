@@ -84,7 +84,7 @@ func ExampleOutbounder() {
 		return
 	}
 
-	listener, err := o.Start(NewOutboundMeasures(metricsRegistry))
+	listener, err := o.Start(NewOutboundMeasures(metricsRegistry), NewDispatcherFactory(logging.DefaultLogger()), MessageReceivedDispatcher)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -213,7 +213,7 @@ func testOutbounderStartError(t *testing.T) {
 			DefaultScheme: "ftp",
 		}
 
-		listener, err = badOutbounder.Start(OutboundMeasures{})
+		listener, err = badOutbounder.Start(OutboundMeasures{}, NewDispatcherFactory(logging.DefaultLogger()), MessageReceivedDispatcher)
 	)
 
 	assert.Nil(listener)

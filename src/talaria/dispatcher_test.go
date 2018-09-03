@@ -195,6 +195,250 @@ func testDispatcherOnDeviceEventDispatchEvent(t *testing.T) {
 	}
 }
 
+func testDispatcherOnDeviceConnectEventDispatchEvent(t *testing.T) {
+	var (
+		assert   = assert.New(t)
+		require  = require.New(t)
+		testData = []struct {
+			outbounder        *Outbounder
+			destination       string
+			expectedEndpoints map[string]bool
+		}{
+			{
+				outbounder:        nil,
+				destination:       "event:iot",
+				expectedEndpoints: map[string]bool{},
+			},
+			{
+				outbounder:        &Outbounder{Method: "BADMETHOD&%*(!@(&%(", EventEndpoints: map[string]interface{}{"iot": []string{"http://endpoint1.com"}}},
+				destination:       "event:iot",
+				expectedEndpoints: map[string]bool{},
+			},
+			{
+				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"another": []string{"http://endpoint1.com"}}},
+				destination:       "event:iot",
+				expectedEndpoints: map[string]bool{},
+			},
+			{
+				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"another": []string{"http://endpoint1.com"}}},
+				destination:       "event:iot",
+				expectedEndpoints: map[string]bool{},
+			},
+			{
+				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com"}}},
+				destination:       "event:iot",
+				expectedEndpoints: map[string]bool{"http://endpoint1.com": true},
+			},
+			{
+				outbounder:        &Outbounder{Method: "PATCH", EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com"}}},
+				destination:       "event:iot",
+				expectedEndpoints: map[string]bool{"http://endpoint1.com": true},
+			},
+			{
+				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com", "http://endpoint2.com"}}},
+				destination:       "event:iot",
+				expectedEndpoints: map[string]bool{"http://endpoint1.com": true, "http://endpoint2.com": true},
+			},
+			{
+				outbounder:        &Outbounder{Method: "PATCH", EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com", "http://endpoint2.com"}}},
+				destination:       "event:iot",
+				expectedEndpoints: map[string]bool{"http://endpoint1.com": true, "http://endpoint2.com": true},
+			},
+			{
+				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"iot": []string{"http://endpoint1.com"}}},
+				destination:       "event:iot",
+				expectedEndpoints: map[string]bool{"http://endpoint1.com": true},
+			},
+			{
+				outbounder:        &Outbounder{Method: "PATCH", EventEndpoints: map[string]interface{}{"iot": []string{"http://endpoint1.com"}}},
+				destination:       "event:iot",
+				expectedEndpoints: map[string]bool{"http://endpoint1.com": true},
+			},
+			{
+				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"iot": []string{"http://endpoint1.com", "http://endpoint2.com"}}},
+				destination:       "event:iot",
+				expectedEndpoints: map[string]bool{"http://endpoint1.com": true, "http://endpoint2.com": true},
+			},
+			{
+				outbounder:        &Outbounder{Method: "PATCH", EventEndpoints: map[string]interface{}{"iot": []string{"http://endpoint1.com", "http://endpoint2.com"}}},
+				destination:       "event:iot",
+				expectedEndpoints: map[string]bool{"http://endpoint1.com": true, "http://endpoint2.com": true},
+			},
+		}
+	)
+
+	for _, record := range testData {
+		for _, format := range []wrp.Format{wrp.Msgpack, wrp.JSON} {
+			t.Logf("%#v, method=%s, format=%s", record, record.outbounder.method(), format)
+
+			var (
+				expectedContents           = []byte{1, 2, 3, 4}
+				urlFilter                  = new(mockURLFilter)
+				dispatcher, outbounds, err = NewConnectDispatcher(NewTestOutboundMeasures(), record.outbounder, urlFilter)
+			)
+
+			require.NotNil(dispatcher)
+			require.NotNil(outbounds)
+			require.NoError(err)
+
+			dispatcher.OnDeviceEvent(&device.Event{
+				Type:     device.Connect,
+				Message:  &wrp.Message{Destination: record.destination},
+				Format:   format,
+				Contents: expectedContents,
+			})
+
+			assert.Equal(len(record.expectedEndpoints), len(outbounds), "incorrect envelope count")
+			actualEndpoints := make(map[string]bool, len(record.expectedEndpoints))
+			for len(outbounds) > 0 {
+				select {
+				case e := <-outbounds:
+					e.cancel()
+					<-e.request.Context().Done()
+
+					assert.Equal(record.outbounder.method(), e.request.Method)
+					assert.Equal(format.ContentType(), e.request.Header.Get("Content-Type"))
+
+					urlString := e.request.URL.String()
+					assert.False(actualEndpoints[urlString])
+					actualEndpoints[urlString] = true
+
+					actualContents, err := ioutil.ReadAll(e.request.Body)
+					assert.NoError(err)
+					assert.Equal(expectedContents, actualContents)
+
+				default:
+				}
+			}
+
+			assert.Equal(record.expectedEndpoints, actualEndpoints)
+			urlFilter.AssertExpectations(t)
+		}
+	}
+}
+
+func testDispatcherOnDeviceDisconnectEventDispatchEvent(t *testing.T) {
+	var (
+		assert   = assert.New(t)
+		require  = require.New(t)
+		testData = []struct {
+			outbounder        *Outbounder
+			destination       string
+			expectedEndpoints map[string]bool
+		}{
+			{
+				outbounder:        nil,
+				destination:       "event:iot",
+				expectedEndpoints: map[string]bool{},
+			},
+			{
+				outbounder:        &Outbounder{Method: "BADMETHOD&%*(!@(&%(", EventEndpoints: map[string]interface{}{"iot": []string{"http://endpoint1.com"}}},
+				destination:       "event:iot",
+				expectedEndpoints: map[string]bool{},
+			},
+			{
+				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"another": []string{"http://endpoint1.com"}}},
+				destination:       "event:iot",
+				expectedEndpoints: map[string]bool{},
+			},
+			{
+				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"another": []string{"http://endpoint1.com"}}},
+				destination:       "event:iot",
+				expectedEndpoints: map[string]bool{},
+			},
+			{
+				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com"}}},
+				destination:       "event:iot",
+				expectedEndpoints: map[string]bool{"http://endpoint1.com": true},
+			},
+			{
+				outbounder:        &Outbounder{Method: "PATCH", EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com"}}},
+				destination:       "event:iot",
+				expectedEndpoints: map[string]bool{"http://endpoint1.com": true},
+			},
+			{
+				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com", "http://endpoint2.com"}}},
+				destination:       "event:iot",
+				expectedEndpoints: map[string]bool{"http://endpoint1.com": true, "http://endpoint2.com": true},
+			},
+			{
+				outbounder:        &Outbounder{Method: "PATCH", EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com", "http://endpoint2.com"}}},
+				destination:       "event:iot",
+				expectedEndpoints: map[string]bool{"http://endpoint1.com": true, "http://endpoint2.com": true},
+			},
+			{
+				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"iot": []string{"http://endpoint1.com"}}},
+				destination:       "event:iot",
+				expectedEndpoints: map[string]bool{"http://endpoint1.com": true},
+			},
+			{
+				outbounder:        &Outbounder{Method: "PATCH", EventEndpoints: map[string]interface{}{"iot": []string{"http://endpoint1.com"}}},
+				destination:       "event:iot",
+				expectedEndpoints: map[string]bool{"http://endpoint1.com": true},
+			},
+			{
+				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"iot": []string{"http://endpoint1.com", "http://endpoint2.com"}}},
+				destination:       "event:iot",
+				expectedEndpoints: map[string]bool{"http://endpoint1.com": true, "http://endpoint2.com": true},
+			},
+			{
+				outbounder:        &Outbounder{Method: "PATCH", EventEndpoints: map[string]interface{}{"iot": []string{"http://endpoint1.com", "http://endpoint2.com"}}},
+				destination:       "event:iot",
+				expectedEndpoints: map[string]bool{"http://endpoint1.com": true, "http://endpoint2.com": true},
+			},
+		}
+	)
+
+	for _, record := range testData {
+		for _, format := range []wrp.Format{wrp.Msgpack, wrp.JSON} {
+			t.Logf("%#v, method=%s, format=%s", record, record.outbounder.method(), format)
+
+			var (
+				expectedContents           = []byte{1, 2, 3, 4}
+				urlFilter                  = new(mockURLFilter)
+				dispatcher, outbounds, err = NewDisconnectDispatcher(NewTestOutboundMeasures(), record.outbounder, urlFilter)
+			)
+
+			require.NotNil(dispatcher)
+			require.NotNil(outbounds)
+			require.NoError(err)
+
+			dispatcher.OnDeviceEvent(&device.Event{
+				Type:     device.Disconnect,
+				Message:  &wrp.Message{Destination: record.destination},
+				Format:   format,
+				Contents: expectedContents,
+			})
+
+			assert.Equal(len(record.expectedEndpoints), len(outbounds), "incorrect envelope count")
+			actualEndpoints := make(map[string]bool, len(record.expectedEndpoints))
+			for len(outbounds) > 0 {
+				select {
+				case e := <-outbounds:
+					e.cancel()
+					<-e.request.Context().Done()
+
+					assert.Equal(record.outbounder.method(), e.request.Method)
+					assert.Equal(format.ContentType(), e.request.Header.Get("Content-Type"))
+
+					urlString := e.request.URL.String()
+					assert.False(actualEndpoints[urlString])
+					actualEndpoints[urlString] = true
+
+					actualContents, err := ioutil.ReadAll(e.request.Body)
+					assert.NoError(err)
+					assert.Equal(expectedContents, actualContents)
+
+				default:
+				}
+			}
+
+			assert.Equal(record.expectedEndpoints, actualEndpoints)
+			urlFilter.AssertExpectations(t)
+		}
+	}
+}
+
 func testDispatcherOnDeviceEventEventTimeout(t *testing.T) {
 	var (
 		require    = require.New(t)
@@ -338,14 +582,208 @@ func testDispatcherOnDeviceEventDispatchTo(t *testing.T) {
 	}
 }
 
+func testDispatcherOnDeviceConnectEventDispatchTo(t *testing.T) {
+	var (
+		assert   = assert.New(t)
+		require  = require.New(t)
+		testData = []struct {
+			outbounder            *Outbounder
+			destination           string
+			expectedUnfilteredURL string
+			expectedEndpoint      string
+			expectsEnvelope       bool
+		}{
+			{
+				outbounder:            nil,
+				destination:           "dns:foobar.com",
+				expectedUnfilteredURL: "foobar.com",
+				expectedEndpoint:      "http://foobar.com",
+				expectsEnvelope:       true,
+			},
+			{
+				outbounder:            &Outbounder{Method: "PATCH"},
+				destination:           "dns:foobar.com",
+				expectedUnfilteredURL: "foobar.com",
+				expectedEndpoint:      "http://foobar.com",
+				expectsEnvelope:       true,
+			},
+			{
+				outbounder:            &Outbounder{Method: "BADMETHOD$(*@#)*%"},
+				destination:           "dns:foobar.com",
+				expectedUnfilteredURL: "foobar.com",
+				expectedEndpoint:      "http://foobar.com",
+				expectsEnvelope:       false,
+			},
+			{
+				outbounder:            nil,
+				destination:           "dns:https://foobar.com",
+				expectedUnfilteredURL: "https://foobar.com",
+				expectedEndpoint:      "https://foobar.com",
+				expectsEnvelope:       true,
+			},
+			{
+				outbounder:            &Outbounder{Method: "BADMETHOD$(*@#)*%"},
+				destination:           "dns:https://foobar.com",
+				expectedUnfilteredURL: "https://foobar.com",
+				expectedEndpoint:      "https://foobar.com",
+				expectsEnvelope:       false,
+			},
+		}
+	)
+
+	for _, record := range testData {
+		for _, format := range []wrp.Format{wrp.Msgpack, wrp.JSON} {
+			t.Logf("%#v, method=%s, format=%s", record, record.outbounder.method(), format)
+
+			var (
+				expectedContents           = []byte{4, 7, 8, 1}
+				urlFilter                  = new(mockURLFilter)
+				dispatcher, outbounds, err = NewConnectDispatcher(NewTestOutboundMeasures(), record.outbounder, urlFilter)
+			)
+
+			require.NotNil(dispatcher)
+			require.NotNil(outbounds)
+			require.NoError(err)
+
+			urlFilter.On("Filter", record.expectedUnfilteredURL).Once().
+				Return(record.expectedEndpoint, (error)(nil))
+
+			dispatcher.OnDeviceEvent(&device.Event{
+				Type:     device.Connect,
+				Message:  &wrp.Message{Destination: record.destination},
+				Format:   format,
+				Contents: expectedContents,
+			})
+
+			if !record.expectsEnvelope {
+				assert.Equal(0, len(outbounds))
+				continue
+			}
+
+			e := <-outbounds
+			e.cancel()
+			<-e.request.Context().Done()
+
+			assert.Equal(record.outbounder.method(), e.request.Method)
+			assert.Equal(format.ContentType(), e.request.Header.Get("Content-Type"))
+			assert.Equal(record.expectedEndpoint, e.request.URL.String())
+
+			actualContents, err := ioutil.ReadAll(e.request.Body)
+			assert.NoError(err)
+			assert.Equal(expectedContents, actualContents)
+
+			urlFilter.AssertExpectations(t)
+		}
+	}
+}
+
+func testDispatcherOnDeviceDisconnectEventDispatchTo(t *testing.T) {
+	var (
+		assert   = assert.New(t)
+		require  = require.New(t)
+		testData = []struct {
+			outbounder            *Outbounder
+			destination           string
+			expectedUnfilteredURL string
+			expectedEndpoint      string
+			expectsEnvelope       bool
+		}{
+			{
+				outbounder:            nil,
+				destination:           "dns:foobar.com",
+				expectedUnfilteredURL: "foobar.com",
+				expectedEndpoint:      "http://foobar.com",
+				expectsEnvelope:       true,
+			},
+			{
+				outbounder:            &Outbounder{Method: "PATCH"},
+				destination:           "dns:foobar.com",
+				expectedUnfilteredURL: "foobar.com",
+				expectedEndpoint:      "http://foobar.com",
+				expectsEnvelope:       true,
+			},
+			{
+				outbounder:            &Outbounder{Method: "BADMETHOD$(*@#)*%"},
+				destination:           "dns:foobar.com",
+				expectedUnfilteredURL: "foobar.com",
+				expectedEndpoint:      "http://foobar.com",
+				expectsEnvelope:       false,
+			},
+			{
+				outbounder:            nil,
+				destination:           "dns:https://foobar.com",
+				expectedUnfilteredURL: "https://foobar.com",
+				expectedEndpoint:      "https://foobar.com",
+				expectsEnvelope:       true,
+			},
+			{
+				outbounder:            &Outbounder{Method: "BADMETHOD$(*@#)*%"},
+				destination:           "dns:https://foobar.com",
+				expectedUnfilteredURL: "https://foobar.com",
+				expectedEndpoint:      "https://foobar.com",
+				expectsEnvelope:       false,
+			},
+		}
+	)
+
+	for _, record := range testData {
+		for _, format := range []wrp.Format{wrp.Msgpack, wrp.JSON} {
+			t.Logf("%#v, method=%s, format=%s", record, record.outbounder.method(), format)
+
+			var (
+				expectedContents           = []byte{4, 7, 8, 1}
+				urlFilter                  = new(mockURLFilter)
+				dispatcher, outbounds, err = NewDisconnectDispatcher(NewTestOutboundMeasures(), record.outbounder, urlFilter)
+			)
+
+			require.NotNil(dispatcher)
+			require.NotNil(outbounds)
+			require.NoError(err)
+
+			urlFilter.On("Filter", record.expectedUnfilteredURL).Once().
+				Return(record.expectedEndpoint, (error)(nil))
+
+			dispatcher.OnDeviceEvent(&device.Event{
+				Type:     device.Disconnect,
+				Message:  &wrp.Message{Destination: record.destination},
+				Format:   format,
+				Contents: expectedContents,
+			})
+
+			if !record.expectsEnvelope {
+				assert.Equal(0, len(outbounds))
+				continue
+			}
+
+			e := <-outbounds
+			e.cancel()
+			<-e.request.Context().Done()
+
+			assert.Equal(record.outbounder.method(), e.request.Method)
+			assert.Equal(format.ContentType(), e.request.Header.Get("Content-Type"))
+			assert.Equal(record.expectedEndpoint, e.request.URL.String())
+
+			actualContents, err := ioutil.ReadAll(e.request.Body)
+			assert.NoError(err)
+			assert.Equal(expectedContents, actualContents)
+
+			urlFilter.AssertExpectations(t)
+		}
+	}
+}
+
 func TestDispatcher(t *testing.T) {
 	t.Run("IgnoredEvent", testDispatcherIgnoredEvent)
 	t.Run("Unroutable", testDispatcherUnroutable)
 	t.Run("BadURLFilter", testDispatcherBadURLFilter)
 	t.Run("OnDeviceEvent", func(t *testing.T) {
 		t.Run("DispatchEvent", testDispatcherOnDeviceEventDispatchEvent)
+		t.Run("DispatchConnectEvent", testDispatcherOnDeviceConnectEventDispatchEvent)
+		t.Run("DispatchDisconnectEvent", testDispatcherOnDeviceDisconnectEventDispatchEvent)
 		t.Run("EventTimeout", testDispatcherOnDeviceEventEventTimeout)
 		t.Run("FilterError", testDispatcherOnDeviceEventFilterError)
 		t.Run("DispatchTo", testDispatcherOnDeviceEventDispatchTo)
+		t.Run("DispatchConnectTo", testDispatcherOnDeviceConnectEventDispatchTo)
+		t.Run("DispatchDisconnectTo", testDispatcherOnDeviceDisconnectEventDispatchTo)
 	})
 }

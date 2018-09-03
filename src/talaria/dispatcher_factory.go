@@ -13,7 +13,6 @@ type CreateDispatcherFactory func(om OutboundMeasures, o *Outbounder, urlFilter 
 
 type dispatcherRegistry struct {
 	errorLog    log.Logger
-	infoLog     log.Logger
 	dispatchers map[string]CreateDispatcherFactory
 }
 
@@ -22,7 +21,6 @@ func initRegistry(logger log.Logger) *dispatcherRegistry {
 
 	dRegistry := &dispatcherRegistry {
 		errorLog:    logging.Error(logger),
-		infoLog:     logging.Info(logger),
 		dispatchers: dispatcherFactories,
 	}
 
@@ -44,7 +42,6 @@ func (r *dispatcherRegistry) register(name string, factory CreateDispatcherFacto
 		r.errorLog.Log(logging.MessageKey(), "Already registered dispatcher ", "name", name)
 	}
 
-	r.infoLog.Log(logging.MessageKey(), "Registered dispatcher", "name", name)
 	r.dispatchers[name] = factory
 }
 
