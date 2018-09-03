@@ -19,7 +19,7 @@ type dispatcherRegistry struct {
 func initRegistry(logger log.Logger) *dispatcherRegistry {
 	dispatcherFactories := make(map[string]CreateDispatcherFactory)
 
-	dRegistry := &dispatcherRegistry {
+	dRegistry := &dispatcherRegistry{
 		errorLog:    logging.Error(logger),
 		dispatchers: dispatcherFactories,
 	}

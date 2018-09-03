@@ -230,7 +230,7 @@ func (o *Outbounder) clientTimeout() time.Duration {
 
 // Start spawns all necessary goroutines and returns a device.Listener
 func (o *Outbounder) Start(om OutboundMeasures, dispatcherFactory Factory, listener string) (device.Listener, error) {
-	logging.Info(o.logger()).Log(logging.MessageKey(), "Starting outbounder", "listener" , listener)
+	logging.Info(o.logger()).Log(logging.MessageKey(), "Starting outbounder", "listener", listener)
 	dispatcher, outbounds, err := dispatcherFactory.CreateDispatcher(listener, om, o, nil)
 	if err != nil {
 		return nil, err

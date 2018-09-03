@@ -39,8 +39,8 @@ var ErrOutboundQueueFull = errors.New("Outbound message queue full")
 
 const (
 	MessageReceivedDispatcher = "received"
-	ConnectDispatcher = "connect"
-	DisconnectDispatcher = "disconnect"
+	ConnectDispatcher         = "connect"
+	DisconnectDispatcher      = "disconnect"
 )
 
 // outboundEnvelope is a tuple of information related to handling an asynchronous HTTP request
@@ -142,8 +142,8 @@ func NewConnectDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFilte
 
 	logger.Log(level.Key(), level.InfoValue(), "eventMap", eventMap)
 
-	return &connectDispatcher {
-		dispatcher: &dispatcher {
+	return &connectDispatcher{
+		dispatcher: &dispatcher{
 			errorLog:          logging.Error(logger),
 			urlFilter:         urlFilter,
 			method:            o.method(),
@@ -154,7 +154,7 @@ func NewConnectDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFilte
 			droppedMessages:   om.DroppedMessages,
 			outbounds:         outbounds,
 			dispatcherName:    ConnectDispatcher,
-	}}, outbounds, nil
+		}}, outbounds, nil
 }
 
 // NewDisconnectDispatcher constructs a Dispatcher which sends envelopes of disconnect type via the returned channel.
@@ -177,8 +177,8 @@ func NewDisconnectDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFi
 
 	logger.Log(level.Key(), level.InfoValue(), "eventMap", eventMap)
 
-	return &disconnectDispatcher {
-		dispatcher: &dispatcher {
+	return &disconnectDispatcher{
+		dispatcher: &dispatcher{
 			errorLog:          logging.Error(logger),
 			urlFilter:         urlFilter,
 			method:            o.method(),
@@ -295,15 +295,15 @@ func (d *dispatcher) routeMessage(event *device.Event) {
 	}
 }
 
-func (d * dispatcher) DispatcherName() string {
+func (d *dispatcher) DispatcherName() string {
 	return d.dispatcherName
 }
 
-func (d * connectDispatcher) DispatcherName() string {
+func (d *connectDispatcher) DispatcherName() string {
 	return d.dispatcher.dispatcherName
 }
 
-func (d * disconnectDispatcher) DispatcherName() string {
+func (d *disconnectDispatcher) DispatcherName() string {
 	return d.dispatcher.dispatcherName
 }
 
@@ -312,21 +312,21 @@ func (d *dispatcher) OnDeviceEvent(event *device.Event) {
 		return
 	}
 
-	d.routeMessage(event);
+	d.routeMessage(event)
 }
 
-func (d *connectDispatcher) OnDeviceEvent(event *device.Event)  {
+func (d *connectDispatcher) OnDeviceEvent(event *device.Event) {
 	if event.Type != device.Connect {
 		return
 	}
 
-	d.dispatcher.routeMessage(event);
+	d.dispatcher.routeMessage(event)
 }
 
-func (d *disconnectDispatcher) OnDeviceEvent(event *device.Event)  {
+func (d *disconnectDispatcher) OnDeviceEvent(event *device.Event) {
 	if event.Type != device.Disconnect {
 		return
 	}
 
-	d.dispatcher.routeMessage(event);
+	d.dispatcher.routeMessage(event)
 }

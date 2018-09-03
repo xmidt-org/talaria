@@ -44,7 +44,7 @@ const (
 	defaultVnodeCount int = 211
 )
 
-var availableListeners = []string { MessageReceivedDispatcher, ConnectDispatcher, DisconnectDispatcher }
+var availableListeners = []string{MessageReceivedDispatcher, ConnectDispatcher, DisconnectDispatcher}
 
 func newDeviceManager(logger log.Logger, r xmetrics.Registry, v *viper.Viper) (device.Manager, error) {
 	deviceOptions, err := device.NewOptions(logger, v.Sub(device.DeviceManagerKey))
@@ -60,11 +60,11 @@ func newDeviceManager(logger log.Logger, r xmetrics.Registry, v *viper.Viper) (d
 	for _, l := range availableListeners {
 
 		listenerConfig := deviceListenerConfig.Sub(l)
-		
+
 		if listenerConfig == nil {
 			continue
 		}
-		
+
 		outbounder, err := NewOutbounder(logger, listenerConfig)
 
 		if err != nil {
@@ -80,7 +80,7 @@ func newDeviceManager(logger log.Logger, r xmetrics.Registry, v *viper.Viper) (d
 		listeners = append(listeners, outboundListener)
 	}
 
-	if len(listeners)  > 0 {
+	if len(listeners) > 0 {
 		deviceOptions.Listeners = listeners
 	} else {
 		// so that old configs remain compatible, create the default listener
@@ -97,7 +97,7 @@ func newDeviceManager(logger log.Logger, r xmetrics.Registry, v *viper.Viper) (d
 		}
 
 		deviceOptions.MetricsProvider = r
-		deviceOptions.Listeners = []device.Listener {
+		deviceOptions.Listeners = []device.Listener{
 			outboundListener,
 		}
 	}
