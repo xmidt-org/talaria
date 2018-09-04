@@ -11,6 +11,7 @@ import (
 // CreateDispatcherFactory is a type alias for creating new dispatcher types.
 type CreateDispatcherFactory func(om OutboundMeasures, o *Outbounder, urlFilter URLFilter) (Dispatcher, <-chan outboundEnvelope, error)
 
+// dispatcherRegistry represents the internal registry of event dispatchers
 type dispatcherRegistry struct {
 	errorLog    log.Logger
 	dispatchers map[string]CreateDispatcherFactory
@@ -45,7 +46,9 @@ func (r *dispatcherRegistry) register(name string, factory CreateDispatcherFacto
 	r.dispatchers[name] = factory
 }
 
+// Factory represents the dispatcher factory interface
 type Factory interface {
+	// CreateDispatcher creates a new dispatcher by dispatcher name
 	CreateDispatcher(name string, om OutboundMeasures, o *Outbounder, urlFilter URLFilter) (Dispatcher, <-chan outboundEnvelope, error)
 }
 
