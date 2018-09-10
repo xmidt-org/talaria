@@ -25,6 +25,10 @@ import (
 	"github.com/Comcast/webpa-common/secure"
 	"github.com/Comcast/webpa-common/secure/handler"
 	"github.com/Comcast/webpa-common/secure/key"
+	"github.com/Comcast/webpa-common/service"
+	"github.com/Comcast/webpa-common/service/servicehttp"
+	"github.com/Comcast/webpa-common/xhttp"
+	"github.com/Comcast/webpa-common/xhttp/xfilter"
 	"github.com/SermoDigital/jose/jwt"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -54,7 +58,7 @@ type JWTValidator struct {
 	Custom secure.JWTValidatorFactory `json:"custom"`
 }
 
-func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper, controlConstructor func(http.Handler) http.Handler) (http.Handler, error) {
+func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper, a service.Accessor, controlConstructor func(http.Handler) http.Handler) (http.Handler, error) {
 	var (
 		authKeys                     = v.GetStringSlice("inbound.authKey")
 		r                            = mux.NewRouter()
@@ -124,6 +128,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 	apiHandler.Handle(
 		"/device",
 		authorizationDecoratorDevice(
+			// TODO: add other constructors
 			device.UseID.FromHeader(&device.ConnectHandler{
 				Logger:    logger,
 				Connector: manager,
@@ -134,7 +139,15 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 	// the connect handler is not decorated for authorization
 	apiHandler.Handle(
 		"/device",
-		alice.New(controlConstructor, device.UseID.FromHeader).Then(
+		alice.New(
+			controlConstructor,
+			xfilter.NewConstructor(
+				xfilter.WithFilters(
+					servicehttp.NewHashFilter(a, &xhttp.Error{Code: http.StatusGone}), // TODO: add self
+				),
+			),
+			device.UseID.FromHeader,
+		).Then(
 			&device.ConnectHandler{
 				Logger:    logger,
 				Connector: manager,
