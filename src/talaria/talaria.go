@@ -93,18 +93,26 @@ func talaria(arguments []string) int {
 		return 2
 	}
 
+	e, err := servicecfg.NewEnvironment(logger, v.Sub("service"))
+	if err != nil {
+		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to initialize service discovery environment", logging.ErrorKey(), err)
+		return 4
+	}
+
 	controlConstructor, err := StartControlServer(logger, manager, metricsRegistry, v)
 	if err != nil {
 		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to create control server", logging.ErrorKey(), err)
 		return 3
 	}
 
-	//
-	// Initialize the manager first, as if it fails we don't want to advertise this service
-	//
-
 	health := webPA.Health.NewHealth(logger, devicehealth.Options...)
-	primaryHandler, err := NewPrimaryHandler(logger, manager, v, controlConstructor)
+	var a *service.UpdatableAccessor
+	if e != nil {
+		// service discovery is optional
+		a = new(service.UpdatableAccessor)
+	}
+
+	primaryHandler, err := NewPrimaryHandler(logger, manager, v, a, controlConstructor)
 	if err != nil {
 		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to start device management", logging.ErrorKey(), err)
 		return 4
@@ -115,16 +123,6 @@ func talaria(arguments []string) int {
 	if err != nil {
 		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to start device manager", logging.ErrorKey(), err)
 		return 5
-	}
-
-	//
-	// Now, initialize the service discovery infrastructure
-	//
-
-	e, err := servicecfg.NewEnvironment(logger, v.Sub("service"))
-	if err != nil {
-		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to initialize service discovery environment", logging.ErrorKey(), err)
-		return 4
 	}
 
 	if e != nil {
@@ -139,6 +137,7 @@ func talaria(arguments []string) int {
 			monitor.WithListeners(
 				monitor.NewMetricsListener(metricsRegistry),
 				monitor.NewRegistrarListener(logger, e, true),
+				monitor.NewAccessorListener(e.AccessorFactory(), a.Update),
 
 				// this rehasher will handle device disconnects in response to service discovery events
 				rehasher.New(
