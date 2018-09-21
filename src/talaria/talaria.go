@@ -110,7 +110,7 @@ func talaria(arguments []string) int {
 		return 4
 	}
 
-	_, talariaServer := webPA.Prepare(logger, health, metricsRegistry, primaryHandler)
+	_, talariaServer, _ := webPA.Prepare(logger, health, metricsRegistry, primaryHandler)
 	waitGroup, shutdown, err := concurrent.Execute(talariaServer)
 	if err != nil {
 		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to start device manager", logging.ErrorKey(), err)
