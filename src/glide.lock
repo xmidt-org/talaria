@@ -1,5 +1,5 @@
 hash: 74839fdf245abc32ee282905dbb58dea8430f275b2baced55bbcb438174e341d
-updated: 2018-09-24T18:02:29.735801073-07:00
+updated: 2018-09-24T18:05:56.46073024-07:00
 imports:
 - name: github.com/armon/go-metrics
   version: f0300d1749da6fa982027e449ec0c7a145510c3c
@@ -36,6 +36,7 @@ imports:
   - service/consul
   - service/monitor
   - service/servicecfg
+  - service/servicehttp
   - service/zk
   - types
   - wrp
@@ -43,6 +44,7 @@ imports:
   - xhttp/converter
   - xhttp/gate
   - xhttp/xcontext
+  - xhttp/xfilter
   - xlistener
   - xmetrics
   - xviper
