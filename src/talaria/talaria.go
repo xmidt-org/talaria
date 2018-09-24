@@ -118,7 +118,7 @@ func talaria(arguments []string) int {
 		return 4
 	}
 
-	_, talariaServer := webPA.Prepare(logger, health, metricsRegistry, primaryHandler)
+	_, talariaServer, done := webPA.Prepare(logger, health, metricsRegistry, primaryHandler)
 	waitGroup, shutdown, err := concurrent.Execute(talariaServer)
 	if err != nil {
 		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to start device manager", logging.ErrorKey(), err)
@@ -159,11 +159,24 @@ func talaria(arguments []string) int {
 
 	signals := make(chan os.Signal, 10)
 	signal.Notify(signals)
-	s := server.SignalWait(logger, signals, os.Interrupt, os.Kill)
-	logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "exiting due to signal", "signal", s)
+	for exit := false; !exit; {
+		select {
+		case s := <-signals:
+			if s != os.Kill && s != os.Interrupt {
+				logger.Log(level.Key(), level.InfoValue(), logging.MessageKey(), "ignoring signal", "signal", s)
+			} else {
+				logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "exiting due to signal", "signal", s)
+				exit = true
+			}
+
+		case <-done:
+			logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "one or more servers exited")
+			exit = true
+		}
+	}
+
 	close(shutdown)
 	waitGroup.Wait()
-
 	return 0
 }
 
