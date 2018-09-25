@@ -143,7 +143,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 			controlConstructor,
 			xfilter.NewConstructor(
 				xfilter.WithFilters(
-					servicehttp.NewHashFilter(a, &xhttp.Error{Code: http.StatusGone}), // TODO: add self
+					servicehttp.NewHashFilter(a, &xhttp.Error{Code: http.StatusGone}, v.GetString("server")),
 				),
 			),
 			device.UseID.FromHeader,
