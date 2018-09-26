@@ -22,12 +22,14 @@ import (
 
 	"github.com/Comcast/webpa-common/device"
 	"github.com/Comcast/webpa-common/logging"
+	"github.com/Comcast/webpa-common/logging/logginghttp"
 	"github.com/Comcast/webpa-common/secure"
 	"github.com/Comcast/webpa-common/secure/handler"
 	"github.com/Comcast/webpa-common/secure/key"
 	"github.com/Comcast/webpa-common/service"
 	"github.com/Comcast/webpa-common/service/servicehttp"
 	"github.com/Comcast/webpa-common/xhttp"
+	"github.com/Comcast/webpa-common/xhttp/xcontext"
 	"github.com/Comcast/webpa-common/xhttp/xfilter"
 	"github.com/SermoDigital/jose/jwt"
 	"github.com/go-kit/kit/log"
@@ -140,6 +142,14 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 	apiHandler.Handle(
 		"/device",
 		alice.New(
+			xcontext.Populate(
+				0,
+				logginghttp.SetLogger(
+					logger,
+					logginghttp.Header(device.DeviceNameHeader, device.DeviceNameHeader),
+					logginghttp.RequestInfo,
+				),
+			),
 			controlConstructor,
 			xfilter.NewConstructor(
 				xfilter.WithFilters(
