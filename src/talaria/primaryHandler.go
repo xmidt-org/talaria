@@ -60,7 +60,7 @@ type JWTValidator struct {
 	Custom secure.JWTValidatorFactory `json:"custom"`
 }
 
-func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper, a service.Accessor, controlConstructor func(http.Handler) http.Handler) (http.Handler, error) {
+func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper, a service.Accessor, e service.Environment, controlConstructor func(http.Handler) http.Handler) (http.Handler, error) {
 	var (
 		authKeys                     = v.GetStringSlice("inbound.authKey")
 		r                            = mux.NewRouter()
@@ -153,7 +153,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 			controlConstructor,
 			xfilter.NewConstructor(
 				xfilter.WithFilters(
-					servicehttp.NewHashFilter(a, &xhttp.Error{Code: http.StatusGone}, v.GetString("server")),
+					servicehttp.NewHashFilter(a, &xhttp.Error{Code: http.StatusGone}, e.IsRegistered),
 				),
 			),
 			device.UseID.FromHeader,
