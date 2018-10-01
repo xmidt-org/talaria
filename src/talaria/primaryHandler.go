@@ -60,7 +60,7 @@ type JWTValidator struct {
 	Custom secure.JWTValidatorFactory `json:"custom"`
 }
 
-func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper, a service.Accessor, controlConstructor func(http.Handler) http.Handler) (http.Handler, error) {
+func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper, a service.Accessor, e service.Environment, controlConstructor func(http.Handler) http.Handler) (http.Handler, error) {
 	var (
 		authKeys                     = v.GetStringSlice("inbound.authKey")
 		r                            = mux.NewRouter()
@@ -139,25 +139,32 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 	).HeadersRegexp("Authorization", ".*")
 
 	// the connect handler is not decorated for authorization
-	apiHandler.Handle(
-		"/device",
-		alice.New(
-			xcontext.Populate(
-				0,
-				logginghttp.SetLogger(
-					logger,
-					logginghttp.Header(device.DeviceNameHeader, device.DeviceNameHeader),
-					logginghttp.RequestInfo,
-				),
+	deviceDecorator := alice.New(
+		xcontext.Populate(
+			0,
+			logginghttp.SetLogger(
+				logger,
+				logginghttp.Header(device.DeviceNameHeader, device.DeviceNameHeader),
+				logginghttp.RequestInfo,
 			),
-			controlConstructor,
+		),
+		controlConstructor,
+		device.UseID.FromHeader,
+	)
+
+	if a != nil && e != nil {
+		deviceDecorator.Append(
 			xfilter.NewConstructor(
 				xfilter.WithFilters(
-					servicehttp.NewHashFilter(a, &xhttp.Error{Code: http.StatusGone}, v.GetString("server")),
+					servicehttp.NewHashFilter(a, &xhttp.Error{Code: http.StatusGone}, e.IsRegistered),
 				),
 			),
-			device.UseID.FromHeader,
-		).Then(
+		)
+	}
+
+	apiHandler.Handle(
+		"/device",
+		deviceDecorator.Then(
 			&device.ConnectHandler{
 				Logger:    logger,
 				Connector: manager,
