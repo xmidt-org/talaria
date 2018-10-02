@@ -1,5 +1,5 @@
-hash: 219afd3dcd15a1f374ff9e7f55cb42088e03cf57d86c3b966c171382f0391272
-updated: 2018-10-01T10:44:19.214528994-07:00
+hash: 9cc059500c6fa76c4bc81b4a530f50e817b1423d67e25acee9de97deae2daee3
+updated: 2018-10-02T11:13:50.204661112-07:00
 imports:
 - name: github.com/armon/go-metrics
   version: f0300d1749da6fa982027e449ec0c7a145510c3c
@@ -14,7 +14,7 @@ imports:
   subpackages:
   - linux
 - name: github.com/Comcast/webpa-common
-  version: c9b7c447c9aaa50f8ef1bf4766ef0e0cff4bb9e7
+  version: 636e0498d8281b83e416a991cfaf5bc52e7aa95c
   subpackages:
   - concurrent
   - convey
