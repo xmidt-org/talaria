@@ -22,9 +22,15 @@ import (
 
 	"github.com/Comcast/webpa-common/device"
 	"github.com/Comcast/webpa-common/logging"
+	"github.com/Comcast/webpa-common/logging/logginghttp"
 	"github.com/Comcast/webpa-common/secure"
 	"github.com/Comcast/webpa-common/secure/handler"
 	"github.com/Comcast/webpa-common/secure/key"
+	"github.com/Comcast/webpa-common/service"
+	"github.com/Comcast/webpa-common/service/servicehttp"
+	"github.com/Comcast/webpa-common/xhttp"
+	"github.com/Comcast/webpa-common/xhttp/xcontext"
+	"github.com/Comcast/webpa-common/xhttp/xfilter"
 	"github.com/SermoDigital/jose/jwt"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -54,7 +60,7 @@ type JWTValidator struct {
 	Custom secure.JWTValidatorFactory `json:"custom"`
 }
 
-func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper, controlConstructor func(http.Handler) http.Handler) (http.Handler, error) {
+func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper, a service.Accessor, e service.Environment, controlConstructor func(http.Handler) http.Handler) (http.Handler, error) {
 	var (
 		authKeys                     = v.GetStringSlice("inbound.authKey")
 		r                            = mux.NewRouter()
@@ -124,6 +130,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 	apiHandler.Handle(
 		"/device",
 		authorizationDecoratorDevice(
+			// TODO: add other constructors
 			device.UseID.FromHeader(&device.ConnectHandler{
 				Logger:    logger,
 				Connector: manager,
@@ -132,9 +139,32 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 	).HeadersRegexp("Authorization", ".*")
 
 	// the connect handler is not decorated for authorization
+	deviceDecorator := alice.New(
+		xcontext.Populate(
+			0,
+			logginghttp.SetLogger(
+				logger,
+				logginghttp.Header(device.DeviceNameHeader, device.DeviceNameHeader),
+				logginghttp.RequestInfo,
+			),
+		),
+		controlConstructor,
+		device.UseID.FromHeader,
+	)
+
+	if a != nil && e != nil {
+		deviceDecorator.Append(
+			xfilter.NewConstructor(
+				xfilter.WithFilters(
+					servicehttp.NewHashFilter(a, &xhttp.Error{Code: http.StatusGone}, e.IsRegistered),
+				),
+			),
+		)
+	}
+
 	apiHandler.Handle(
 		"/device",
-		alice.New(controlConstructor, device.UseID.FromHeader).Then(
+		deviceDecorator.Then(
 			&device.ConnectHandler{
 				Logger:    logger,
 				Connector: manager,
