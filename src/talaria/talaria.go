@@ -136,6 +136,7 @@ func talaria(arguments []string) int {
 			monitor.WithEnvironment(e),
 			monitor.WithListeners(
 				monitor.NewMetricsListener(metricsRegistry),
+				monitor.NewRegistrarListener(logger, e, true),
 				monitor.NewAccessorListener(e.AccessorFactory(), a.Update),
 
 				// this rehasher will handle device disconnects in response to service discovery events
