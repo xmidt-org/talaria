@@ -18,6 +18,8 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/Comcast/webpa-common/xresolver"
+	"github.com/Comcast/webpa-common/xresolver/consul"
 	"net/http"
 	"time"
 
@@ -73,7 +75,12 @@ type Outbounder struct {
 // NewOutbounder returns an Outbounder unmarshalled from a Viper environment.
 // This function allows the Viper instance to be nil, in which case a default
 // Outbounder is returned.
-func NewOutbounder(logger log.Logger, v *viper.Viper) (o *Outbounder, err error) {
+func NewOutbounder(logger log.Logger, v *viper.Viper) (o *Outbounder, watcher *consul.ConsulWatcher, err error) {
+	options := consul.Options{
+		Watch:  make(map[string]string),
+		Logger: logger,
+	}
+
 	o = &Outbounder{
 		Method:            DefaultMethod,
 		RequestTimeout:    DefaultRequestTimeout,
@@ -93,6 +100,11 @@ func NewOutbounder(logger log.Logger, v *viper.Viper) (o *Outbounder, err error)
 	if v != nil {
 		err = v.Unmarshal(o)
 	}
+	for k := range o.EventEndpoints {
+		options.Watch[k] = "caduceus"
+	}
+	watcher = consul.NewConsulWatcher(options)
+	o.Transport.DialContext = xresolver.NewResolver(xresolver.DefaultDialer, watcher).DialContext
 
 	return
 }

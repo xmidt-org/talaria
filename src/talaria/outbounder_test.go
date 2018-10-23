@@ -78,7 +78,7 @@ func ExampleOutbounder() {
 		return
 	}
 
-	o, err := NewOutbounder(logging.DefaultLogger(), v)
+	o, _, err := NewOutbounder(logging.DefaultLogger(), v)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -115,11 +115,11 @@ func ExampleOutbounder() {
 
 func testOutbounderDefaults(t *testing.T) {
 	require := require.New(t)
-	nilViper, err := NewOutbounder(nil, nil)
+	nilViper, _, err := NewOutbounder(nil, nil)
 	require.NotNil(nilViper)
 	require.NoError(err)
 
-	withViper, err := NewOutbounder(nil, viper.New())
+	withViper, _, err := NewOutbounder(nil, viper.New())
 	require.NotNil(withViper)
 	require.NoError(err)
 
@@ -177,7 +177,7 @@ func testOutbounderConfiguration(t *testing.T) {
 	v.SetConfigType("json")
 	require.NoError(v.ReadConfig(bytes.NewReader(configuration)))
 
-	o, err := NewOutbounder(logger, v)
+	o, _, err := NewOutbounder(logger, v)
 	require.NotNil(o)
 	require.NoError(err)
 
