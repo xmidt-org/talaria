@@ -126,34 +126,31 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		Registry: manager,
 	})).Methods("GET")
 
-	// the connect handler decorated for authorization
-	apiHandler.Handle(
-		"/device",
-		authorizationDecoratorDevice(
-			// TODO: add other constructors
-			device.UseID.FromHeader(&device.ConnectHandler{
-				Logger:    logger,
-				Connector: manager,
-			}),
-		),
-	).HeadersRegexp("Authorization", ".*")
-
-	// the connect handler is not decorated for authorization
-	deviceDecorator := alice.New(
-		xcontext.Populate(
-			0,
-			logginghttp.SetLogger(
-				logger,
-				logginghttp.Header(device.DeviceNameHeader, device.DeviceNameHeader),
-				logginghttp.RequestInfo,
+	var (
+		// the basic decorator chain all device connect handlers use
+		deviceConnectChain = alice.New(
+			xcontext.Populate(
+				0,
+				logginghttp.SetLogger(
+					logger,
+					logginghttp.Header(device.DeviceNameHeader, device.DeviceNameHeader),
+					logginghttp.RequestInfo,
+				),
 			),
-		),
-		controlConstructor,
-		device.UseID.FromHeader,
+			controlConstructor,
+			device.UseID.FromHeader,
+		)
+
+		connectHandler = &device.ConnectHandler{
+			Logger:    logger,
+			Connector: manager,
+		}
 	)
 
 	if a != nil && e != nil {
-		deviceDecorator.Append(
+		// if a service discovery environment was configured, append the hash filter to enforce
+		// device hashing
+		deviceConnectChain.Append(
 			xfilter.NewConstructor(
 				xfilter.WithFilters(
 					servicehttp.NewHashFilter(a, &xhttp.Error{Code: http.StatusGone}, e.IsRegistered),
@@ -162,13 +159,16 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		)
 	}
 
+	// the secured variant of the device connect handler
 	apiHandler.Handle(
 		"/device",
-		deviceDecorator.Then(
-			&device.ConnectHandler{
-				Logger:    logger,
-				Connector: manager,
-			}),
+		deviceConnectChain.Append(authorizationDecoratorDevice).Then(connectHandler),
+	).HeadersRegexp("Authorization", ".*")
+
+	// fail open if no authorization header is sent
+	apiHandler.Handle(
+		"/device",
+		deviceConnectChain.Then(connectHandler),
 	)
 
 	apiHandler.Handle(
