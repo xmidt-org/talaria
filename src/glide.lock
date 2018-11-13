@@ -1,5 +1,5 @@
-hash: 3a8e4d2d182376ad308a68ccdf59e25127b7f4fc824428c091ecf521c9ec99f2
-updated: 2018-11-09T12:31:54.842972-08:00
+hash: 4cb946e5a91197bbe3eeb5eff3c1fb4104b8d3ba097c4bb4eaf695b927a0121a
+updated: 2018-11-13T10:14:13.959533-08:00
 imports:
 - name: github.com/armon/go-metrics
   version: 783273d703149aaeb9897cf58613d5af48861c25
@@ -14,7 +14,7 @@ imports:
   subpackages:
   - linux
 - name: github.com/Comcast/webpa-common
-  version: 11dadbaad9090c02bf6c39740506b91005cc8283
+  version: 2b96ef24e279d63f6f92a0a78972cb202f3903ab
   subpackages:
   - capacitor
   - clock
@@ -58,7 +58,7 @@ imports:
 - name: github.com/fsnotify/fsnotify
   version: c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9
 - name: github.com/go-kit/kit
-  version: 4dc7be5d2d12881735283bcab7352178e190fc71
+  version: 12210fb6ace19e0496167bb3e667dcd91fa9f69b
   subpackages:
   - endpoint
   - log
@@ -83,8 +83,6 @@ imports:
   - util/conn
 - name: github.com/go-logfmt/logfmt
   version: 390ab7935ee28ec6b286364bba9b4dd6410cb3d5
-- name: github.com/go-stack/stack
-  version: 817915b46b97fd7bb80e8ab6b69f01a53ac3eebf
 - name: github.com/golang/protobuf
   version: b4deda0973fb4c70b50d226b1af49f3da59f5265
   subpackages:
