@@ -28,10 +28,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testDispatcherIgnoredEvent(t *testing.T) {
+func testDispatcherConnectEvent(t *testing.T) {
 	var (
 		assert                     = assert.New(t)
 		require                    = require.New(t)
+		d                          = new(device.MockDevice)
 		dispatcher, outbounds, err = NewDispatcher(NewTestOutboundMeasures(), nil, nil)
 	)
 
@@ -39,8 +40,12 @@ func testDispatcherIgnoredEvent(t *testing.T) {
 	require.NotNil(outbounds)
 	require.NoError(err)
 
-	dispatcher.OnDeviceEvent(&device.Event{Type: device.Connect})
+	d.On("ID").Return(device.ID("mac:123412341234"))
+	d.On("PartnerIDs").Return([]string{"partner-1"})
+
+	dispatcher.OnDeviceEvent(&device.Event{Type: device.Connect, Device: d})
 	assert.Equal(0, len(outbounds))
+	d.AssertExpectations(t)
 }
 
 func testDispatcherUnroutable(t *testing.T) {
@@ -339,7 +344,7 @@ func testDispatcherOnDeviceEventDispatchTo(t *testing.T) {
 }
 
 func TestDispatcher(t *testing.T) {
-	t.Run("IgnoredEvent", testDispatcherIgnoredEvent)
+	t.Run("ConnectEvent", testDispatcherConnectEvent)
 	t.Run("Unroutable", testDispatcherUnroutable)
 	t.Run("BadURLFilter", testDispatcherBadURLFilter)
 	t.Run("OnDeviceEvent", func(t *testing.T) {
