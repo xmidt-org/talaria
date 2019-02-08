@@ -61,6 +61,7 @@ type dispatcher struct {
 	method            string
 	timeout           time.Duration
 	authorizationKeys []string
+	source            string
 	eventMap          event.MultiMap
 	queueSize         metrics.Gauge
 	droppedMessages   metrics.Counter
@@ -163,6 +164,23 @@ func (d *dispatcher) dispatchEvent(eventType, contentType string, contents []byt
 	return nil
 }
 
+func (d *dispatcher) encodeAndDispatchEvent(eventType string, format wrp.Format, message *wrp.Message) error {
+	var (
+		contents []byte
+		encoder  = wrp.NewEncoderBytes(&contents, format)
+	)
+
+	if err := encoder.Encode(message); err != nil {
+		return err
+	}
+
+	if err := d.dispatchEvent(eventType, format.ContentType(), contents); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (d *dispatcher) dispatchTo(unfiltered string, contentType string, contents []byte) error {
 	url, err := d.urlFilter.Filter(unfiltered)
 	if err != nil {
@@ -181,28 +199,40 @@ func (d *dispatcher) dispatchTo(unfiltered string, contentType string, contents 
 }
 
 func (d *dispatcher) OnDeviceEvent(event *device.Event) {
-	if event.Type != device.MessageReceived {
-		return
-	}
+	switch event.Type {
+	case device.Connect:
+		eventType, message := newOnlineMessage(d.source, event.Device)
+		if err := d.encodeAndDispatchEvent(eventType, wrp.Msgpack, message); err != nil {
+			d.errorLog.Log(logging.MessageKey(), "Error dispatching online event", "eventType", eventType, "destination", message.Destination, logging.ErrorKey(), err)
+		}
 
-	if routable, ok := event.Message.(wrp.Routable); ok {
-		var (
-			destination = routable.To()
-			contentType = event.Format.ContentType()
-		)
+	case device.Disconnect:
+		// TODO: FIgure out how to get the reason for closure
+		eventType, message := newOfflineMessage(d.source, "unknown", event.Device)
+		if err := d.encodeAndDispatchEvent(eventType, wrp.Msgpack, message); err != nil {
+			d.errorLog.Log(logging.MessageKey(), "Error dispatching offline event", "eventType", eventType, "destination", message.Destination, logging.ErrorKey(), err)
+		}
 
-		if strings.HasPrefix(destination, EventPrefix) {
-			eventType := destination[len(EventPrefix):]
-			if err := d.dispatchEvent(eventType, contentType, event.Contents); err != nil {
-				d.errorLog.Log(logging.MessageKey(), "Error dispatching event", "destination", destination, logging.ErrorKey(), err)
+	case device.MessageReceived:
+		if routable, ok := event.Message.(wrp.Routable); ok {
+			var (
+				destination = routable.To()
+				contentType = event.Format.ContentType()
+			)
+
+			if strings.HasPrefix(destination, EventPrefix) {
+				eventType := destination[len(EventPrefix):]
+				if err := d.dispatchEvent(eventType, contentType, event.Contents); err != nil {
+					d.errorLog.Log(logging.MessageKey(), "Error dispatching event", "eventType", eventType, "destination", destination, logging.ErrorKey(), err)
+				}
+			} else if strings.HasPrefix(destination, DNSPrefix) {
+				unfilteredURL := destination[len(DNSPrefix):]
+				if err := d.dispatchTo(unfilteredURL, contentType, event.Contents); err != nil {
+					d.errorLog.Log(logging.MessageKey(), "Error dispatching to endpoint", "destination", destination, logging.ErrorKey(), err)
+				}
+			} else {
+				d.errorLog.Log(logging.MessageKey(), "Unroutable destination", "destination", destination)
 			}
-		} else if strings.HasPrefix(destination, DNSPrefix) {
-			unfilteredURL := destination[len(DNSPrefix):]
-			if err := d.dispatchTo(unfilteredURL, contentType, event.Contents); err != nil {
-				d.errorLog.Log(logging.MessageKey(), "Error dispatching to endpoint", "destination", destination, logging.ErrorKey(), err)
-			}
-		} else {
-			d.errorLog.Log(logging.MessageKey(), "Unroutable destination", "destination", destination)
 		}
 	}
 }

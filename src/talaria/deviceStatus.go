@@ -8,8 +8,8 @@ import (
 	"github.com/Comcast/webpa-common/wrp"
 )
 
-func onlineDestination(d device.Interface) string {
-	return fmt.Sprintf("event:device-status/%s/online", d.ID())
+func statusEventType(id device.ID, subtype string) string {
+	return fmt.Sprintf("device-status/%s/%s", id, subtype)
 }
 
 func onlinePayload(t time.Time, d device.Interface) []byte {
@@ -19,19 +19,17 @@ func onlinePayload(t time.Time, d device.Interface) []byte {
 	}`, d.ID(), t.Format(time.RFC3339Nano)))
 }
 
-func newOnlineMessage(source string, d device.Interface) *wrp.Message {
-	return &wrp.Message{
+func newOnlineMessage(source string, d device.Interface) (string, *wrp.Message) {
+	eventType := statusEventType(d.ID(), "online")
+
+	return eventType, &wrp.Message{
 		Type:        wrp.SimpleEventMessageType,
 		Source:      source,
-		Destination: onlineDestination(d),
+		Destination: "event:" + eventType,
 		ContentType: "json",
 		PartnerIDs:  d.PartnerIDs(),
 		Payload:     onlinePayload(time.Now(), d),
 	}
-}
-
-func offlineDestination(d device.Interface) string {
-	return fmt.Sprintf("event:device-status/%s/offline", d.ID())
 }
 
 func offlinePayload(t time.Time, closeReason string, d device.Interface) []byte {
@@ -59,11 +57,13 @@ func offlinePayload(t time.Time, closeReason string, d device.Interface) []byte 
 	))
 }
 
-func newOfflineMessage(source string, closeReason string, d device.Interface) *wrp.Message {
-	return &wrp.Message{
+func newOfflineMessage(source string, closeReason string, d device.Interface) (string, *wrp.Message) {
+	eventType := statusEventType(d.ID(), "offline")
+
+	return eventType, &wrp.Message{
 		Type:        wrp.SimpleEventMessageType,
 		Source:      source,
-		Destination: offlineDestination(d),
+		Destination: "event:" + eventType,
 		ContentType: "json",
 		PartnerIDs:  d.PartnerIDs(),
 		Payload:     offlinePayload(time.Now(), closeReason, d),
