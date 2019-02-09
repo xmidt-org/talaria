@@ -45,6 +45,7 @@ const (
 	DefaultMethod                            = "POST"
 	DefaultRetries                           = 1
 	DefaultWorkerPoolSize      uint          = 100
+	DefaultSource              string        = "localhost"
 	DefaultOutboundQueueSize   uint          = 1000
 	DefaultRequestTimeout      time.Duration = 125 * time.Second
 	DefaultClientTimeout       time.Duration = 160 * time.Second
@@ -64,6 +65,7 @@ type Outbounder struct {
 	EventEndpoints    map[string]interface{} `json:"eventEndpoints"`
 	OutboundQueueSize uint                   `json:"outboundQueueSize"`
 	WorkerPoolSize    uint                   `json:"workerPoolSize"`
+	Source            string                 `json:"source"`
 	Transport         http.Transport         `json:"transport"`
 	ClientTimeout     time.Duration          `json:"clientTimeout"`
 	AuthKey           []string               `json:"authKey"`
@@ -175,6 +177,14 @@ func (o *Outbounder) outboundQueueSize() uint {
 	}
 
 	return DefaultOutboundQueueSize
+}
+
+func (o *Outbounder) source() string {
+	if o != nil && len(o.Source) > 0 {
+		return o.Source
+	}
+
+	return DefaultSource
 }
 
 func (o *Outbounder) workerPoolSize() uint {

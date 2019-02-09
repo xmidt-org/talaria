@@ -143,6 +143,7 @@ func testOutbounderDefaults(t *testing.T) {
 		assert.Equal(DefaultMaxIdleConnsPerHost, transport.MaxIdleConnsPerHost)
 		assert.Equal(DefaultIdleConnTimeout, transport.IdleConnTimeout)
 		assert.Equal(DefaultClientTimeout, o.clientTimeout())
+		assert.Equal(DefaultSource, o.source())
 	}
 }
 
@@ -164,6 +165,7 @@ func testOutbounderConfiguration(t *testing.T) {
 			"outboundQueueSize": 281,
 			"workerPoolSize": 17,
 			"clientTimeout": "1m10s",
+			"source": "talaria.xmidt.comcast.net",
 			"transport": {
 				"maxIdleConns": 5681,
 				"maxIdleConnsPerHost": 99,
@@ -204,6 +206,7 @@ func testOutbounderConfiguration(t *testing.T) {
 	assert.Equal(5681, transport.MaxIdleConns)
 	assert.Equal(99, transport.MaxIdleConnsPerHost)
 	assert.Equal(2*time.Minute+17*time.Second, transport.IdleConnTimeout)
+	assert.Equal("talaria.xmidt.comcast.net", o.source())
 }
 
 func testOutbounderStartError(t *testing.T) {

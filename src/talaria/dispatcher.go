@@ -96,6 +96,7 @@ func NewDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFilter) (Dis
 		authorizationKeys: o.authKey(),
 		eventMap:          eventMap,
 		queueSize:         om.QueueSize,
+		source:            o.source(),
 		droppedMessages:   om.DroppedMessages,
 		outbounds:         outbounds,
 	}, outbounds, nil

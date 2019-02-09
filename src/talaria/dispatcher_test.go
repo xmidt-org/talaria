@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Comcast/webpa-common/convey"
 	"github.com/Comcast/webpa-common/device"
 	"github.com/Comcast/webpa-common/wrp"
 	"github.com/stretchr/testify/assert"
@@ -42,6 +43,9 @@ func testDispatcherConnectEvent(t *testing.T) {
 
 	d.On("ID").Return(device.ID("mac:123412341234"))
 	d.On("PartnerIDs").Return([]string{"partner-1"})
+	d.On("Convey").Return(convey.C(nil))
+	d.On("Trust").Return(device.Untrusted)
+	d.On("ConveyCompliance").Return(convey.Full)
 
 	dispatcher.OnDeviceEvent(&device.Event{Type: device.Connect, Device: d})
 	assert.Equal(0, len(outbounds))
