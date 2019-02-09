@@ -1,5 +1,5 @@
-hash: 94eee343d42227f1147bf74bd692b889818b5aa09e81d6919e40afc00dfa6bcb
-updated: 2019-02-08T10:43:45.088525-08:00
+hash: d8cfacbb2940e1f6edce2fd216c92a270bd305f1e1ab1bf82e49819973e010b0
+updated: 2019-02-09T13:42:37.727488-08:00
 imports:
 - name: github.com/armon/go-metrics
   version: 783273d703149aaeb9897cf58613d5af48861c25
@@ -14,7 +14,7 @@ imports:
   subpackages:
   - linux
 - name: github.com/Comcast/webpa-common
-  version: a80e41190e054263e92efdae84423d12c0272a55
+  version: 752bd49a9e0ed3b4e134ed36b6e97d365944a2db
   subpackages:
   - capacitor
   - clock
@@ -43,6 +43,7 @@ imports:
   - service/zk
   - types
   - wrp
+  - wrp/wrpmeta
   - xhttp
   - xhttp/converter
   - xhttp/gate

@@ -4,9 +4,34 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Comcast/webpa-common/convey"
 	"github.com/Comcast/webpa-common/device"
 	"github.com/Comcast/webpa-common/wrp"
+	"github.com/Comcast/webpa-common/wrp/wrpmeta"
 )
+
+func statusMetadata(d device.Interface) map[string]string {
+	metadata, allFieldsPresent := wrpmeta.NewBuilder().Apply(
+		d.Convey(),
+		wrpmeta.Field{From: "boot-time", To: "/boot-time"},
+		wrpmeta.Field{From: "hw-model", To: "/hw-model"},
+		wrpmeta.Field{From: "hw-manufacturer", To: "/hw-manufacturer"},
+		wrpmeta.Field{From: "hw-serial-number", To: "/hw-serial-number"},
+		wrpmeta.Field{From: "hw-last-reboot-reason", To: "/hw-last-reboot-reason"},
+		wrpmeta.Field{From: "fw-name", To: "/fw-name"},
+		wrpmeta.Field{From: "last-reconnect-reason", To: "/last-reconnect-reason"},
+		wrpmeta.Field{From: "protocol", To: "/protocol"}).
+		Set("/trust", d.Trust().String()).
+		Build()
+
+	if allFieldsPresent {
+		metadata["/compliance"] = d.ConveyCompliance().String()
+	} else {
+		metadata["/compliance"] = convey.MissingFields.String()
+	}
+
+	return metadata
+}
 
 func statusEventType(id device.ID, subtype string) string {
 	return fmt.Sprintf("device-status/%s/%s", id, subtype)
@@ -28,6 +53,7 @@ func newOnlineMessage(source string, d device.Interface) (string, *wrp.Message) 
 		Destination: "event:" + eventType,
 		ContentType: "json",
 		PartnerIDs:  d.PartnerIDs(),
+		Metadata:    statusMetadata(d),
 		Payload:     onlinePayload(time.Now(), d),
 	}
 }
@@ -66,6 +92,7 @@ func newOfflineMessage(source string, closeReason string, d device.Interface) (s
 		Destination: "event:" + eventType,
 		ContentType: "json",
 		PartnerIDs:  d.PartnerIDs(),
+		Metadata:    statusMetadata(d),
 		Payload:     offlinePayload(time.Now(), closeReason, d),
 	}
 }
