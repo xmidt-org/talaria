@@ -143,7 +143,7 @@ func talaria(arguments []string) int {
 				rehasher.New(
 					manager,
 					rehasher.WithLogger(logger),
-					rehasher.WithEnvironment(e),
+					rehasher.WithIsRegistered(e.IsRegistered),
 					rehasher.WithMetricsProvider(metricsRegistry),
 				),
 			),
