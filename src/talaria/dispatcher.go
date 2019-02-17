@@ -208,8 +208,7 @@ func (d *dispatcher) OnDeviceEvent(event *device.Event) {
 		}
 
 	case device.Disconnect:
-		// TODO: FIgure out how to get the reason for closure
-		eventType, message := newOfflineMessage(d.source, "unknown", event.Device)
+		eventType, message := newOfflineMessage(d.source, event.Device)
 		if err := d.encodeAndDispatchEvent(eventType, wrp.Msgpack, message); err != nil {
 			d.errorLog.Log(logging.MessageKey(), "Error dispatching offline event", "eventType", eventType, "destination", message.Destination, logging.ErrorKey(), err)
 		}
