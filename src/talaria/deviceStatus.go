@@ -21,7 +21,7 @@ func statusMetadata(d device.Interface) map[string]string {
 		wrpmeta.Field{From: "fw-name", To: "/fw-name"},
 		wrpmeta.Field{From: "last-reconnect-reason", To: "/last-reconnect-reason"},
 		wrpmeta.Field{From: "protocol", To: "/protocol"}).
-		Set("/trust", d.Trust().String()).
+		Set("/trust", d.Trust()).
 		Build()
 
 	if allFieldsPresent {
@@ -58,7 +58,7 @@ func newOnlineMessage(source string, d device.Interface) (string, *wrp.Message) 
 	}
 }
 
-func offlinePayload(t time.Time, closeReason string, d device.Interface) []byte {
+func offlinePayload(t time.Time, d device.Interface) []byte {
 	statistics := d.Statistics()
 
 	return []byte(fmt.Sprintf(`{
@@ -79,11 +79,11 @@ func offlinePayload(t time.Time, closeReason string, d device.Interface) []byte 
 		statistics.MessagesReceived(),
 		statistics.ConnectedAt().Format(time.RFC3339Nano),
 		statistics.UpTime(),
-		closeReason,
+		d.CloseReason(),
 	))
 }
 
-func newOfflineMessage(source string, closeReason string, d device.Interface) (string, *wrp.Message) {
+func newOfflineMessage(source string, d device.Interface) (string, *wrp.Message) {
 	eventType := statusEventType(d.ID(), "offline")
 
 	return eventType, &wrp.Message{
@@ -93,6 +93,6 @@ func newOfflineMessage(source string, closeReason string, d device.Interface) (s
 		ContentType: "json",
 		PartnerIDs:  d.PartnerIDs(),
 		Metadata:    statusMetadata(d),
-		Payload:     offlinePayload(time.Now(), closeReason, d),
+		Payload:     offlinePayload(time.Now(), d),
 	}
 }
