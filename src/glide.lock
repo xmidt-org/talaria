@@ -1,5 +1,5 @@
-hash: d6fcc8913e566823813eac99cbb9218b158763cbc39ddc17c2985ce7c58bc00f
-updated: 2019-02-20T19:25:37.571823-08:00
+hash: e4e76916d64bdf0c1ecdeee57871371327b3045fb6286870ed4158d8ba61628a
+updated: 2019-02-21T15:38:35.391455-08:00
 imports:
 - name: github.com/armon/go-metrics
   version: 783273d703149aaeb9897cf58613d5af48861c25
@@ -14,7 +14,7 @@ imports:
   subpackages:
   - linux
 - name: github.com/Comcast/webpa-common
-  version: ee36b7e7561c779aa65a66fbef35b46720486987
+  version: 519262a4026bb1cf36420c03d07a3022e5bdcb22
   subpackages:
   - capacitor
   - clock
@@ -86,7 +86,7 @@ imports:
 - name: github.com/go-logfmt/logfmt
   version: 390ab7935ee28ec6b286364bba9b4dd6410cb3d5
 - name: github.com/golang/protobuf
-  version: b4deda0973fb4c70b50d226b1af49f3da59f5265
+  version: 925541529c1fa6821df4e44ce2723319eb2be768
   subpackages:
   - proto
 - name: github.com/gorilla/context
