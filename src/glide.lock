@@ -1,5 +1,5 @@
-hash: e5ebeb4c63bc30cf7f99fa4b5c633d8bf6aafd7b1c9fe47586246737fd8046ce
-updated: 2019-02-17T13:36:53.114597-08:00
+hash: d6fcc8913e566823813eac99cbb9218b158763cbc39ddc17c2985ce7c58bc00f
+updated: 2019-02-20T19:25:37.571823-08:00
 imports:
 - name: github.com/armon/go-metrics
   version: 783273d703149aaeb9897cf58613d5af48861c25
@@ -14,7 +14,7 @@ imports:
   subpackages:
   - linux
 - name: github.com/Comcast/webpa-common
-  version: efad9ae77d96a45da1a3a1a38880745cbe958e90
+  version: ee36b7e7561c779aa65a66fbef35b46720486987
   subpackages:
   - capacitor
   - clock
@@ -156,9 +156,10 @@ imports:
   subpackages:
   - difflib
 - name: github.com/prometheus/client_golang
-  version: 967789050ba94deca04a5e84cce8ad472ce313c1
+  version: 505eaef017263e299324067d40ca2c48f6a2cf50
   subpackages:
   - prometheus
+  - prometheus/internal
   - prometheus/promhttp
 - name: github.com/prometheus/client_model
   version: 99fa1f4be8e564e8a6b613da7fa6f46c9edafc6c
