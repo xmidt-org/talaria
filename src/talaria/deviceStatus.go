@@ -40,7 +40,7 @@ func statusEventType(id device.ID, subtype string) string {
 func onlinePayload(t time.Time, d device.Interface) []byte {
 	return []byte(fmt.Sprintf(`{
 		"id": "%s",
-		"ts": "%s",
+		"ts": "%s"
 	}`, d.ID(), t.Format(time.RFC3339Nano)))
 }
 
@@ -70,7 +70,7 @@ func offlinePayload(t time.Time, d device.Interface) []byte {
 		"messages-received": %d,
 		"connected-at": "%s",
 		"up-time": "%s",
-		"reason-for-closure": "%s",
+		"reason-for-closure": "%s"
 	}`, d.ID(),
 		t.Format(time.RFC3339Nano),
 		statistics.BytesSent(),
