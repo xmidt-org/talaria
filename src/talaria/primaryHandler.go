@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/Comcast/webpa-common/device"
 	"github.com/Comcast/webpa-common/logging"
@@ -31,6 +32,7 @@ import (
 	"github.com/Comcast/webpa-common/xhttp"
 	"github.com/Comcast/webpa-common/xhttp/xcontext"
 	"github.com/Comcast/webpa-common/xhttp/xfilter"
+	"github.com/Comcast/webpa-common/xhttp/xtimeout"
 	"github.com/SermoDigital/jose/jwt"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -49,6 +51,8 @@ const (
 	poolSize = 1000
 
 	DefaultKeyId = "current"
+
+	DefaultInboundTimeout time.Duration = 120 * time.Second
 )
 
 type JWTValidator struct {
@@ -60,9 +64,18 @@ type JWTValidator struct {
 	Custom secure.JWTValidatorFactory `json:"custom"`
 }
 
+func getInboundTimeout(v *viper.Viper) time.Duration {
+	if t, err := time.ParseDuration(v.GetString("inbound.timeout")); err == nil {
+		return t
+	}
+
+	return DefaultInboundTimeout
+}
+
 func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper, a service.Accessor, e service.Environment, controlConstructor func(http.Handler) http.Handler) (http.Handler, error) {
 	var (
 		authKeys                     = v.GetStringSlice("inbound.authKey")
+		inboundTimeout               = getInboundTimeout(v)
 		r                            = mux.NewRouter()
 		apiHandler                   = r.PathPrefix(fmt.Sprintf("%s/%s", baseURI, version)).Subrouter()
 		authorizationDecorator       = func(h http.Handler) http.Handler { return h }
@@ -116,10 +129,19 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		}.Decorate
 	}
 
-	apiHandler.Handle("/device/send", authorizationDecorator(&device.MessageHandler{
-		Logger: logger,
-		Router: manager,
-	})).Methods("POST", "PATCH")
+	apiHandler.Handle(
+		"/device/send",
+		alice.New(
+			authorizationDecorator,
+			xtimeout.NewConstructor(xtimeout.Options{
+				Timeout: inboundTimeout,
+			})).
+			Then(
+				&device.MessageHandler{
+					Logger: logger,
+					Router: manager,
+				}),
+	).Methods("POST", "PATCH")
 
 	apiHandler.Handle("/devices", authorizationDecorator(&device.ListHandler{
 		Logger:   logger,
