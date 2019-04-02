@@ -130,7 +130,6 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		// the basic decorator chain all device connect handlers use
 		deviceConnectChain = alice.New(
 			xcontext.Populate(
-				0,
 				logginghttp.SetLogger(
 					logger,
 					logginghttp.Header(device.DeviceNameHeader, device.DeviceNameHeader),

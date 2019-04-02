@@ -67,7 +67,7 @@ func StartControlServer(logger log.Logger, manager device.Manager, registry xmet
 		Methods("GET")
 
 	server := xhttp.NewServer(options)
-	server.Handler = xcontext.Populate(0, logginghttp.SetLogger(logger))(r)
+	server.Handler = xcontext.Populate(logginghttp.SetLogger(logger))(r)
 
 	starter := xhttp.NewStarter(options.StartOptions(), server)
 	go func() {
