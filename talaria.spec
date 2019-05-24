@@ -54,7 +54,6 @@ popd
 %defattr(644, talaria, talaria, 755)
 
 # Binary
-%dir %{_bindir}
 %attr(755, talaria, talaria) %{_bindir}/%{name} 
 
 # Init.d
