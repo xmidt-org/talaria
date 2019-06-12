@@ -53,8 +53,8 @@ install:
 .PHONY: release-artifacts
 release-artifacts: glide-install
 	mkdir -p ./.ignore
-	GOOS=darwin GOARCH=amd64 go build -o ../../.ignore/$(APP)-$(PROGVER).darwin-amd64 $(APP)
-	GOOS=linux  GOARCH=amd64 go build -o ../../.ignore/$(APP)-$(PROGVER).linux-amd64 $(APP)
+	GOOS=darwin GOARCH=amd64 go build -o .ignore/$(APP)-$(PROGVER).darwin-amd64 $(APP)
+	GOOS=linux  GOARCH=amd64 go build -o .ignore/$(APP)-$(PROGVER).linux-amd64 $(APP)
 
 .PHONY: docker
 docker:
