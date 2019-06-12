@@ -39,9 +39,10 @@ import (
 )
 
 const (
-	applicationName       = "talaria"
-	release               = "Developer"
-	defaultVnodeCount int = 211
+	applicationName        = "talaria"
+	release                = "Developer"
+	defaultVnodeCount  int = 211
+	applicationVersion     = "0.1.2"
 )
 
 func newDeviceManager(logger log.Logger, r xmetrics.Registry, v *viper.Viper) (device.Manager, error) {
