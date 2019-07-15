@@ -58,13 +58,12 @@ release-artifacts: glide-install
 
 .PHONY: docker
 docker:
-	docker build -f ./deploy/Dockerfile -t $(APP):$(PROGVER) .
+	docker build -f Dockerfile -t $(APP):$(PROGVER) .
 
 # build docker without running modules
 .PHONY: local-docker
 local-docker:
-	GOOS=linux  GOARCH=amd64 go build -o $(APP)_linux_amd64
-	docker build -f ./deploy/Dockerfile.local -t $(APP):local .
+	docker build -f Dockerfile.local -t $(APP):local .
 
 .PHONY: style
 style:
