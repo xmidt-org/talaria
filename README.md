@@ -24,7 +24,7 @@ Talaria can send events originating from the device as well as emit its own even
 is sent to [Caduceus](https://github.com/xmidt-org/caduceus)
 
 Talaria has three API endpoints to interact with the devices connected to itself.
-A client should talk to Scytale to handle the fannouts to all talarias.
+A [XMiDT](link here) client should not directly query against a talaria.  Instead, they should send a request through [scytale](link here).
 
 #### Device Statistics - `/device/{deviceID}/stat` endpoint
 This will fetch the statistics of the connected device, including information such as uptime and bytes sent.
