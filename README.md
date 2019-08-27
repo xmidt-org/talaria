@@ -39,7 +39,7 @@ Send a WRP message to the device.
 
 ### Control Devices
 A secondary function of talaria is too control the connected devices.
-For more information refer to [Control Server Docs](../docs/control_server.md)
+For more information refer to [Control Server Docs](docs/control_server.md).
 
 #### Gate Devices - `/device/gate` endpoint
 Allow or Deny device to connect to the talaria instance
