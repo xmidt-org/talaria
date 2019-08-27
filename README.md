@@ -38,7 +38,7 @@ Returns all the connected devices and their statistics.
 Send a WRP message to the device.
 
 ### Control Devices
-A secondary function of talaria is too control the connected devices.
+A secondary function of talaria is to control the connected devices.
 For more information refer to [Control Server Docs](docs/control_server.md).
 
 #### Gate Devices - `/device/gate` endpoint
