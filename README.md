@@ -32,7 +32,7 @@ This will fetch the statistics of the connected device, including information su
 #### Get Devices - `/devices` endpoint
 Returns all the connected devices and their statistics.
 
-:warning: _Warning_: this an expensive request. Use with caution
+:warning: _Warning_: this is an expensive request. Use with caution.  This is not recommended to be used in production.
 
 #### Send WRP to Device - `/device/send` endpoint
 Send a WRP message to the device.
