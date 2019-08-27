@@ -22,12 +22,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Comcast/webpa-common/convey"
-	"github.com/Comcast/webpa-common/device"
-	"github.com/Comcast/webpa-common/secure"
-	"github.com/Comcast/webpa-common/wrp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/xmidt-org/webpa-common/convey"
+	"github.com/xmidt-org/webpa-common/device"
+	"github.com/xmidt-org/webpa-common/secure"
+	"github.com/xmidt-org/wrp-go/wrp"
 )
 
 func testDispatcherConnectEvent(t *testing.T) {

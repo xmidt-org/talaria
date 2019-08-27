@@ -26,13 +26,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Comcast/webpa-common/device"
-	"github.com/Comcast/webpa-common/event"
-	"github.com/Comcast/webpa-common/logging"
-	"github.com/Comcast/webpa-common/wrp"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/go-kit/kit/metrics"
+	"github.com/xmidt-org/webpa-common/device"
+	"github.com/xmidt-org/webpa-common/event"
+	"github.com/xmidt-org/webpa-common/logging"
+	"github.com/xmidt-org/wrp-go/wrp"
 )
 
 var ErrOutboundQueueFull = errors.New("Outbound message queue full")

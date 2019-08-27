@@ -4,18 +4,18 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Comcast/webpa-common/device"
-	"github.com/Comcast/webpa-common/device/drain"
-	"github.com/Comcast/webpa-common/logging"
-	"github.com/Comcast/webpa-common/logging/logginghttp"
-	"github.com/Comcast/webpa-common/xhttp"
-	"github.com/Comcast/webpa-common/xhttp/gate"
-	"github.com/Comcast/webpa-common/xhttp/xcontext"
-	"github.com/Comcast/webpa-common/xmetrics"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
+	"github.com/xmidt-org/webpa-common/device"
+	"github.com/xmidt-org/webpa-common/device/drain"
+	"github.com/xmidt-org/webpa-common/logging"
+	"github.com/xmidt-org/webpa-common/logging/logginghttp"
+	"github.com/xmidt-org/webpa-common/xhttp"
+	"github.com/xmidt-org/webpa-common/xhttp/gate"
+	"github.com/xmidt-org/webpa-common/xhttp/xcontext"
+	"github.com/xmidt-org/webpa-common/xmetrics"
 )
 
 const (
