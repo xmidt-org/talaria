@@ -23,7 +23,7 @@ using [WRP Messages](https://github.com/xmidt-org/wrp-c/wiki/Web-Routing-Protoco
 Talaria can send events originating from the device as well as emit its own events. When this occurs, the event
 is sent to [Caduceus](https://github.com/xmidt-org/caduceus)
 
-Talaria has three API endpoints to interact with the devices connected to talaria.
+Talaria has three API endpoints to interact with the devices connected to itself.
 A client should talk to Scytale to handle the fannouts to all talarias.
 
 #### Device Statistics - `/device/{deviceID}/stat` endpoint
