@@ -48,7 +48,7 @@ update-version:
 
 .PHONY: install
 install: go-mod-vendor
-	echo go build -o $(TALARIA) $(PROGVER)
+	echo $(GO) build -o $(TALARIA) $(PROGVER)
 
 .PHONY: release-artifacts
 release-artifacts: go-mod-vendor
