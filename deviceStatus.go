@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Comcast/webpa-common/convey"
-	"github.com/Comcast/webpa-common/device"
-	"github.com/Comcast/webpa-common/wrp"
-	"github.com/Comcast/webpa-common/wrp/wrpmeta"
+	"github.com/xmidt-org/webpa-common/convey"
+	"github.com/xmidt-org/webpa-common/device"
+	"github.com/xmidt-org/wrp-go/wrp"
+	"github.com/xmidt-org/wrp-go/wrp/wrpmeta"
 )
 
 func statusMetadata(d device.Interface) map[string]string {

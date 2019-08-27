@@ -22,9 +22,9 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/Comcast/webpa-common/logging"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/metrics"
+	"github.com/xmidt-org/webpa-common/logging"
 )
 
 // WorkerPool describes a pool of goroutines that dispatch http.Request objects to
