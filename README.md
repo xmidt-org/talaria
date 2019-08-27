@@ -22,12 +22,11 @@ using [WRP Messages](https://github.com/xmidt-org/wrp-c/wiki/Web-Routing-Protoco
 Talaria can emit events as well as the device themselves. When this occurs, the event
 is set to [Caduceus](https://github.com/xmidt-org/caduceus)
 
-Talaria has three API endpoints to interact with the devices connect to talaria.
-A client should talk to Scytale to handle the fannouts of all talaria.
+Talaria has three API endpoints to interact with the devices connected to talaria.
+A client should talk to Scytale to handle the fannouts to all talarias.
 
 #### Device Statistics - `/device/{deviceID}/stat` endpoint
-This will fetch the statistics of the connected device.
-Including information such as uptime and bytes send.
+This will fetch the statistics of the connected device, including information such as uptime and bytes sent.
 
 #### Get Devices - `/devices` endpoint
 Returns all the connected devices and their statistics to the talaria instance.
@@ -38,14 +37,14 @@ Returns all the connected devices and their statistics to the talaria instance.
 Send a WRP message to the device.
 
 ### Control Devices
-A secondary function of talaria is too control the flow of devices.
+A secondary function of talaria is too control the connected devices.
 For more information refer to [Control Server Docs](../docs/control_server.md)
 
 #### Gate Devices - `/device/gate` endpoint
 Allow or Deny device to connect to the talaria instance
 
-#### Gate Devices - `/device/gate` endpoint
-Allow or Deny device to connect to the talaria instance
+#### Gate Devices - `/device/drain` endpoint
+Remove the connected devices to the talaria instance
 
 ## Build
 
