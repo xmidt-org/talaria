@@ -11,7 +11,7 @@
 
 ## Summary
 Talaria is the [XMiDT websocket handler](https://xmidt.io/docs/introduction/overview/).
-In other words talaria is the [CPE](https://en.wikipedia.org/wiki/Customer-premises_equipment)/Device handler
+In other words, talaria is the [CPE](https://en.wikipedia.org/wiki/Customer-premises_equipment)/Device handler.
 
 ## Details
 
