@@ -34,7 +34,7 @@ Returns all the connected devices and their statistics.
 
 :warning: _Warning_: this an expensive request. Use with caution
 
-#### Get Devices - `/device/send` endpoint
+#### Send WRP to Device - `/device/send` endpoint
 Send a WRP message to the device.
 
 ### Control Devices
