@@ -109,7 +109,7 @@ WIP. TODO: add info
 
 ## Deploy
 
-For deploying a XMiDT cluster refer to [getting started](https://xmidt.io/docs/operating/getting_started/)
+For deploying a XMiDT cluster refer to [getting started](https://xmidt.io/docs/operating/getting_started/).
 
 For running locally, ensure you have the binary [built](#Source).  If it's in
 your `GOPATH`, run:
