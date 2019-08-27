@@ -30,7 +30,7 @@ A [XMiDT](link here) client should not directly query against a talaria.  Instea
 This will fetch the statistics of the connected device, including information such as uptime and bytes sent.
 
 #### Get Devices - `/devices` endpoint
-Returns all the connected devices and their statistics to the talaria instance.
+Returns all the connected devices and their statistics.
 
 :warning: _Warning_: this an expensive request. Use with caution
 
