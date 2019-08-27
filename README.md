@@ -16,7 +16,7 @@ In other words talaria is the [CPE](https://en.wikipedia.org/wiki/Customer-premi
 
 ### Device Interaction
 Talaria's primary function is to interact with the devices.
-The communication with the device happens over a websocket 
+The communication with the device happens over a websocket
 using [WRP Messages](https://github.com/xmidt-org/wrp-c/wiki/Web-Routing-Protocol)
 
 Talaria can emit events as well as the device themselves. When this occurs, the event
@@ -31,13 +31,15 @@ Including information such as uptime and bytes send.
 
 #### Get Devices - `/devices` endpoint
 Returns all the connected devices and their statistics to the talaria instance.
-:warning: this an expensive request. Use with caution
+
+:warning: _Warning_: this an expensive request. Use with caution
 
 #### Get Devices - `/device/send` endpoint
 Send a WRP message to the device.
 
 ### Control Devices
-A secondary function of talaria is too control the flow of devices:
+A secondary function of talaria is too control the flow of devices.
+For more information refer to [Control Server Docs](../docs/control_server.md)
 
 #### Gate Devices - `/device/gate` endpoint
 Allow or Deny device to connect to the talaria instance
