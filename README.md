@@ -20,22 +20,29 @@ Talaria's primary function is to interact with the devices.
 The communication with the device happens over a websocket
 using [WRP Messages](https://github.com/xmidt-org/wrp-c/wiki/Web-Routing-Protocol)
 
-Talaria can send events originating from the device as well as emit its own events. When this occurs, the event
-is sent to [Caduceus](https://github.com/xmidt-org/caduceus)
+Talaria can send events originating from the device as well as emit its own events.
+When this occurs, the event is sent to [Caduceus](https://github.com/xmidt-org/caduceus)
 
 Talaria has three API endpoints to interact with the devices connected to itself.
-A [XMiDT](link here) client should not directly query against a talaria.  Instead, they should send a request through [scytale](link here).
+A [XMiDT](link here) client should not directly query against a talaria.
+Instead, they should send a request through [scytale](link here).
 
 #### Device Statistics - `/device/{deviceID}/stat` endpoint
-This will fetch the statistics of the connected device, including information such as uptime and bytes sent.
+This will return the statistics of the connected device,
+including information such as uptime and bytes sent.
 
 #### Get Devices - `/devices` endpoint
 Returns all the connected devices and their statistics.
 
-:warning: _Warning_: this is an expensive request. Use with caution.  This is not recommended to be used in production.
+:warning: _Warning_: this is an expensive request. Use with caution.
+This is not recommended to be used in production.
 
 #### Send WRP to Device - `/device/send` endpoint
 Send a WRP message to the device.
+Talaria will accept either `msgpack` or `json`.
+If the message is `json` encoded, talaria will encode the payload as `msgpack`.
+If the device returns a message it will be encoded as the `accept` header.
+`msgpack` is the default encoding.
 
 ### Control Devices
 A secondary function of talaria is to control the connected devices.
