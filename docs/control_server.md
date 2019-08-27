@@ -18,7 +18,7 @@ The RESTful endpoint that controls this is `/api/v2/device/gate`.  Note that the
 `xmidt_talaria_gate_status` is the exposed Prometheus metric that indicates the status of the gate.  When this gauge is 0.0, the gate is closed.  When this gauge is 1.0, the gate is open.
 
 ## Connection Drain
-Talaria supports the notion of draining websocket connections.  Essentially, this means shedding load in a controlled fashion.  Websocket connections can be drained at a given rate, e.g. `100 connections/minute`, or can be drained as fast as possible.
+Talaria supports the draining of websocket connections.  Essentially, this means shedding load in a controlled fashion.  Websocket connections can be drained at a given rate, e.g. `100 connections/minute`, or can be drained as fast as possible.
 
 Only (1) drain job is permitted to be running at any time.  Attempts to start a drain when one is already active results in an error.
 
