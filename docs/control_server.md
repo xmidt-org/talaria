@@ -6,7 +6,7 @@ sort_rank: 2
 Talaria exposes a built-in control server that can be used to adjust certain features.
 
 ## Device Gate
-Talaria can be set to disallow incoming websocket connections.  When the gate is closed, all incoming websocket connection requests are rejected with a **503** status.  Talaria always starts with the gate open, allowing websocket connections.
+Talaria can be set to disallow incoming websocket connections.  When the gate is closed, all incoming websocket connection requests are rejected with a **503** status.  Talaria always starts with the gate open, allowing new websocket connections.  Already connected websockets are not affected by closing the gate.
 
 The RESTful endpoint that controls this is `/api/v2/device/gate`.  Note that the port for the control server is not the same as the port for the websocket server.
 
