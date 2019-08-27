@@ -20,7 +20,7 @@ The RESTful endpoint that controls this is `/api/v2/device/gate`.  Note that the
 ## Connection Drain
 Talaria supports the draining of websocket connections.  Essentially, this means shedding load in a controlled fashion.  Websocket connections can be drained at a given rate, e.g. `100 connections/minute`, or can be drained as fast as possible.
 
-Only (1) drain job is permitted to be running at any time.  Attempts to start a drain when one is already active results in an error.
+Only 1 drain job is permitted to be running at any time.  Attempts to start a drain when one is already active results in an error.
 
 **IMPORTANT**:  The device gate may be open when a drain is started.  That means that devices can connect and disconnect during a drain.  In order to prevent a situation where the drain job cannot ever complete, computations about the number of devices are done once when the job is started.  For example, if a drain job is instructed to drain all devices, the count of devices is computed at the start of the job.  This may mean that connections are left at the end of a drain.  If this behavior is not desired, *close the device gate before starting a drain.*
 
