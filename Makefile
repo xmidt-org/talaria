@@ -52,8 +52,8 @@ install: go-mod-vendor
 
 .PHONY: release-artifacts
 release-artifacts: go-mod-vendor
-	GOOS=darwin GOARCH=amd64 go build -o ./OPATH/talaria-$(PROGVER).darwin-amd64
-	GOOS=linux  GOARCH=amd64 go build -o ./OPATH/talaria-$(PROGVER).linux-amd64
+	GOOS=darwin GOARCH=amd64 $(GO) build -o ./OPATH/talaria-$(PROGVER).darwin-amd64
+	GOOS=linux  GOARCH=amd64 $(GO) build -o ./OPATH/talaria-$(PROGVER).linux-amd64
 
 .PHONY: docker
 docker:
@@ -62,20 +62,20 @@ docker:
 # build docker without running modules
 .PHONY: local-docker
 local-docker:
-	GOOS=linux  GOARCH=amd64 go build -o talaria_linux_amd64
+	GOOS=linux  GOARCH=amd64 $(GO) build -o talaria_linux_amd64
 	docker build -f ./deploy/Dockerfile.local -t talaria:local .
 
 .PHONY: style
 style:
-	! gofmt -d $$(find . -path ./vendor -prune -o -name '*.go' -print) | grep '^'
+	! $(GOFMT) -d $$(find . -path ./vendor -prune -o -name '*.go' -print) | grep '^'
 
 .PHONY: test
 test: go-mod-vendor
-	GO111MODULE=on go test -v -race  -coverprofile=cover.out ./...
+	GO111MODULE=on $(GO) test -v -race  -coverprofile=cover.out ./...
 
 .PHONY: test-cover
 test-cover: test
-	go tool cover -html=cover.out
+	$(GO) tool cover -html=cover.out
 
 .PHONY: codecov
 codecov: test
