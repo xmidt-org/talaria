@@ -1,61 +1,408 @@
 ---
-  fqdn: talaria
-  env: test
-  scheme: http
+  # The unique fully-qualified-domain-name of the server.  It is provided to
+  # the X-Talaria-Server header for showing what server fulfilled the request
+  # sent.
+  # (Optional)
+  server: "talaria"
 
+  ########################################
+  #   Labeling/Tracing via HTTP Headers Configuration
+  ########################################
+
+  # Provides this build number to the X-Caduceus-Build header for
+  # showing machine version information.  The build number SHOULD
+  # match the scheme `version-build` but there is not a strict requirement.
+  # (Optional)
+  build: "0.1.4"
+
+  # Provides the region information to the X-Caduceus-Region header
+  # for showing what region this machine is located in.  The region
+  # is arbitrary and optional.
+  # (Optional)
+  region: "east"
+
+  # Provides the flavor information to the X-Caduceus-Flavor header
+  # for showing what flavor this machine is associated with.  The flavor
+  # is arbitrary and optional.
+  # (Optional)
+  flavor: "mint"
+
+
+##############################################################################
+# WebPA Service configuration
+##############################################################################
+
+# For a complete view of the service config structure,
+# checkout https://godoc.org/github.com/xmidt-org/webpa-common/server#WebPA
+
+########################################
+#   primary endpoint Configuration
+########################################
+
+  # primary defines the details needed for the primary endpoint.  The
+  # primary endpoint accepts the events from talaria (typically).
+  # define https://godoc.org/github.com/xmidt-org/webpa-common/server#Basic
   primary:
+    # address provides the port number for the endpoint to bind to.
+    # ":443" is ideal, but may require some special handling due to it being
+    # a reserved (by the kernel) port.
     address: ":6200"
+    # HTTPS/TLS
+    #
+    # certificateFile provides the public key and CA chain in PEM format if
+    # TLS is used.  Note: the certificate needs to match the fqdn for clients
+    # to accept without issue.
+    #
+    # keyFile provides the private key that matches the certificateFile
+    # (Optional)
+    # certificateFile: "/etc/caduceus/public.pem"
+    # keyFile: "/etc/caduceus/private.pem"
+########################################
+#   health endpoint Configuration
+########################################
+
+  # health defines the details needed for the health check endpoint.  The
+  # health check endpoint is generally used by services (like AWS Route53
+  # or consul) to determine if this particular machine is healthy or not.
+  # define https://godoc.org/github.com/xmidt-org/webpa-common/server#Health
   health:
+    # address provides the port number for the endpoint to bind to.
+    # ":80" is ideal, but may require some special handling due to it being
+    # a reserved (by the kernel) port.
     address: ":6201"
+
+    # logInterval appears to be present from before we had formal metrics
+    # (Deprecated)
+    # logInterval: "60s"
+    # options appears to be present from before we had formal metrics
+    # (Deprecated)
+    # options:
+    #  - "PayloadsOverZero"
+    #  - "PayloadsOverHundred"
+    #  - "PayloadsOverThousand"
+    #  - "PayloadsOverTenThousand"
+
+########################################
+#   Debugging/pprof Configuration
+########################################
+
+  # pprof defines the details needed for the pprof debug endpoint.
+  # define https://godoc.org/github.com/xmidt-org/webpa-common/server#Basic
+  # (Optional)
   pprof:
+    # address provides the port number for the endpoint to bind to.
     address: ":6202"
+
+########################################
+#   Control Configuration
+########################################
+
+  # control configures the details need for the control server
+  # defined https://godoc.org/github.com/xmidt-org/webpa-common/xhttp#ServerOptions
   control:
+
+    # address provides the port number for the endpoint to bind to.
+    # if none choosen, one will be choosen for you.
     address: ":6203"
+
+########################################
+#   Metrics Configuration
+########################################
+
+  # metric defines the details needed for the prometheus metrics endpoint
+  # define https://godoc.org/github.com/xmidt-org/webpa-common/server#Metric
+  # (Optional)
   metric:
-    address: ":6404"
+    # address provides the port number for the endpoint to bind to.  Port 9389
+    # was chosen because it does not conflict with any of the other prometheus
+    # metrics or other machines in the xmidt cluster.  You may use any port you
+    # wish.
+    address: ":6204"
+
+    # metricsOptions provides the details needed to configure the prometheus
+    # metric data.  Metrics generally have the form:
+    #
+    # {namespace}_{subsystem}_{metric}
+    #
+    # so if you use the suggested value below, your metrics are prefixed like
+    # this:
+    #
+    # xmidt_caduceus_{metric}
+    #
+    # (Optional)
     metricsOptions:
+      # namespace is the namespace of the metrics provided
+      # (Optional)
       namespace: "xmidt"
+      # subsystem is the subsystem of the metrics provided
+      # (Optional)
       subsystem: "talaria"
 
+########################################
+#   Logging Related Configuration
+########################################
+
+  # log configures the logging subsystem details
   log:
+    # file is the name of the most recent log file.  If set to "stdout" this
+    # will log to os.Stdout.
+    # (Optional) defaults to os.TempDir()
+    # file: "/var/log/caduceus/caduceus.log"
     file: "stdout"
+
+    # level is the logging level to use - INFO, DEBUG, WARN, ERROR
+    # (Optional) defaults to ERROR
     level: "DEBUG"
-    json: false
+
+    # maxsize is the maximum file size in MB
+    # (Optional) defaults to max 100MB
+    maxsize: 50
+
+    # maxage is the maximum number of days to retain old log files
+    # (Optional) defaults to ignore age limit (0)
+    maxage: 30
+
+    # maxbackups is the maximum number of old log files to retain
+    # (Optional) defaults to retain all (0)
+    maxbackups: 10
+
+    # json is a flag indicating whether JSON logging output should be used.
+    # (Optional) defaults to false
+    json: true
+
+
+########################################
+#   Device  Related Configuration
+########################################
 
   device:
+
+    # device manager related configuration
+    # defined by https://godoc.org/github.com/xmidt-org/webpa-common/device#Options
     manager:
+
+      # gorilla mux websocket configuration: https://godoc.org/github.com/gorilla/websocket#Upgrader
       upgrader:
+        # handshack timeout of websocket
+        # (Optional) defaults to (0), aka do not timeout
         handshakeTimeout: "10s"
-      initialCapacity: 100000
+
+      # MaxDevices is the maximum number of devices allowed to connect
+      # (Optional) defaults to math.MaxUint32
       maxDevices: 100
-      deviceMessageQueueSize: 100
-      pingPeriod: "45s"
-      idlePeriod: "135s"
+
+      # DeviceMessageQueueSize is the capacity of the channel which stores messages waiting
+      # to be transmitted to a device.
+      # (Optional) defaults to 100
+      deviceMessageQueueSize: 1000
+
+      # PingPeriod is the time between pings sent to each device
+      # (Optional) defaults to 45s
+      pingPeriod: "1m"
+
+      # IdlePeriod is the length of time a device connection is allowed to be idle,
+      # with no traffic coming from the device.
+      # (Optional) defaults to 45s
+      idlePeriod: "2m"
+
+      # RequestTimeout is the timeout for all inbound HTTP requests
+      # (Optional) defaults to 30s
       requestTimeout: "15s"
+
+    # output message related config
+    # defined by https://github.com/xmidt-org/talaria/blob/master/outbounder.go
     outbound:
+
+      # method is the http method to use aginst the receiving server
+      # (Optional) defaults to POST
       method: "POST"
+
+      # retries is the number attempts to sent the message to the receiver
+      # (Optional) defaults to 1
+      retries: 3
+
+      # eventEndpoints, is a key value pair defining where to send the events to.
+      # where they key is the event type and the vaule is the url
       eventEndpoints:
         default: http://caduceus:6000/api/v3/notify
-      requestTimeout: "125s"
+
+      # requestTimeout, how long to wait for the http
+      # (Optional) defaults to 125s
+      requestTimeout: "2m"
+
+      # TODO:// double check if this is correct
+      # defaultScheme, the default scheme for the http request
+      # (Optional) defaults to https
       defaultScheme: "https"
+
+      # allowed schems is a list of schemes, used in conjection with the defaultScheme
+      # for the URLFilter
+      # (Optional) defaults to []string{"https"}
       allowedSchemes:
         - "http"
         - "https"
-      outboundQueueSize: 1000
-      workerPoolSize: 100
+
+      # outboundQueueSize the size of the buffer to queue messages to the receiver
+      # (Optional) defaults to 1000
+      outboundQueueSize: 2000
+
+      # workerPoolSize configures how many active go threads sending messages to the receivers
+      # (Optional) defaults to 100
+      workerPoolSize: 50
+
+      # transport is a way to overwrite the default golang http.Transport
+      # defined  https://golang.org/pkg/net/http/#Transport
+      # (Optional) defaults described below
       transport:
+        # (Optional) defaults to 0, aka do not limit it
         maxIdleConns: 0
+        # (Optional) defaults to 100
         maxIdleConnsPerHost: 100
+        # (Optional) defaults to 0s, aka do not timeout while in idle
         idleConnTimeout: "120s"
-      clientTimeout: "160s"
+
+      # clientTimeout, during an http request how long to wait before timing out
+      # (Optional) defaults to 160s
+      clientTimeout: "2m"
+
+      # authKey, is the basic auth token used for sending messages to the receiver
+      # (Optional) defaults to no auth token
+      # WARNING: This is an example auth token. DO NOT use this in production
       authKey: YXV0aEhlYWRlcg==
+
+  # configure the api device inbound request
+  # (Optional) defaults described below
   inbound:
+    # authKey, is the basic auth token used for sending messages to the receiver
+    # (Optional) defaults to no auth token
+    # WARNING: This is an example auth token. DO NOT use this in production
     authKey: YXV0aEhlYWRlcg==
 
-  eventMap:
-    default: http://caduceus:6000/api/v3/notify
+########################################
+#   Service Discovery Configuration
+########################################
 
+  # service configures the server for service discover
+  # defined https://godoc.org/github.com/xmidt-org/webpa-common/service/servicecfg#Options
+  # this is required, consul or fixed must be used
   service:
+    # defaultScheme for the resgisterd servers for communication
+    # (Optional) defaults to https
     defaultScheme: http
+
+    # vnodeCount used for consitent hash calculation github.com/billhathaway/consistentHash
+    # (Optional) defaults to 211
+    vnodeCount: 211
+
+    # disableFilter
+    # (Optional) defaults to false
+    disableFilter:
+
+    # fixed, is the list of servers in the datacenter
+    # (Optional) default to empty list
     fixed:
       - http://talaria:6200
+
+    # # consul, configures consul for service discovery
+    # # defined https://godoc.org/github.com/xmidt-org/webpa-common/service/consul#Options
+    # # (Optiona) defaults define https://sourcegraph.com/github.com/hashicorp/consul/-/blob/api/api.go#L347
+    # consul:
+    #
+    #   # Configure the consul api client
+    #   # defined https://godoc.org/github.com/hashicorp/consul/api#Config
+    #   client:
+    #
+    #     # address of the consul client, or cluster
+    #     # (Optiona) defaults to 127.0.0.1:8500
+    #     address: "consul0:8500"
+    #
+    #     # scheme of the api calls to the consul agent
+    #     # (Optional) defaults to http
+    #     scheme: "http"
+    #
+    #     # WaitTime limits how long a Watch will block.
+    #     # (Optional) defaults to 0s, aka wait forever before update
+    #     waitTime: 30s
+    #
+    #   # DisableGenerateID, disable consul from generating the id
+    #   # (Optional) defaults to false
+    #   disableGenerateID: true
+    #
+    #   # DatacenterRetries, number of attempts to get the datacenters
+    #   # (Optional) defaults to 10
+    #   datacenterRetries: 3
+    #
+    #   # Registrations, a list of service(s) to register with consul
+    #   # defined https://godoc.org/github.com/hashicorp/consul/api#AgentServiceRegistration
+    #   # (Optional) defaults to empty list
+    #   registrations:
+    #     -
+    #       # id, the unqiue id for the service registration
+    #       id: "talaria-1"
+    #
+    #       # name, aka the service name
+    #       name: "talaria"
+    #
+    #       # tags, a list of strings. for filtering with later
+    #       # (Optional) defaults to empty list
+    #       tags:
+    #         - "dev"
+    #         - "docker"
+    #         - "stage=dev"
+    #         - "flavor=docker"
+    #
+    #       # address, the address to reference this service
+    #       address: "https://talaria-2"
+    #
+    #       # scheme used with the address, for calls to this server
+    #       scheme: "http"
+    #
+    #       # port, used with the address, for calls to this server
+    #       port: 6200
+    #
+    #       # checks, list of check to see if the service is healthy
+    #       # defined https://godoc.org/github.com/hashicorp/consul/api#AgentServiceCheck
+    #       # (Optional) defaults to empty list
+    #       # Warning: if empty service will stay arround forever
+    #       checks:
+    #          -
+    #           # CheckID, is a unique id for the check
+    #           checkID: "talaria-2:http"
+    #
+    #           # http, check via http rest request
+    #           http: "http://talaria-2:6221/health"
+    #
+    #           # interval, how oftent to do the check
+    #           interval: "30s"
+    #
+    #           # how long to wait before this service is considered bad
+    #           deregisterCriticalServiceAfter: "70s"
+    #
+    #
+    #   # Watches, a list of service(s) to watch from consul
+    #   # defined https://godoc.org/github.com/xmidt-org/webpa-common/service/consul#Watch
+    #   # (Optional) defaults to empty list
+    #   watches:
+    #     -
+    #       # service name to watch for
+    #       service: "talaria"
+    #
+    #       # tags, a list of strings. for filtering
+    #       # (Optional) defaults to empty list
+    #       tags:
+    #         - "dev"
+    #         - "docker"
+    #
+    #       # PassingOnly, only allow services that pass the consul check
+    #       # (Optional) defaults to false
+    #       passingOnly: true
+    #
+    #       # AllDatacenters, watch for all datacenter changes
+    #       # (Optional) defaults to false, aka only watch for services in datacenter
+    #       allDatacenters: false
+    #
+    #       # QueryOptions, options for consul query used in conjuction with passingOnly and allDatacenters
+    #       # defined by https://godoc.org/github.com/hashicorp/consul/api#QueryOptions
+    #       # (Optional) defaults to empty struct
+    #       # queryOptions:
+    #       #   useCache: true
