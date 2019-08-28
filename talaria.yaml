@@ -102,7 +102,7 @@
   control:
 
     # address provides the port number for the endpoint to bind to.
-    # if none choosen, one will be choosen for you.
+    # if none chosen, one will be chosen for you.
     address: ":6203"
 
 ########################################
