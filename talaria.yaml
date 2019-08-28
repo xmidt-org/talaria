@@ -97,7 +97,7 @@
 #   Control Configuration
 ########################################
 
-  # control configures the details need for the control server
+  # control configures the details need for the control server.
   # defined https://godoc.org/github.com/xmidt-org/webpa-common/xhttp#ServerOptions
   control:
 
