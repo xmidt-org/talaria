@@ -183,7 +183,7 @@
 
       # gorilla mux websocket configuration: https://godoc.org/github.com/gorilla/websocket#Upgrader
       upgrader:
-        # handshack timeout of websocket
+        # handshakeTimeout is the time to wait before rejecting an incoming/new websocket connection.
         # (Optional) defaults to (0), aka do not timeout
         handshakeTimeout: "10s"
 
