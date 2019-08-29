@@ -2,8 +2,9 @@ DEFAULT: build
 
 GO           ?= go
 GOFMT        ?= $(GO)fmt
+APP          := talaria
 FIRST_GOPATH := $(firstword $(subst :, ,$(shell $(GO) env GOPATH)))
-TALARIA    := $(FIRST_GOPATH)/bin/talaria
+BINARY    := $(FIRST_GOPATH)/bin/$(APP)
 
 PROGVER = $(shell grep 'applicationVersion.*= ' main.go | awk '{print $$3}' | sed -e 's/\"//g')
 
@@ -13,20 +14,20 @@ go-mod-vendor:
 
 .PHONY: build
 build: go-mod-vendor
-	$(GO) build -o talaria
+	$(GO) build -o $(APP)
 
 rpm:
-	mkdir -p ./OPATH/SOURCES
-	tar -czvf ./OPATH/SOURCES/talaria-$(PROGVER).tar.gz . --exclude ./.git --exclude ./OPATH --exclude ./conf --exclude ./deploy --exclude ./vendor
-	cp conf/talaria.service ./OPATH/SOURCES/
-	cp conf/talaria.yaml  ./OPATH/SOURCES/
-	cp LICENSE ./OPATH/SOURCES/
-	cp NOTICE ./OPATH/SOURCES/
-	cp CHANGELOG.md ./OPATH/SOURCES/
-	rpmbuild --define "_topdir $(CURDIR)/OPATH" \
+	mkdir -p ./.ignore/SOURCES
+	tar -czf ./.ignore/SOURCES/$(APP)-$(PROGVER).tar.gz --transform 's/^\./$(APP)-$(PROGVER)/' --exclude ./.git --exclude ./.ignore --exclude ./conf --exclude ./deploy --exclude ./vendor --exclude ./vendor .
+	cp conf/$(APP).service ./.ignore/SOURCES
+	cp $(APP).yaml  ./.ignore/SOURCES
+	cp LICENSE ./.ignore/SOURCES
+	cp NOTICE ./.ignore/SOURCES
+	cp CHANGELOG.md ./.ignore/SOURCES
+	rpmbuild --define "_topdir $(CURDIR)/.ignore" \
     		--define "_version $(PROGVER)" \
     		--define "_release 1" \
-    		-ba deploy/packaging/talaria.spec
+    		-ba deploy/packaging/$(APP).spec
 
 .PHONY: version
 version:
@@ -48,22 +49,23 @@ update-version:
 
 .PHONY: install
 install: go-mod-vendor
-	echo $(GO) build -o $(TALARIA) $(PROGVER)
+	echo $(GO) build -o $(BINARY) $(PROGVER)
 
 .PHONY: release-artifacts
 release-artifacts: go-mod-vendor
-	GOOS=darwin GOARCH=amd64 $(GO) build -o ./OPATH/talaria-$(PROGVER).darwin-amd64
-	GOOS=linux  GOARCH=amd64 $(GO) build -o ./OPATH/talaria-$(PROGVER).linux-amd64
+	mkdir -p ./.ignore
+	GOOS=darwin GOARCH=amd64 $(GO) build -o ./.ignore/$(APP)-$(PROGVER).darwin-amd64
+	GOOS=linux  GOARCH=amd64 $(GO) build -o ./.ignore/$(APP)-$(PROGVER).linux-amd64
 
 .PHONY: docker
 docker:
-	docker build -f ./deploy/Dockerfile -t talaria:$(PROGVER) .
+	docker build -f ./deploy/Dockerfile -t $(APP):$(PROGVER) .
 
 # build docker without running modules
 .PHONY: local-docker
 local-docker:
-	GOOS=linux  GOARCH=amd64 $(GO) build -o talaria_linux_amd64
-	docker build -f ./deploy/Dockerfile.local -t talaria:local .
+	GOOS=linux  GOARCH=amd64 $(GO) build -o $(APP)_linux_amd64
+	docker build -f ./deploy/Dockerfile.local -t $(APP):local .
 
 .PHONY: style
 style:
@@ -87,4 +89,4 @@ it:
 
 .PHONY: clean
 clean:
-	rm -rf ./talaria ./OPATH ./coverage.txt ./vendor
+	rm -rf ./$(APP) ./OPATH ./coverage.txt ./vendor

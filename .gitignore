@@ -10,7 +10,7 @@ src/vendor
 +src/talaria/talaria
 +src/talaria/debug
 +src/talaria/output
- 
+
  # config
 -src/talaria/talaria.json
 +src/talaria/talaria.json
@@ -60,6 +60,5 @@ coverage.txt
 .idea/
 
 # binaries
-talaria_*
 talaria
-OPATH/
+.ignore
