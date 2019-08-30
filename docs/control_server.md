@@ -26,7 +26,6 @@ Any attempt to open the gate when it is already open or close it when it is alre
 If this endpoint did change the status of the gate, a **201** status is returned.
 
 ### Metrics
-
 `xmidt_talaria_gate_status` is the exposed Prometheus metric that indicates the status of the gate.
 When this gauge is 0.0, the gate is closed.  When this gauge is 1.0, the gate is open.
 
