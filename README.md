@@ -18,7 +18,7 @@ In other words, talaria is the [CPE](https://en.wikipedia.org/wiki/Customer-prem
 ### Device Interaction
 Talaria's primary function is to interact with the devices.
 The communication with the device happens over a websocket
-using [WRP Messages](https://github.com/xmidt-org/wrp-c/wiki/Web-Routing-Protocol)
+using [WRP Messages](https://github.com/xmidt-org/wrp-c/wiki/Web-Routing-Protocol).
 
 Talaria can send events originating from the device as well as emit its own events.
 When this occurs, the event is sent to [Caduceus](https://github.com/xmidt-org/caduceus)
