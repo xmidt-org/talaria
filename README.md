@@ -1,7 +1,7 @@
 # talaria
 (pronounced "tuh-laa-ree-uh")
 
-[![Build Status](https://travis-ci.org/xmidt-org/talaria.svg?branch=master)](https://travis-ci.com/xmidt-org/talaria)
+[![Build Status](https://travis-ci.com/xmidt-org/talaria.svg?branch=master)](https://travis-ci.com/xmidt-org/talaria)
 [![codecov.io](http://codecov.io/github/xmidt-org/talaria/coverage.svg?branch=master)](http://codecov.io/github/xmidt-org/talaria?branch=master)
 [![Code Climate](https://codeclimate.com/github/xmidt-org/talaria/badges/gpa.svg)](https://codeclimate.com/github/xmidt-org/talaria)
 [![Issue Count](https://codeclimate.com/github/xmidt-org/talaria/badges/issue_count.svg)](https://codeclimate.com/github/xmidt-org/talaria)
