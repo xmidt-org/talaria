@@ -18,6 +18,7 @@ Note that the control_port for the control server is not the same as the port fo
 For example, `{"open": true, "timestamp": "2009-11-10T23:00:00Z"}` indicates that the gate
 is open and has been open since the given timestamp.  
 Similarly, `"open": false` indicates that the gate is closed.
+
 * `POST/PUT/PATCH host:control_port/api/v2/device/gate?open=<boolean>` raises or lowers the gate.
 The value of the open parameter may be anything that `golang` will parse as a boolean (see [ParseBool](https://godoc.org/strconv#ParseBool)).
 This endpoint is idempotent.
