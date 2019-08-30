@@ -181,7 +181,7 @@ device:
   # manager handles the device manager related configuration.
   # defined by https://godoc.org/github.com/xmidt-org/webpa-common/device#Options
   manager:
-    # upgrader is the gorilla mux websocket configuration, which upgrades an 
+    # upgrader is the gorilla mux websocket configuration, which upgrades an
     # incoming device connection from http to websocket.
     # defined by https://godoc.org/github.com/gorilla/websocket#Upgrader
     upgrader:
@@ -198,7 +198,7 @@ device:
     # (Optional) defaults to 100
     deviceMessageQueueSize: 1000
 
-    # pingPeriod is the time between pings sent to each device to ensure they 
+    # pingPeriod is the time between pings sent to each device to ensure they
     # are still reachable.
     # (Optional) defaults to 45s
     pingPeriod: "1m"
@@ -225,11 +225,15 @@ device:
     retries: 3
 
     # eventEndpoints is a map defining where to send the events to,
-    # where the key is the event type and the value is the url.
+    # where the key is the device event type (https://godoc.org/github.com/xmidt-org/webpa-common/device#EventType)
+    # and the value is the url.
     eventEndpoints:
       default: http://caduceus:6000/api/v3/notify
 
-    # requestTimeout is how long to wait for the http request.
+    # requestTimeout is how long an event will be held on to starting from when it is
+    # received till completing the http request.
+    # So if the event was in the queue for 124s and using the default value
+    # the http request only has 1s to complete before moving on.
     # (Optional) defaults to 125s
     requestTimeout: "2m"
 
@@ -245,7 +249,7 @@ device:
       - "http"
       - "https"
 
-    # outboundQueueSize is the size of the buffer to queue messages for each 
+    # outboundQueueSize is the size of the buffer to queue messages for each
     # receiver.
     # (Optional) defaults to 1000
     outboundQueueSize: 2000
@@ -265,7 +269,12 @@ device:
       # (Optional) defaults to 0s, aka do not timeout while in idle
       idleConnTimeout: "120s"
 
-    # clientTimeout during an http request how long to wait before timing out.
+    # clientTimeout specifies a time limit for requests made by this
+    # Client. The timeout includes connection time, any
+    # redirects, and reading the response body. The timer remains
+    # running after Get, Head, Post, or Do return and will
+    # interrupt reading of the Response.Body.
+    # defined  https://golang.org/pkg/net/http/#Client
     # (Optional) defaults to 160s
     clientTimeout: "2m"
 
@@ -343,8 +352,8 @@ service:
   #       # name is the service name.
   #       name: "talaria"
   #
-  #       # tags are a list of strings that others talking to consul can use to 
-  #       # filter services.  These are meant to help in grouping similar 
+  #       # tags are a list of strings that others talking to consul can use to
+  #       # filter services.  These are meant to help in grouping similar
   #       # services in consul.
   #       # (Optional) defaults to empty list
   #       tags:
@@ -356,32 +365,32 @@ service:
   #       # address tells consul where to contact the service.
   #       address: "https://talaria-2"
   #
-  #       # scheme tells consul what scheme to use to contact the service.  
+  #       # scheme tells consul what scheme to use to contact the service.
   #       # This is used with the address for calls to this server.
   #       scheme: "http"
   #
-  #       # port tells consul what port to use to contact the service.  This is 
+  #       # port tells consul what port to use to contact the service.  This is
   #       # used with the address for calls to this server.
   #       port: 6200
   #
   #       # checks is a list of checks to see if the service is healthy.
   #       # defined https://godoc.org/github.com/hashicorp/consul/api#AgentServiceCheck
   #       # (Optional) defaults to empty list
-  #       # Warning: if there are no checks, this service will stay around even 
-  #       # when it is in a bad state.  This will cause other healthy servers 
+  #       # Warning: if there are no checks, this service will stay around even
+  #       # when it is in a bad state.  This will cause other healthy servers
   #       # to send requests that will fail.
   #       checks:
   #         - # CheckID is a unique id for the check.
   #           checkID: "talaria-2:http"
   #
-  #           # http tells consul to check via http rest request at the url 
+  #           # http tells consul to check via http rest request at the url
   #           # provided.
   #           http: "http://talaria-2:6221/health"
   #
   #           # interval is how often to check.
   #           interval: "30s"
   #
-  #           # deregisterCriticalServiceAfter is how long to wait before this 
+  #           # deregisterCriticalServiceAfter is how long to wait before this
   #           # service is considered bad.
   #           deregisterCriticalServiceAfter: "70s"
   #
@@ -392,7 +401,7 @@ service:
   #     - # service name to watch for updates.
   #       service: "talaria"
   #
-  #       # tags is a list of strings that must be attached to the services 
+  #       # tags is a list of strings that must be attached to the services
   #       # being watched.
   #       # (Optional) defaults to empty list
   #       tags:
@@ -404,11 +413,11 @@ service:
   #       passingOnly: true
   #
   #       # AllDatacenters determines if there is a watch for all datacenter changes.
-  #       # (Optional) defaults to false, aka only watch for services in the 
+  #       # (Optional) defaults to false, aka only watch for services in the
   #       # current datacenter.
   #       allDatacenters: false
   #
-  #       # QueryOptions are options for the consul query, used in conjunction 
+  #       # QueryOptions are options for the consul query, used in conjunction
   #       # with passingOnly and allDatacenters.
   #       # defined by https://godoc.org/github.com/hashicorp/consul/api#QueryOptions
   #       # (Optional) defaults to empty struct
