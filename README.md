@@ -52,7 +52,7 @@ For more information refer to [Control Server Docs](docs/control_server.md).
 Allow or Deny device to connect to the talaria instance
 
 #### Drain Devices - `/device/drain` endpoint
-Remove the connected devices to the talaria instance
+This will remove the connected devices from the talaria instance.
 
 ## Build
 
