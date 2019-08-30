@@ -24,8 +24,8 @@ Talaria can send events originating from the device as well as emit its own even
 When this occurs, the event is sent to [Caduceus](https://github.com/xmidt-org/caduceus)
 
 Talaria has three API endpoints to interact with the devices connected to itself.
-A [XMiDT](link here) client should not directly query against a talaria.
-Instead, they should send a request through [scytale](link here).
+A [XMiDT](https://xmidt.io/) cloud client should not directly query against a talaria.
+Instead, they should send a request through [scytale](https://github.com/xmidt-org/scytale).
 
 #### Device Statistics - `/device/{deviceID}/stat` endpoint
 This will return the statistics of the connected device,
@@ -39,7 +39,7 @@ This is not recommended to be used in production.
 
 #### Send WRP to Device - `/device/send` endpoint
 Send a WRP message to the device.
-Talaria will accept either `msgpack` or `json`.
+Talaria will accept a WRP message encoded in a valid WRP representation - generally `msgpack` or `json`.
 If the message is `json` encoded, talaria will encode the payload as `msgpack`.
 If the device returns a message it will be encoded as the `accept` header.
 `msgpack` is the default encoding.
@@ -51,7 +51,7 @@ For more information refer to [Control Server Docs](docs/control_server.md).
 #### Gate Devices - `/device/gate` endpoint
 Allow or Deny device to connect to the talaria instance
 
-#### Gate Devices - `/device/drain` endpoint
+#### Drain Devices - `/device/drain` endpoint
 Remove the connected devices to the talaria instance
 
 ## Build

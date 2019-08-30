@@ -12,13 +12,13 @@ Talaria always starts with the gate open, allowing new websocket connections.
 Already connected websockets are not affected by closing the gate.
 
 The RESTful endpoint that controls this is `/api/v2/device/gate`.
-Note that the port for the control server is not the same as the port for the websocket server.
+Note that the control_port for the control server is not the same as the port for the websocket server.
 
-* `GET host:port/api/v2/device/gate` returns a JSON message indicating the status of the gate.
+* `GET host:control_port/api/v2/device/gate` returns a JSON message indicating the status of the gate.
 For example, `{"open": true, "timestamp": "2009-11-10T23:00:00Z"}` indicates that the gate
 is open and has been open since the given timestamp.  
 Similarly, `"open": false` indicates that the gate is closed.
-* `POST/PUT/PATCH host:port/api/v2/device/gate?open=<boolean>` raises or lowers the gate.
+* `POST/PUT/PATCH host:control_port/api/v2/device/gate?open=<boolean>` raises or lowers the gate.
 The value of the open parameter may be anything that `golang` will parse as a boolean (see [ParseBool](https://godoc.org/strconv#ParseBool)).
 This endpoint is idempotent.
 Any attempt to open the gate when it is already open or close it when it is already closed results in a **200** status.
@@ -48,14 +48,14 @@ This may mean that connections are left at the end of a drain when the gate is n
 If this behavior is not desired, *close the device gate before starting a drain.*
 
 The RESTful endpoint that controls the connection drain is `/api/v2/device/drain`.
-Note that the port for the control server is not the same as the port for the websocket server.
+Note that the control_port for the control server is not the same as the port for the websocket server.
 
-* `GET host:port/api/v2/device/drain` returns a JSON message indicating whether
+* `GET host:control_port/api/v2/device/drain` returns a JSON message indicating whether
 a drain job is active and the progress of the active job if one is running.
 If a drain has previously completed, the information about that job will be
 available via this endpoint until a new drain job is started.
 
-* `POST/PUT/PATCH host:port/api/v2/device/drain` attempts to start a drain job.
+* `POST/PUT/PATCH host:control_port/api/v2/device/drain` attempts to start a drain job.
 This endpoint returns the same JSON message as a `GET` when it starts a drain job,
 along with a **200** status.  If a drain job is already running, this endpoint returns a **429 Conflict** status.
 If no parameters are supplied, all devices are drained as fast as possible.
@@ -72,9 +72,23 @@ Several parameters may be supplied to customize the drain:
     + `tick`: The unit of time for `rate`.
     If `rate` is supplied and `tick` is not supplied, a `tick` of `1s` is used.
     If `rate` is not supplied and `tick` is supplied, `tick` is ignored.
-    The value of `tick` may be anything parseable by the `golang` standard library (see [ParseDuration](https://godoc.org/time#ParseDuration)).  
+    The value of `tick` may be anything parseable by the `golang` standard library (see [ParseDuration](https://godoc.org/time#ParseDuration)).
 
-* `DELETE host:port/api/v2/device/drain` attempts to cancel any running drain job.
+  For example:
+  ```json
+    {
+      "tick": "2s",
+      "rate": 4
+    }
+  ```
+  will drain 4 devices every 2 seconds. This is the same as saying 2 devices
+  every second. Another example is with the request `?tick=1m&rate=30`, meaning
+  Every minute 30 devices will be remove. Since the draining of devices are
+  spread out over the tick period, the 1m tick at a rate of 30 is the same as
+  a tick of 2s and a rate of 1.
+
+
+* `DELETE host:control_port/api/v2/device/drain` attempts to cancel any running drain job.
 Note that a running job may not cancel immediately.
 If no drain job is running, **429 Conflict** is returned.
 
