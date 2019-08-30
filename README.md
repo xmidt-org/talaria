@@ -32,7 +32,7 @@ This will return the statistics of the connected device,
 including information such as uptime and bytes sent.
 
 #### Get Devices - `/devices` endpoint
-Returns all the connected devices and their statistics.
+This will return a list of all the actively connected devices and their statistics.
 
 :warning: _Warning_: this is an expensive request. Use with caution.
 This is not recommended to be used in production.
