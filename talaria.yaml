@@ -286,7 +286,7 @@ device:
 # inbound configures the api inbound requests.
 # (Optional) defaults described below
 inbound:
-  # authKey is the basic auth token used for sending messages to the receiver.
+  # authKey is the basic auth token incoming api requests like /stat, and /devices
   # (Optional) defaults to no auth token
   # WARNING: This is an example auth token. DO NOT use this in production.
   authKey: YXV0aEhlYWRlcg==
