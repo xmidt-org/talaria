@@ -38,7 +38,7 @@ This will return a list of all the actively connected devices and their statisti
 This is not recommended to be used in production.
 
 #### Send WRP to Device - `/device/send` endpoint
-Send a WRP message to the device.
+This will send a WRP message to the device.
 Talaria will accept a WRP message encoded in a valid WRP representation - generally `msgpack` or `json`.
 If the message is `json` encoded, talaria will encode the payload as `msgpack`.
 If the device returns a message it will be encoded as the `accept` header.
