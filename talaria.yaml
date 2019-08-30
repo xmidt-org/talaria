@@ -394,7 +394,9 @@ service:
   #           # service is considered bad.
   #           deregisterCriticalServiceAfter: "70s"
   #
-  #   # Watches is a list of service(s) to watch from consul.
+  #   # Watches is a list of service(s) to watch from consul. The address of the
+  #   # of the services are stored in memory. Upon update, the internal memory is
+  #   # updated.
   #   # defined https://godoc.org/github.com/xmidt-org/webpa-common/service/consul#Watch
   #   # (Optional) defaults to empty list
   #   watches:
