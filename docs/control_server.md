@@ -53,7 +53,21 @@ Note that the control_port for the control server is not the same as the port fo
 * `GET host:control_port/api/v2/device/drain` returns a JSON message indicating whether
 a drain job is active and the progress of the active job if one is running.
 If a drain has previously completed, the information about that job will be
-available via this endpoint until a new drain job is started.
+available via this endpoint until a new drain job is started. This will not
+start a new drain.
+```json
+{
+    "active": false,
+    "job": {
+        "count": 0
+    },
+    "progress": {
+        "visited": 0,
+        "drained": 0,
+        "started": "0001-01-01T00:00:00Z"
+    }
+}
+```
 
 * `POST/PUT/PATCH host:control_port/api/v2/device/drain` attempts to start a drain job.
 This endpoint returns the same JSON message as a `GET` when it starts a drain job,

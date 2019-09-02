@@ -304,6 +304,8 @@ service:
   defaultScheme: http
 
   # vnodeCount used for consistent hash calculation github.com/billhathaway/consistentHash.
+  # number of virtual nodes. should be a prime number
+  # it is a tradeoff of memory and ~ log(N) speed versus how well the hash spreads
   # (Optional) defaults to 211
   vnodeCount: 211
 
@@ -414,12 +416,14 @@ service:
   #       # (Optional) defaults to false
   #       passingOnly: true
   #
-  #       # AllDatacenters determines if there is a watch for all datacenter changes.
+  #       # allDatacenters determines if there is a watch for all datacenter changes.
+  #       # change this to have the devices hash across all datacenters instead of
+  #       # the single datacenter.
   #       # (Optional) defaults to false, aka only watch for services in the
   #       # current datacenter.
   #       allDatacenters: false
   #
-  #       # QueryOptions are options for the consul query, used in conjunction
+  #       # queryOptions are options for the consul query, used in conjunction
   #       # with passingOnly and allDatacenters.
   #       # defined by https://godoc.org/github.com/hashicorp/consul/api#QueryOptions
   #       # (Optional) defaults to empty struct

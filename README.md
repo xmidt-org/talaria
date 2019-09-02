@@ -10,8 +10,10 @@
 [![GitHub release](https://img.shields.io/github/release/xmidt-org/talaria.svg)](CHANGELOG.md)
 
 ## Summary
-Talaria is the [XMiDT websocket handler](https://xmidt.io/docs/introduction/overview/).
-In other words, talaria is the [CPE](https://en.wikipedia.org/wiki/Customer-premises_equipment)/Device handler.
+Talaria's primary function is to interact with the devices:
+forwarding device events and sending requests to the device then forwarding the response.
+The communication with the device happens over a websocket
+using [WRP Messages](https://github.com/xmidt-org/wrp-c/wiki/Web-Routing-Protocol).
 
 ## Details
 
@@ -30,9 +32,12 @@ Instead, they should send a request through [scytale](https://github.com/xmidt-o
 #### Device Statistics - `/device/{deviceID}/stat` endpoint
 This will return the statistics of the connected device,
 including information such as uptime and bytes sent.
+This request does not communicate with the device, instead the request returns
+stored statistics.
 
 #### Get Devices - `/devices` endpoint
-This will return a list of all the actively connected devices and their statistics.
+This will return a list of all the actively connected devices and their statistics,
+just like the `stat` command.
 
 :warning: _Warning_: this is an expensive request. Use with caution.
 This is not recommended to be used in production.
@@ -41,15 +46,18 @@ This is not recommended to be used in production.
 This will send a WRP message to the device.
 Talaria will accept a WRP message encoded in a valid WRP representation - generally `msgpack` or `json`.
 If the message is `json` encoded, talaria will encode the payload as `msgpack`.
+Talaria will then forward the message to the device.
 If the device returns a message, it will be encoded as the `accept` header.
-`msgpack` is the default encoding.
+`msgpack` is the default encoding of the wrp message.
 
 ### Control Devices
-A secondary function of talaria is to control the connected devices.
+A secondary function of talaria is to control the connected devices. This allows
+for the flow of devices to go towards specific talarias. In other words, where the
+websockets are made can be controlled.
 For more information refer to [Control Server Docs](docs/control_server.md).
 
 #### Gate Devices - `/device/gate` endpoint
-Allow or Deny device to connect to the talaria instance
+This will allow or deny devices to connect to the talaria instance.
 
 #### Drain Devices - `/device/drain` endpoint
 This will remove the connected devices from the talaria instance.
