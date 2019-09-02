@@ -19,4 +19,5 @@ EXPOSE 8080
 
 COPY --from=builder /go/src/github.com/xmidt-org/talaria/talaria_linux_amd64 /
 COPY talaria.yaml /
+COPY deploy/Dockerfile NOTICE LICENSE CHANGELOG.md /
 ENTRYPOINT ["/talaria_linux_amd64"]
