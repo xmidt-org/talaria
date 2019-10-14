@@ -15,6 +15,19 @@ forwarding device events and sending requests to the device then forwarding the 
 The communication with the device happens over a websocket
 using [WRP Messages](https://github.com/xmidt-org/wrp-c/wiki/Web-Routing-Protocol).
 
+## Table of Contents
+
+- [Code of Conduct](#code-of-conduct)
+- [Details](#details)
+- [Build](#build)
+- [Deploy](#deploy)
+- [Contributing](#contributing)
+
+## Code of Conduct
+
+This project and everyone participating in it are governed by the [XMiDT Code Of Conduct](https://xmidt.io/code_of_conduct/). 
+By participating, you agree to this Code.
+
 ## Details
 
 ### Device Interaction
