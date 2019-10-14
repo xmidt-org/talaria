@@ -18,9 +18,11 @@ package main
 
 import (
 	"fmt"
+	"io"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -39,10 +41,15 @@ import (
 )
 
 const (
-	applicationName        = "talaria"
-	release                = "Developer"
-	defaultVnodeCount  int = 211
-	applicationVersion     = "0.1.3"
+	applicationName       = "talaria"
+	release               = "Developer"
+	defaultVnodeCount int = 211
+)
+
+var (
+	GitCommit = "undefined"
+	Version   = "undefined"
+	BuildTime = "undefined"
 )
 
 func newDeviceManager(logger log.Logger, r xmetrics.Registry, v *viper.Viper) (device.Manager, error) {
@@ -82,6 +89,18 @@ func talaria(arguments []string) int {
 
 		logger, metricsRegistry, webPA, err = server.Initialize(applicationName, arguments, f, v, Metrics, device.Metrics, rehasher.Metrics, service.Metrics)
 	)
+
+	if parseErr, done := printVersion(f, arguments); done {
+		// if we're done, we're exiting no matter what
+		if parseErr != nil {
+			friendlyError := fmt.Sprintf("failed to parse arguments. detailed error: %s", parseErr)
+			logging.Error(logger).Log(
+				logging.ErrorKey(),
+				friendlyError)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
 
 	if err != nil {
 		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to initialize Viper environment", logging.ErrorKey(), err)
@@ -179,6 +198,28 @@ func talaria(arguments []string) int {
 	close(shutdown)
 	waitGroup.Wait()
 	return 0
+}
+
+func printVersion(f *pflag.FlagSet, arguments []string) (error, bool) {
+	printVer := f.BoolP("version", "v", false, "displays the version number")
+	if err := f.Parse(arguments); err != nil {
+		return err, true
+	}
+
+	if *printVer {
+		printVersionInfo(os.Stdout)
+		return nil, true
+	}
+	return nil, false
+}
+
+func printVersionInfo(writer io.Writer) {
+	fmt.Fprintf(writer, "%s:\n", applicationName)
+	fmt.Fprintf(writer, "  version: \t%s\n", Version)
+	fmt.Fprintf(writer, "  go version: \t%s\n", runtime.Version())
+	fmt.Fprintf(writer, "  built time: \t%s\n", BuildTime)
+	fmt.Fprintf(writer, "  git commit: \t%s\n", GitCommit)
+	fmt.Fprintf(writer, "  os/arch: \t%s/%s\n", runtime.GOOS, runtime.GOARCH)
 }
 
 func main() {
