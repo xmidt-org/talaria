@@ -2,12 +2,13 @@ FROM golang:alpine as builder
 MAINTAINER Jack Murdock <jack_murdock@comcast.com>
 
 WORKDIR /go/src/github.com/xmidt-org/talaria
+ARG VERSION=undefined
 
 RUN apk update && apk upgrade && \
     apk add --no-cache bash git openssh
 
 COPY . .
-RUN GO111MODULE=on go build -o talaria_linux_amd64
+RUN GO111MODULE=on go build -ldflags "-X 'main.BuildTime=`date -u '+%Y-%m-%d %H:%M:%S'`' -X main.GitCommit=`git rev-parse --short HEAD` -X main.Version=$VERSION" -o talaria_linux_amd64
 
 FROM alpine
 
