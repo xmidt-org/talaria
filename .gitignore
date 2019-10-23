@@ -59,6 +59,13 @@ coverage.txt
 #Goland
 .idea/
 
+# helm 
+deploy/k8s/talaria/rendered.*
+
 # binaries
 talaria
 .ignore
+
+# keep talaria directory
+!deploy/helm/talaria
+
