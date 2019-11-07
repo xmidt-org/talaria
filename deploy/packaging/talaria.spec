@@ -11,7 +11,7 @@ Packager:   Comcast
 Group:      System Environment/Daemons
 License:    ASL 2.0
 URL:        https://github.com/xmidt-org/talaria
-Source0:    %{name}-%{_version}.tar.gz
+Source0:    %{name}-%{_version}-%{_release}.tar.gz
 
 Prefix:     /opt
 BuildRoot:  %{_tmppath}/%{name}

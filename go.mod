@@ -9,7 +9,6 @@ require (
 	github.com/billhathaway/consistentHash v0.0.0-20140718022140-addea16d2229 // indirect
 	github.com/c9s/goprocinfo v0.0.0-20190309065803-0b2ad9ac246b // indirect
 	github.com/go-kit/kit v0.8.0
-	github.com/go-logfmt/logfmt v0.4.0 // indirect
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/schema v1.1.0 // indirect
 	github.com/hashicorp/consul/api v1.2.0 // indirect
