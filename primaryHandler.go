@@ -89,13 +89,54 @@ func buildDeviceAccessProperties(_ *http.Request) APIConsumerDeviceAccess {
 
 //we need access to the device manage
 func prepareDeviceAccessDecorator(logger log.Logger, manager device.Manager) func(http.Handler) http.Handler {
+	errorLogger := logging.Error(logger)
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(
 			func(w http.ResponseWriter, r *http.Request) {
-				//get the device ID
-				//fetch the partnerIDs for the device
-				//if there is a match, pass to the delegate
-				//else return 403
+				apiConsumerDeviceAccess := buildDeviceAccessProperties(r)
+				deviceID, ok := device.GetID(r.Context())
+				if !ok {
+					// return 500
+					// Log error saying we were expecting a deviceID
+					errorLogger.Log(
+						logging.MessageKey(),
+						"Expecting well-formatted deviceID in incoming request",
+					)
+					return
+				}
+
+				d, ok := manager.Get(deviceID)
+				if !ok {
+					//the device is no longer with us?
+					//Return:
+					//code:404
+					//JSON with message="device not found"
+					return
+				}
+
+				accessGranted := false
+				//ideally, the device d would only have one partnerID associated with it
+			outerLoop:
+				for _, partnerID := range d.PartnerIDs() {
+					for _, requestPartnerID := range apiConsumerDeviceAccess.PartnerIDs {
+						if partnerID == requestPartnerID {
+							accessGranted = true
+							break outerLoop
+						}
+
+					}
+				}
+
+				if !accessGranted {
+					//code: 403
+					//JSON with message="access to device is not allowed"?
+					//Note: we are leaking information here as we are telling the customer that a device
+					//with such ID exists but it's not accessible to them
+					w.WriteHeader(http.StatusForbidden)
+					return
+				}
+
+				h.ServeHTTP(w, r)
 			})
 	}
 }
@@ -166,6 +207,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		alice.New(
 			authorizationDecorator,
 			deviceAccessDecorator,
+			device.UseID.FromHeader,
 			xtimeout.NewConstructor(xtimeout.Options{
 				Timeout: inboundTimeout,
 			})).
@@ -224,7 +266,9 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 	apiHandler.Handle(
 		"/device/{deviceID}/stat",
 		alice.New(authorizationDecorator,
-			deviceAccessDecorator).Then(&device.StatHandler{
+			deviceAccessDecorator,
+			device.UseID.FromPath("deviceID"),
+		).Then(&device.StatHandler{
 			Logger:   logger,
 			Registry: manager,
 			Variable: "deviceID",
