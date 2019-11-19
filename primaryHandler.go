@@ -73,6 +73,33 @@ func getInboundTimeout(v *viper.Viper) time.Duration {
 	return DefaultInboundTimeout
 }
 
+//APIConsumerDeviceAccess contains the properties we will perform checks on for
+//any incoming CRUD or statistics device requests
+type APIConsumerDeviceAccess struct {
+	PartnerIDs []string
+}
+
+//let's do this while we figure out how exactly we will be fetching these properties from the
+//incoming request
+func buildDeviceAccessProperties(_ *http.Request) APIConsumerDeviceAccess {
+	return APIConsumerDeviceAccess{
+		PartnerIDs: []string{"comcast"},
+	}
+}
+
+//we need access to the device manage
+func prepareDeviceAccessDecorator(logger log.Logger, manager device.Manager) func(http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		return http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+				//get the device ID
+				//fetch the partnerIDs for the device
+				//if there is a match, pass to the delegate
+				//else return 403
+			})
+	}
+}
+
 func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper, a service.Accessor, e service.Environment, controlConstructor func(http.Handler) http.Handler) (http.Handler, error) {
 	var (
 		authKeys                     = v.GetStringSlice("inbound.authKey")
@@ -81,6 +108,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		apiHandler                   = r.PathPrefix(fmt.Sprintf("%s/%s", baseURI, version)).Subrouter()
 		authorizationDecorator       = func(h http.Handler) http.Handler { return h }
 		authorizationDecoratorDevice = func(h http.Handler) http.Handler { return h }
+		deviceAccessDecorator        = prepareDeviceAccessDecorator(logger, manager)
 	)
 
 	if len(authKeys) > 0 {
@@ -98,31 +126,34 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 
 	if v.IsSet("jwtValidators") {
 		var validator secure.Validator
-		var cfg_validators []JWTValidator
+		var cfgValidators []JWTValidator
 
-		if err := v.UnmarshalKey("jwtValidators", &cfg_validators); err != nil {
+		err := v.UnmarshalKey("jwtValidators", &cfgValidators)
+
+		if err != nil {
 			return nil, err
-		} else {
-			validators := make(secure.Validators, 0, len(cfg_validators))
+		}
 
-			for _, validatorDescriptor := range cfg_validators {
-				keyResolver, err := validatorDescriptor.Keys.NewResolver()
-				if err != nil {
-					return nil, fmt.Errorf("Unable to create key resolver: %s", err)
-				}
+		validators := make(secure.Validators, 0, len(cfgValidators))
 
-				validators = append(
-					validators,
-					secure.JWSValidator{
-						DefaultKeyId:  DefaultKeyId,
-						Resolver:      keyResolver,
-						JWTValidators: []*jwt.Validator{validatorDescriptor.Custom.New()},
-					},
-				)
+		for _, validatorDescriptor := range cfgValidators {
+			keyResolver, err := validatorDescriptor.Keys.NewResolver()
+
+			if err != nil {
+				return nil, fmt.Errorf("Unable to create key resolver: %s", err)
 			}
 
-			validator = validators
+			validators = append(
+				validators,
+				secure.JWSValidator{
+					DefaultKeyId:  DefaultKeyId,
+					Resolver:      keyResolver,
+					JWTValidators: []*jwt.Validator{validatorDescriptor.Custom.New()},
+				},
+			)
 		}
+
+		validator = validators
 
 		authorizationDecoratorDevice = handler.AuthorizationHandler{
 			Logger:    logger,
@@ -134,6 +165,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		"/device/send",
 		alice.New(
 			authorizationDecorator,
+			deviceAccessDecorator,
 			xtimeout.NewConstructor(xtimeout.Options{
 				Timeout: inboundTimeout,
 			})).
@@ -191,7 +223,8 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 
 	apiHandler.Handle(
 		"/device/{deviceID}/stat",
-		authorizationDecorator(&device.StatHandler{
+		alice.New(authorizationDecorator,
+			deviceAccessDecorator).Then(&device.StatHandler{
 			Logger:   logger,
 			Registry: manager,
 			Variable: "deviceID",
