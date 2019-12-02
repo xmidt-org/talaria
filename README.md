@@ -133,7 +133,10 @@ then replace `local` in the `docker build` command.
 
 ### Kubernetes
 
-WIP. TODO: add info
+A helm chart can be used to deploy talaria to kubernetes
+```
+helm install xmidt-talaria deploy/helm/talaria/
+```
 
 ## Deploy
 
