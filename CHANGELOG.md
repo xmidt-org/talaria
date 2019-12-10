@@ -5,16 +5,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- convert from glide to go mod
+- updated release pipeline to use travis [#113](https://github.com/xmidt-org/talaria/pull/113)
 
 ## [v0.1.3]
 fixed build upload
 
-
-
 ## [v0.1.2]
 Switching to new build process
-
-
 
 ## [v0.1.1] Tue Mar 28 2017 Weston Schmidt - 0.1.1
 - initial creation
