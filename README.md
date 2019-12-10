@@ -101,7 +101,6 @@ make build
 
 The Makefile has the following options you may find helpful:
 * `make build`: builds the Talaria binary
-* `make rpm`: builds an rpm containing Talaria
 * `make docker`: builds a docker image for Talaria, making sure to get all
    dependencies
 * `make local-docker`: builds a docker image for Talaria with the assumption
