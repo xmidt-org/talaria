@@ -3,7 +3,7 @@
 
 Name:       talaria
 Version:    {{{ git_tag_version }}}
-Release:    %{?dist}
+Release:    1%{?dist}
 Summary:    The XMiDT routing agent.
 
 Vendor:     Comcast
