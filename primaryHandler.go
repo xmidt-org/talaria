@@ -17,22 +17,27 @@
 package main
 
 import (
+	"bytes"
+	"context"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/SermoDigital/jose/jwt"
 	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/goph/emperror"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
 	"github.com/spf13/viper"
+	"github.com/xmidt-org/bascule"
+	"github.com/xmidt-org/webpa-common/basculechecks"
+	"github.com/xmidt-org/webpa-common/xmetrics"
+
+	"github.com/xmidt-org/bascule/basculehttp"
+	"github.com/xmidt-org/bascule/key"
 	"github.com/xmidt-org/webpa-common/device"
 	"github.com/xmidt-org/webpa-common/logging"
 	"github.com/xmidt-org/webpa-common/logging/logginghttp"
-	"github.com/xmidt-org/webpa-common/secure"
-	"github.com/xmidt-org/webpa-common/secure/handler"
-	"github.com/xmidt-org/webpa-common/secure/key"
 	"github.com/xmidt-org/webpa-common/service"
 	"github.com/xmidt-org/webpa-common/service/servicehttp"
 	"github.com/xmidt-org/webpa-common/xhttp"
@@ -51,18 +56,23 @@ const (
 	// TODO: This should be configurable at some point
 	poolSize = 1000
 
-	DefaultKeyId = "current"
+	DefaultKeyID = "current"
 
 	DefaultInboundTimeout time.Duration = 120 * time.Second
 )
 
+var NoOpConstructor = func(h http.Handler) http.Handler { return h }
+
+//TODO: should this be provided by bascule since it is a very similar structure
+//across all devices
+//JWTValidator provides a convenient way to define jwt validator through config files
 type JWTValidator struct {
 	// JWTKeys is used to create the key.Resolver for JWT verification keys
-	Keys key.ResolverFactory `json:"keys"`
+	Keys key.ResolverFactory
 
-	// Custom is an optional configuration section that defines
-	// custom rules for validation over and above the standard RFC rules.
-	Custom secure.JWTValidatorFactory `json:"custom"`
+	// Leeway is used to set the amount of time buffer should be given to JWT
+	// time values, such as nbf
+	Leeway bascule.Leeway
 }
 
 func getInboundTimeout(v *viper.Viper) time.Duration {
@@ -73,151 +83,154 @@ func getInboundTimeout(v *viper.Viper) time.Duration {
 	return DefaultInboundTimeout
 }
 
-//APIConsumerDeviceAccess contains the properties we will perform checks on for
-//any incoming CRUD or statistics device requests
-type APIConsumerDeviceAccess struct {
-	PartnerIDs []string
-}
+//TODO: See if SetLogger and GetLogger could be provided by bascule since it seems to be
+//boilerplate code across services
 
-//let's do this while we figure out how exactly we will be fetching these properties from the
-//incoming request
-func buildDeviceAccessProperties(_ *http.Request) APIConsumerDeviceAccess {
-	return APIConsumerDeviceAccess{
-		PartnerIDs: []string{"comcast"},
-	}
-}
-
-//we need access to the device manage
-func prepareDeviceAccessDecorator(logger log.Logger, manager device.Manager) func(http.Handler) http.Handler {
-	errorLogger := logging.Error(logger)
-	return func(h http.Handler) http.Handler {
+func SetLogger(logger log.Logger) func(delegate http.Handler) http.Handler {
+	return func(delegate http.Handler) http.Handler {
 		return http.HandlerFunc(
 			func(w http.ResponseWriter, r *http.Request) {
-				apiConsumerDeviceAccess := buildDeviceAccessProperties(r)
-				deviceID, ok := device.GetID(r.Context())
-				if !ok {
-					// return 500
-					// Log error saying we were expecting a deviceID
-					errorLogger.Log(
-						logging.MessageKey(),
-						"Expecting well-formatted deviceID in incoming request",
-					)
-					return
-				}
-
-				d, ok := manager.Get(deviceID)
-				if !ok {
-					//the device is no longer with us?
-					//Return:
-					//code:404
-					//JSON with message="device not found"
-					return
-				}
-
-				accessGranted := false
-				//ideally, the device d would only have one partnerID associated with it
-			outerLoop:
-				for _, partnerID := range d.PartnerIDs() {
-					for _, requestPartnerID := range apiConsumerDeviceAccess.PartnerIDs {
-						if partnerID == requestPartnerID {
-							accessGranted = true
-							break outerLoop
-						}
-
-					}
-				}
-
-				if !accessGranted {
-					//code: 403
-					//JSON with message="access to device is not allowed"?
-					//Note: we are leaking information here as we are telling the customer that a device
-					//with such ID exists but it's not accessible to them
-					w.WriteHeader(http.StatusForbidden)
-					return
-				}
-
-				h.ServeHTTP(w, r)
+				r = r.WithContext(logging.WithLogger(r.Context(),
+					log.With(logger, "requestHeaders", r.Header, "requestURL", r.URL.EscapedPath(), "method", r.Method)))
+				delegate.ServeHTTP(w, r)
 			})
 	}
 }
 
-func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper, a service.Accessor, e service.Environment, controlConstructor func(http.Handler) http.Handler) (http.Handler, error) {
-	var (
-		authKeys                     = v.GetStringSlice("inbound.authKey")
-		inboundTimeout               = getInboundTimeout(v)
-		r                            = mux.NewRouter()
-		apiHandler                   = r.PathPrefix(fmt.Sprintf("%s/%s", baseURI, version)).Subrouter()
-		authorizationDecorator       = func(h http.Handler) http.Handler { return h }
-		authorizationDecoratorDevice = func(h http.Handler) http.Handler { return h }
-		deviceAccessDecorator        = prepareDeviceAccessDecorator(logger, manager)
-	)
+func GetLogger(ctx context.Context) bascule.Logger {
+	logger := log.With(logging.GetLogger(ctx), "ts", log.DefaultTimestampUTC, "caller", log.DefaultCaller)
+	return logger
+}
 
-	if len(authKeys) > 0 {
-		logger.Log(level.Key(), level.InfoValue(), logging.MessageKey(), "using basic auth", "keyCount", len(authKeys))
-		validators := secure.Validators{}
-		for _, k := range authKeys {
-			validators = append(validators, secure.ExactMatchValidator(k))
+//buildUserPassMap decodes base64-encoded strings of the form user:pass and write them to a map from user -> pass
+func buildUserPassMap(logger log.Logger, encodedBasicAuthKeys []string) (userPass map[string]string) {
+	userPass = make(map[string]string)
+
+	for _, encodedKey := range encodedBasicAuthKeys {
+		decoded, err := base64.StdEncoding.DecodeString(encodedKey)
+		if err != nil {
+			logging.Info(logger).Log(logging.MessageKey(), "Failed to base64 decode string", "basicAuthKey", encodedKey, logging.ErrorKey(), err.Error())
 		}
 
-		authorizationDecorator = handler.AuthorizationHandler{
-			Logger:    logger,
-			Validator: validators,
-		}.Decorate
+		i := bytes.IndexByte(decoded, ':')
+		logging.Debug(logger).Log(logging.MessageKey(), "Decoded string", "string", decoded, "delimeterIndex", i)
+		if i > 0 {
+			userPass[string(decoded[:i])] = string(decoded[i+1:])
+		}
+	}
+	return
+}
+
+func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper, a service.Accessor, e service.Environment,
+	controlConstructor alice.Constructor, metricsRegistry xmetrics.Registry) (http.Handler, error) {
+	var (
+		serviceBasicAuthKeys = v.GetStringSlice("inbound.authKey")
+		inboundTimeout       = getInboundTimeout(v)
+		r                    = mux.NewRouter()
+		apiHandler           = r.PathPrefix(fmt.Sprintf("%s/%s", baseURI, version)).Subrouter()
+
+		authConstructor = NoOpConstructor
+		authEnforcer    = NoOpConstructor
+
+		listenerDecorator = NoOpConstructor
+		infoLogger        = logging.Info(logger)
+		errorLogger       = logging.Error(logger)
+		m                 *basculechecks.JWTValidationMeasures
+	)
+
+	if metricsRegistry != nil {
+		m = basculechecks.NewJWTValidationMeasures(metricsRegistry)
 	}
 
-	if v.IsSet("jwtValidators") {
-		var validator secure.Validator
-		var cfgValidators []JWTValidator
+	listener := basculechecks.NewMetricListener(m)
 
-		err := v.UnmarshalKey("jwtValidators", &cfgValidators)
+	authConstructorOptions := []basculehttp.COption{
+		basculehttp.WithCLogger(GetLogger),
+		basculehttp.WithCErrorResponseFunc(listener.OnErrorResponse),
+	}
 
+	userPassMap := buildUserPassMap(logger, serviceBasicAuthKeys)
+
+	if len(userPassMap) > 0 {
+		authConstructorOptions = append(authConstructorOptions,
+			basculehttp.WithTokenFactory("Basic",
+				&AttributedBasicTokenFactory{
+					UserPassMap:                userPassMap,
+					TargetAttributeKey:         "jwt-token",
+					VerifiedJWTTokenHeaderName: "Xmit-Api-Authorization",
+				}))
+	}
+
+	var jwtVal JWTValidator
+
+	v.UnmarshalKey("jwtValidator", &jwtVal)
+
+	if jwtVal.Keys.URI != "" {
+		resolver, err := jwtVal.Keys.NewResolver()
 		if err != nil {
+			return nil, emperror.With(err, "Failed to create JWT token key resolver")
+		}
+
+		authConstructorOptions = append(authConstructorOptions,
+			basculehttp.WithTokenFactory("Bearer",
+				basculehttp.BearerTokenFactory{
+					DefaultKeyId: DefaultKeyID,
+					Resolver:     resolver,
+					Parser:       bascule.DefaultJWTParser,
+					Leeway:       jwtVal.Leeway,
+				}))
+	}
+
+	authConstructor = basculehttp.NewConstructor(authConstructorOptions...)
+
+	bearerRules := bascule.Validators{
+		bascule.CreateNonEmptyPrincipalCheck(),
+		bascule.CreateNonEmptyTypeCheck(),
+		bascule.CreateValidTypeCheck([]string{"jwt"}),
+	}
+
+	authEnforcer = basculehttp.NewEnforcer(
+		basculehttp.WithELogger(GetLogger),
+		basculehttp.WithRules("Basic", bascule.Validators{
+			bascule.CreateAllowAllCheck(),
+		}),
+		basculehttp.WithRules("Bearer", bearerRules),
+		basculehttp.WithEErrorResponseFunc(listener.OnErrorResponse),
+	)
+
+	if v.IsSet("apiAccessToDeviceValidator") {
+		apiAccessToDeviceValidator := new(ApiAccessToDeviceValidator)
+		if err := v.UnmarshalKey("apiAccessToDeviceValidator", apiAccessToDeviceValidator); err != nil {
+			errorLogger.Log(logging.MessageKey(), "Could not unmarshall validator from config.")
 			return nil, err
 		}
 
-		validators := make(secure.Validators, 0, len(cfgValidators))
+		apiAccessToDeviceValidator.manager = manager
 
-		for _, validatorDescriptor := range cfgValidators {
-			keyResolver, err := validatorDescriptor.Keys.NewResolver()
+		infoLogger.Log(logging.MessageKey(), "Enabling validator for API access to devices")
 
-			if err != nil {
-				return nil, fmt.Errorf("Unable to create key resolver: %s", err)
-			}
-
-			validators = append(
-				validators,
-				secure.JWSValidator{
-					DefaultKeyId:  DefaultKeyId,
-					Resolver:      keyResolver,
-					JWTValidators: []*jwt.Validator{validatorDescriptor.Custom.New()},
-				},
-			)
-		}
-
-		validator = validators
-
-		authorizationDecoratorDevice = handler.AuthorizationHandler{
-			Logger:    logger,
-			Validator: validator,
-		}.Decorate
+		bearerRules = append(bearerRules, apiAccessToDeviceValidator)
 	}
 
-	apiHandler.Handle(
-		"/device/send",
+	listenerDecorator = basculehttp.NewListenerDecorator(listener)
+
+	authChain := alice.New(SetLogger(logger), authConstructor, authEnforcer, listenerDecorator)
+
+	apiHandler.Handle("/device/send",
 		alice.New(
-			authorizationDecorator,
-			deviceAccessDecorator,
 			device.UseID.FromHeader,
 			xtimeout.NewConstructor(xtimeout.Options{
 				Timeout: inboundTimeout,
 			})).
+			Extend(authChain).
 			Then(wrphttp.NewHTTPHandler(wrpRouterHandler(logger, manager))),
 	).Methods("POST", "PATCH")
 
-	apiHandler.Handle("/devices", authorizationDecorator(&device.ListHandler{
-		Logger:   logger,
-		Registry: manager,
-	})).Methods("GET")
+	apiHandler.Handle("/devices",
+		authChain.Then(&device.ListHandler{
+			Logger:   logger,
+			Registry: manager,
+		})).Methods("GET")
 
 	var (
 		// the basic decorator chain all device connect handlers use
@@ -254,25 +267,25 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 	// the secured variant of the device connect handler
 	apiHandler.Handle(
 		"/device",
-		deviceConnectChain.Append(authorizationDecoratorDevice).Then(connectHandler),
+		deviceConnectChain.
+			Extend(authChain).
+			Then(connectHandler),
 	).HeadersRegexp("Authorization", ".*")
 
-	// fail open if no authorization header is sent
 	apiHandler.Handle(
 		"/device",
 		deviceConnectChain.Then(connectHandler),
 	)
-
 	apiHandler.Handle(
 		"/device/{deviceID}/stat",
-		alice.New(authorizationDecorator,
-			deviceAccessDecorator,
-			device.UseID.FromPath("deviceID"),
-		).Then(&device.StatHandler{
-			Logger:   logger,
-			Registry: manager,
-			Variable: "deviceID",
-		}),
+		alice.New(
+			device.UseID.FromPath("deviceID")).
+			Extend(authChain).
+			Then(&device.StatHandler{
+				Logger:   logger,
+				Registry: manager,
+				Variable: "deviceID",
+			}),
 	)
 
 	return r, nil

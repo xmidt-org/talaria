@@ -133,7 +133,7 @@ func talaria(arguments []string) int {
 		a = new(service.UpdatableAccessor)
 	}
 
-	primaryHandler, err := NewPrimaryHandler(logger, manager, v, a, e, controlConstructor)
+	primaryHandler, err := NewPrimaryHandler(logger, manager, v, a, e, controlConstructor, metricsRegistry)
 	if err != nil {
 		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to start device management", logging.ErrorKey(), err)
 		return 4

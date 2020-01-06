@@ -466,3 +466,27 @@ service:
   #       # (Optional) defaults to empty struct
   #       # queryOptions:
   #       #   useCache: true
+  
+apiAccessToDeviceValidator:
+  ##TODO: let's ignore these two for now. Note that the biggest two advantage of this approach:
+  # 1) flexibility of driving where values come from and go to based on configuration
+  # 2) allow validator tables to have multiple value sources (JWT, HTTP header, etc.)
+
+  # Inform the device connector while fetching values from the device JWT token 
+  # and placing them on the map that the validator will use 
+  # apiMapBuilderFromJWT:
+  #     - 
+  #         jsonPathSource: "partner-id"
+  #         mapKeyTarget: "partner-id"
+
+  # Inform talaria where to fetch values from the api sat token
+  # and placing them on the map that the validator will use
+  # deviceMapBuilderFromJWT: 
+  #     - 
+  #         jsonPathSource: "allowedResources.allowedPartners"         
+  #         mapKeyTarget: "allowedPartners"
+  checks: # this will be used to guide the bascule validator
+      - 
+          apiTablePath: "allowedResources.allowedPartners" ##assumption 
+          op: "intersect"
+          deviceTablePath: "partner-ids"
