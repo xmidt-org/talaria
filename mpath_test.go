@@ -9,27 +9,27 @@ func TestGet(t *testing.T) {
 	testCases := []struct {
 		name     string
 		json     string
-		path     string
+		path     []string
 		expected interface{}
 	}{
 		{
 			name:     "Third level key value found",
 			json:     `{"rgb":{"red": {"hex": "#ff0000"} }}`,
-			path:     "rgb.red.hex",
+			path:     []string{"rgb", "red", "hex"},
 			expected: "#ff0000",
 		},
 
 		{
 			name:     "Second level key value not found",
 			json:     `{"rgb":{"green": {"hex": "#00ff00"} }}`,
-			path:     "rgb.red.hex",
+			path:     []string{"rgb", "red", "hex"},
 			expected: nil,
 		},
 
 		{
 			name:     "Empty path",
 			json:     `{"rgb":{"green": {"hex": "#00ff00"} }}`,
-			path:     "rhex",
+			path:     []string{"rhex"},
 			expected: nil,
 		},
 	}
@@ -118,7 +118,7 @@ func TestIntersect(t *testing.T) {
 			t.Fatal(e)
 		}
 
-		actual, err := Intersect(aMap, bMap, testCase.pathA, testCase.pathB)
+		actual, err := Intersect(aMap, bMap, testCase.pathA, testCase.pathB, nil)
 		if err != nil && !testCase.shouldErr {
 			t.Errorf("Test case: '%s'. Error was not expected: %v", testCase.name, err)
 		}
