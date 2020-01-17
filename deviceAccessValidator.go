@@ -164,7 +164,9 @@ type DeviceAccessCheck struct {
 type DeviceAccessValidator struct {
 	//APIJWTHeaderName is the HTTP header name from which the user credentials
 	APIJWTHeaderName string
-	Checks           []DeviceAccessCheck
+
+	//Checks is the list of checks this validator should run
+	Checks []DeviceAccessCheck
 
 	//Values configured at runtime
 	manager              device.Manager
