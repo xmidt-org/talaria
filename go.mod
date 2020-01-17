@@ -24,5 +24,3 @@ require (
 	golang.org/x/sync v0.0.0-20190227155943-e225da77a7e6 // indirect
 	golang.org/x/text v0.3.1-0.20180807135948-17ff2d5776d2 // indirect
 )
-
-replace github.com/xmidt-org/webpa-common v1.5.1 => ../webpa-common

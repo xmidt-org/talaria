@@ -12,45 +12,48 @@ const (
 
 	//To be implemented
 	ContainsOp    = "contains"
-	EqualsOp      = "equals"
-	GreaterThanOp = "greater-than"
+	EqualsOp      = "=="
+	GreaterThanOp = ">"
 )
-
-//DefaultKeyPathParser simply splits the source string into sep-delimited
-//parts. It never returns an error
-func DefaultKeyPathParser(source string, sep string) (Path, error) {
-	return strings.Split(source, sep), nil
-}
 
 //Check describes the behavior of an assertion operation (i.e. contains) that
 //can be executed. The operation is applied from left to right (i.e. does 'this' contain 'that')
 type Check interface {
-	Execute(this, that interface{}) (bool, error)
+	Run(this, that interface{}) (bool, error)
 }
 
 //CheckFunc allows functions to satisfy the Check interface
 type CheckFunc func(interface{}, interface{}) (bool, error)
 
-func (c CheckFunc) Execute(this, that interface{}) (bool, error) {
+func (c CheckFunc) Run(this, that interface{}) (bool, error) {
 	return c(this, that)
 }
 
+//DefaultPathParser simply splits the source string into sep-delimited
+//parts. It never returns an error
+var DefaultPathParser = func(source string, sep string) (Path, error) {
+	return strings.Split(source, sep), nil
+}
+
+//Path is a convenient string list type used as a key path
+//to load values from anywhere in a map
 type Path []string
 
+//PathParser defines the form
 type PathParser func(source, sep string) (Path, error)
 
 type parsedCheck struct {
-	apiTablePath    Path
-	deviceTablePath Path
-	check           Check
-	inversed        bool
+	userCredentialPath   Path
+	deviceCredentialPath Path
+	assertion            Check
+	inversed             bool
 }
 
 type checkParser struct {
 	pathParser PathParser
 }
 
-func (c checkParser) parse(configs []ApiAccessToDeviceCheck) ([]parsedCheck, error) {
+func (c checkParser) parse(configs []DeviceAccessCheck) ([]parsedCheck, error) {
 	parsedChecks := make([]parsedCheck, len(configs))
 	for i, config := range configs {
 
@@ -58,19 +61,19 @@ func (c checkParser) parse(configs []ApiAccessToDeviceCheck) ([]parsedCheck, err
 			config.Sep = "."
 		}
 
-		apiTablePath, err := c.pathParser(config.APITablePath, config.Sep)
+		userCredentialPath, err := c.pathParser(config.UserCredentialPath, config.Sep)
 		if err != nil {
 			return nil, err
 		}
 
-		deviceTablePath, err := c.pathParser(config.DeviceTablePath, config.Sep)
+		deviceCredentialPath, err := c.pathParser(config.DeviceCredentialPath, config.Sep)
 		if err != nil {
 			return nil, err
 		}
 
 		parsedCheck := parsedCheck{
-			apiTablePath:    apiTablePath,
-			deviceTablePath: deviceTablePath,
+			userCredentialPath:   userCredentialPath,
+			deviceCredentialPath: deviceCredentialPath,
 		}
 
 		check, err := newCheck(config.Op)
@@ -78,7 +81,7 @@ func (c checkParser) parse(configs []ApiAccessToDeviceCheck) ([]parsedCheck, err
 			return nil, err
 		}
 
-		parsedCheck.check = check
+		parsedCheck.assertion = check
 		parsedChecks[i] = parsedCheck
 	}
 
@@ -87,15 +90,15 @@ func (c checkParser) parse(configs []ApiAccessToDeviceCheck) ([]parsedCheck, err
 
 func newCheck(operation string) (Check, error) {
 	switch operation {
-	case "intersect":
+	case IntersectOp:
 		return Intersection, nil
 	default:
 		return nil, errors.New("Operation not supported")
 	}
 }
 
-//Intersection returns true if this and that contains some shared member
-//element
+//Intersection returns true if this and that contain some shared member.
+//False otherwise.
 //Note: only slices are currently supported
 var Intersection CheckFunc = func(this interface{}, that interface{}) (bool, error) {
 	if this == nil || that == nil {

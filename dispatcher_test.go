@@ -26,9 +26,22 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/xmidt-org/webpa-common/convey"
 	"github.com/xmidt-org/webpa-common/device"
-	"github.com/xmidt-org/webpa-common/secure"
 	"github.com/xmidt-org/wrp-go/v3"
 )
+
+func genTestMetadata() (m device.Metadata) {
+	m = device.NewDeviceMetadata()
+
+	claims := map[string]interface{}{
+		device.PartnerIDClaimKey: "partner-1",
+		device.TrustClaimKey:     0,
+	}
+
+	jwtClaims := device.NewJWTClaims(claims)
+
+	m.SetJWTClaims(jwtClaims)
+	return
+}
 
 func testDispatcherConnectEvent(t *testing.T) {
 	var (
@@ -42,12 +55,11 @@ func testDispatcherConnectEvent(t *testing.T) {
 	require.NotNil(outbounds)
 	require.NoError(err)
 
-	d.On("ID").Return(device.ID("mac:123412341234"))
-	d.On("PartnerIDs").Return([]string{"partner-1"})
-	d.On("SessionID").Return("sessionID")
+	deviceMetadata := genTestMetadata()
 
+	d.On("ID").Return(device.ID("mac:123412341234"))
+	d.On("Metadata").Return(deviceMetadata)
 	d.On("Convey").Return(convey.C(nil))
-	d.On("Trust").Return(secure.Untrusted)
 	d.On("ConveyCompliance").Return(convey.Full)
 
 	dispatcher.OnDeviceEvent(&device.Event{Type: device.Connect, Device: d})

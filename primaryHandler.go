@@ -59,19 +59,41 @@ const (
 
 	DefaultKeyID = "current"
 
+	DefaultInboundTimeout time.Duration = 120 * time.Second
+
 	apiJWTAttributeKey = "api-jwt"
 
-	DefaultInboundTimeout time.Duration = 120 * time.Second
+	// Configuration file dot-delimited paths for convenience and protection against typos
+
+	//JWTValidatorConfigKey is the path to the JWT
+	//validator config for device registration endpoints
+	JWTValidatorConfigKey = "jwtValidator"
+
+	//DeviceAccessValidatorConfigKey is the path to the validator config for
+	//restricting API access to devices based on known device metadata and credentials
+	//presented by API consumers
+	DeviceAccessValidatorConfigKey = "deviceAccessValidator"
+
+	//ServiceBasicAuthConfigKey is the path to the list of accepted basic auth keys
+	//for the API endpoints (note: does not include device registration)
+	ServiceBasicAuthConfigKey = "inbound.authKey"
+
+	//InboundTimeoutConfigKey is the path to the request timeout duration for
+	//requests inbound to devices connected to talaria
+	InboundTimeoutConfigKey = "inbound.timeout"
 )
 
+//NoOpConstructor provides a transparent way for constructors that make up
+//our middleware chains to work out of the box even without configuration
+//such as authentication layers
 var NoOpConstructor = func(h http.Handler) http.Handler { return h }
 
-//TODO: should this be provided by bascule since it is a very similar structure
+//TODO: should this be provided by bascule since it is a very similar structure?
 //across all devices
 //JWTValidator provides a convenient way to define jwt validator through config files
 type JWTValidator struct {
 	// JWTKeys is used to create the key.Resolver for JWT verification keys
-	Keys key.ResolverFactory
+	Keys key.ResolverFactory `json:"keys"`
 
 	// Leeway is used to set the amount of time buffer should be given to JWT
 	// time values, such as nbf
@@ -79,7 +101,7 @@ type JWTValidator struct {
 }
 
 func getInboundTimeout(v *viper.Viper) time.Duration {
-	if t, err := time.ParseDuration(v.GetString("inbound.timeout")); err == nil {
+	if t, err := time.ParseDuration(v.GetString(InboundTimeoutConfigKey)); err == nil {
 		return t
 	}
 
@@ -112,7 +134,7 @@ func buildUserPassMap(logger log.Logger, encodedBasicAuthKeys []string) (userPas
 	for _, encodedKey := range encodedBasicAuthKeys {
 		decoded, err := base64.StdEncoding.DecodeString(encodedKey)
 		if err != nil {
-			logging.Info(logger).Log(logging.MessageKey(), "Failed to base64 decode basic auth key", "key", encodedKey, logging.ErrorKey(), err.Error())
+			logging.Info(logger).Log(logging.MessageKey(), "Failed to base64-decode basic auth key", "key", encodedKey, logging.ErrorKey(), err)
 		}
 
 		i := bytes.IndexByte(decoded, ':')
@@ -127,7 +149,7 @@ func buildUserPassMap(logger log.Logger, encodedBasicAuthKeys []string) (userPas
 func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper, a service.Accessor, e service.Environment,
 	controlConstructor alice.Constructor, metricsRegistry xmetrics.Registry) (http.Handler, error) {
 	var (
-		serviceBasicAuthKeys = v.GetStringSlice("inbound.authKey")
+		serviceBasicAuthKeys = v.GetStringSlice(ServiceBasicAuthConfigKey)
 		inboundTimeout       = getInboundTimeout(v)
 		r                    = mux.NewRouter()
 		apiHandler           = r.PathPrefix(fmt.Sprintf("%s/%s", baseURI, version)).Subrouter()
@@ -135,11 +157,14 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		authConstructor = NoOpConstructor
 		authEnforcer    = NoOpConstructor
 
-		listenerDecorator = NoOpConstructor
-		infoLogger        = logging.Info(logger)
-		errorLogger       = logging.Error(logger)
-		debugLogger       = logging.Debug(logger)
-		m                 *basculechecks.JWTValidationMeasures
+		deviceAuthRules  = bascule.Validators{} //auth rules for device registration endpoints
+		serviceAuthRules = bascule.Validators{} //auth rules for everything else
+
+		infoLogger  = logging.Info(logger)
+		errorLogger = logging.Error(logger)
+		debugLogger = logging.Debug(logger)
+
+		m *basculechecks.JWTValidationMeasures
 	)
 
 	if metricsRegistry != nil {
@@ -153,59 +178,58 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		basculehttp.WithCErrorResponseFunc(listener.OnErrorResponse),
 	}
 
-	var jwtVal JWTValidator
+	if v.IsSet(JWTValidatorConfigKey) {
+		var jwtVal JWTValidator
+		v.UnmarshalKey(JWTValidatorConfigKey, &jwtVal)
 
-	v.UnmarshalKey("jwtValidator", &jwtVal)
-	//TODO: do we want to require all talarias to have a JWT validator for devices to connect?
-	//or do we want to make this optional?
+		if jwtVal.Keys.URI != "" {
+			resolver, err := jwtVal.Keys.NewResolver()
+			if err != nil {
+				return nil, emperror.With(err, "Failed to create JWT token key resolver")
+			}
 
-	if jwtVal.Keys.URI != "" {
-		resolver, err := jwtVal.Keys.NewResolver()
-		if err != nil {
-			return nil, emperror.With(err, "Failed to create JWT token key resolver")
+			authConstructorOptions = append(authConstructorOptions,
+				basculehttp.WithTokenFactory("Bearer",
+					basculehttp.BearerTokenFactory{
+						DefaultKeyId: DefaultKeyID,
+						Resolver:     resolver,
+						Parser:       bascule.DefaultJWTParser,
+						Leeway:       jwtVal.Leeway,
+					}))
+
+			deviceAuthRules = append(deviceAuthRules,
+				bascule.Validators{
+					bascule.CreateNonEmptyPrincipalCheck(),
+					bascule.CreateNonEmptyTypeCheck(),
+					bascule.CreateValidTypeCheck([]string{"jwt"}),
+				})
 		}
-
-		authConstructorOptions = append(authConstructorOptions,
-			basculehttp.WithTokenFactory("Bearer",
-				basculehttp.BearerTokenFactory{
-					DefaultKeyId: DefaultKeyID,
-					Resolver:     resolver,
-					Parser:       bascule.DefaultJWTParser,
-					Leeway:       jwtVal.Leeway,
-				}))
 	}
 
-	deviceAuthRules := bascule.Validators{
-		bascule.CreateNonEmptyPrincipalCheck(),
-		bascule.CreateNonEmptyTypeCheck(),
-		bascule.CreateValidTypeCheck([]string{"jwt"}),
-	}
+	if v.IsSet(DeviceAccessValidatorConfigKey) {
+		deviceAccessValidator := &DeviceAccessValidator{}
 
-	serviceAuthRules := bascule.Validators{}
-
-	if v.IsSet("apiAccessToDeviceValidator") {
-		apiAccessToDeviceValidator := new(ApiAccessToDeviceValidator)
-
-		if err := v.UnmarshalKey("apiAccessToDeviceValidator", apiAccessToDeviceValidator); err != nil {
-			errorLogger.Log(logging.MessageKey(), "Could not read in api access to device validator from config.")
+		if err := v.UnmarshalKey(DeviceAccessValidatorConfigKey, deviceAccessValidator); err != nil {
+			errorLogger.Log(logging.MessageKey(), "Could not unmarshall validator config for api access to device.")
 			return nil, err
 		}
 
-		infoLogger.Log(logging.MessageKey(), "Enabling validator for API access to devices")
+		infoLogger.Log(logging.MessageKey(), "Enabling validator for API access to devices.")
 
-		apiAccessToDeviceValidator.manager = manager
-		apiAccessToDeviceValidator.jwtTokenAttributeKey = apiJWTAttributeKey
-		apiAccessToDeviceValidator.checkParser = &checkParser{
-			pathParser: DefaultKeyPathParser,
+		deviceAccessValidator.manager = manager
+		deviceAccessValidator.jwtTokenAttributeKey = apiJWTAttributeKey
+		deviceAccessValidator.checkParser = &checkParser{
+			pathParser: DefaultPathParser,
 		}
-		apiAccessToDeviceValidator.mapReader = new(simpleMapReader)
 
-		if err := apiAccessToDeviceValidator.parseChecks(); err != nil {
+		deviceAccessValidator.mapLoader = &simpleMapLoader{}
+
+		if err := deviceAccessValidator.parseChecks(); err != nil {
 			errorLogger.Log(logging.ErrorKey(), err, logging.MessageKey(), "Could not parse api access to device validation checks from config")
 			return nil, err
 		}
 
-		serviceAuthRules = bascule.Validators{apiAccessToDeviceValidator}
+		serviceAuthRules = append(serviceAuthRules, deviceAccessValidator)
 
 		userPassMap := buildUserPassMap(logger, serviceBasicAuthKeys)
 		debugLogger.Log("BasicAuthUserPassMap", userPassMap)
@@ -216,7 +240,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 					&AttributedBasicTokenFactory{
 						UserPassMap:                userPassMap,
 						TargetAttributeKey:         apiJWTAttributeKey,
-						VerifiedJWTTokenHeaderName: apiAccessToDeviceValidator.APIJWTHeaderName,
+						VerifiedJWTTokenHeaderName: deviceAccessValidator.APIJWTHeaderName,
 					}))
 
 			serviceAuthRules = append(serviceAuthRules, bascule.CreateAllowAllCheck())
@@ -231,9 +255,8 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		basculehttp.WithRules("Bearer", deviceAuthRules),
 		basculehttp.WithEErrorResponseFunc(listener.OnErrorResponse),
 	)
-	listenerDecorator = basculehttp.NewListenerDecorator(listener)
 
-	authChain := alice.New(SetLogger(logger), authConstructor, authEnforcer, listenerDecorator)
+	authChain := alice.New(SetLogger(logger), authConstructor, authEnforcer, basculehttp.NewListenerDecorator(listener))
 
 	apiHandler.Handle("/device/send",
 		alice.New(
@@ -288,14 +311,14 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		"/device",
 		deviceConnectChain.
 			Extend(authChain).
-			Append(DeviceMetadataDecorator).
+			Append(DeviceMetadataMiddleware).
 			Then(connectHandler),
 	).HeadersRegexp("Authorization", ".*")
 
 	apiHandler.Handle(
 		"/device",
 		deviceConnectChain.
-			Append(DeviceMetadataDecorator).
+			Append(DeviceMetadataMiddleware).
 			Then(connectHandler),
 	)
 	apiHandler.Handle(
