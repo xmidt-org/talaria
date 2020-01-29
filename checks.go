@@ -2,8 +2,14 @@ package main
 
 import (
 	"errors"
+	"github.com/spf13/cast"
 	"reflect"
 	"strings"
+)
+
+var (
+	ErrIterableTypeOnly = errors.New("Only slices and arrays are currently supportd as iterable")
+	ErrIntTypeOnly      = errors.New("Only int valiues are supported")
 )
 
 const (
@@ -105,24 +111,90 @@ var Intersection CheckFunc = func(this interface{}, that interface{}) (bool, err
 		return false, nil
 	}
 
-	if reflect.TypeOf(this).Kind() != reflect.Slice ||
-		reflect.TypeOf(that).Kind() != reflect.Slice {
-		return false, errors.New("Only slices are supported as values")
+	// a, ok := iterable(this)
+	// if !ok {
+	// 	return false, ErrIterableTypeOnly
+	// }
+
+	a := cast.ToSlice(this)
+
+	if a == nil {
+		return false, ErrIterableTypeOnly
+	}
+
+	// b, ok := iterable(that)
+
+	// if !ok {
+	// 	return false, ErrIterableTypeOnly
+	// }
+	b := cast.ToSlice(that)
+	if b == nil {
+		return false, ErrIntTypeOnly
 	}
 
 	m := make(map[interface{}]struct{})
 
-	a := reflect.ValueOf(this)
-	for i := 0; i < a.Len(); i++ {
-		m[a.Index(i).Interface()] = struct{}{}
+	for _, e := range a {
+		m[e] = struct{}{}
 	}
 
-	b := reflect.ValueOf(that)
-	for i := 0; i < b.Len(); i++ {
-		if _, ok := m[b.Index(i).Interface()]; ok {
+	for _, e := range b {
+		if _, ok := m[e]; ok {
 			return true, nil
 		}
 	}
 
 	return false, nil
 }
+
+//iterable checks that the given interface is of a
+//supported iterable reflect.Kind and if so,
+//returns a slice of its elements
+func iterable(e interface{}) ([]interface{}, bool) {
+	switch reflect.TypeOf(e).Kind() {
+	case reflect.Slice, reflect.Array:
+		v := reflect.ValueOf(e)
+		n := v.Len()
+
+		elements := make([]interface{}, n)
+		for i := 0; i < n; i++ {
+			elements[i] = v.Index(i).Interface()
+		}
+		return elements, true
+	}
+
+	return nil, false
+}
+
+//Contains returns true if e is a member of the iterable object list.
+//ErrIterableTypeOnly is returned if list is not a supported iterable object (Slices and Arrays).
+var Contains CheckFunc = func(list interface{}, element interface{}) (bool, error) {
+	if list == nil {
+		return false, nil
+	}
+
+	l, ok := iterable(list)
+	if !ok {
+		return false, ErrIterableTypeOnly
+	}
+
+	for _, e := range l {
+		if reflect.DeepEqual(e, element) {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+//Equal delegates its arguments to reflect.DeepEqual()
+var Equal CheckFunc = func(this interface{}, that interface{}) (bool, error) {
+	return reflect.DeepEqual(this, that), nil
+}
+
+// var GreaterThan CheckFunc = func(this interface{}, that interface{}) (bool, error) {
+// 	thisInt, ok := this.(int)
+// 	thatInt, ok := that.(int)
+// 	thatInt := int(that)
+
+// }
