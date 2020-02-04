@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 - convert from glide to go mod
 - updated release pipeline to use travis [#113](https://github.com/xmidt-org/talaria/pull/113)
+- added session id to event metadata [#117](https://github.com/xmidt-org/talaria/pull/117)
 
 ## [v0.1.3]
 fixed build upload

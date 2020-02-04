@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/xmidt-org/webpa-common/convey"
@@ -22,6 +23,8 @@ func statusMetadata(d device.Interface) map[string]string {
 		wrpmeta.Field{From: "last-reconnect-reason", To: "/last-reconnect-reason"},
 		wrpmeta.Field{From: "protocol", To: "/protocol"}).
 		Set("/trust", d.Trust()).
+		Set("/session-id", d.SessionID()).
+		Set("/partner-ids", strings.Join(d.PartnerIDs(), ",")).
 		Build()
 
 	if allFieldsPresent {
