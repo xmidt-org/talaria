@@ -235,8 +235,8 @@ github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q
 github.com/xmidt-org/bascule v0.7.0/go.mod h1:D2DuXSMa5+OpveCtaSWp0+/tmnxZqfYhkCC1oCzLZdI=
 github.com/xmidt-org/webpa-common v1.1.0/go.mod h1:oCpKzOC+9h2vYHVzAU/06tDTQuBN4RZz+rhgIXptpOI=
 github.com/xmidt-org/webpa-common v1.3.1/go.mod h1:oCpKzOC+9h2vYHVzAU/06tDTQuBN4RZz+rhgIXptpOI=
-github.com/xmidt-org/webpa-common v1.5.2-0.20200203192941-da1b59206178 h1:7IoaS/Zt5xUN/23OQOEKq6UX1xjQfvn+LaRDmx22b/I=
-github.com/xmidt-org/webpa-common v1.5.2-0.20200203192941-da1b59206178/go.mod h1:JLQvIaWXGTC1W0sdu5mIobQjSpd6K/eahF4/dzmnrtY=
+github.com/xmidt-org/webpa-common v1.6.0 h1:jFctRZP3mqIkbT3PjeWTpCyl1FWiFuXkzxoH91BXHi4=
+github.com/xmidt-org/webpa-common v1.6.0/go.mod h1:JLQvIaWXGTC1W0sdu5mIobQjSpd6K/eahF4/dzmnrtY=
 github.com/xmidt-org/wrp-go v1.3.3 h1:WvODdrtxPwHEUqwfwHpu+kNUfBzLBfAIdrKCQjoCblc=
 github.com/xmidt-org/wrp-go v1.3.3/go.mod h1:VOKYeeVWc2cyYmGWJksqUCV/lGzReRl0EP74y3mcWp0=
 github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77/go.mod h1:aYKd//L2LvnjZzWKhF00oedf4jCCReLcmhLdhm1A27Q=
