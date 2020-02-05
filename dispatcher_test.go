@@ -44,6 +44,8 @@ func testDispatcherConnectEvent(t *testing.T) {
 
 	d.On("ID").Return(device.ID("mac:123412341234"))
 	d.On("PartnerIDs").Return([]string{"partner-1"})
+	d.On("SessionID").Return("sessionID")
+
 	d.On("Convey").Return(convey.C(nil))
 	d.On("Trust").Return(secure.Untrusted)
 	d.On("ConveyCompliance").Return(convey.Full)
