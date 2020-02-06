@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [v0.2.1]
+- bumped webpa-common to v1.6.1 to fix crash [#118](https://github.com/xmidt-org/talaria/pull/118)
+
 ## [v0.2.0]
 - convert from glide to go mod
 - updated release pipeline to use travis [#113](https://github.com/xmidt-org/talaria/pull/113)
