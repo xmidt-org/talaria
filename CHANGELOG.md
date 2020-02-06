@@ -24,7 +24,8 @@ Switching to new build process
 ## [v0.1.1] Tue Mar 28 2017 Weston Schmidt - 0.1.1
 - initial creation
 
-[Unreleased]: https://github.com/Comcast/talaria/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Comcast/talaria/compare/v0.2.1...HEAD
+[v0.2.1]: https://github.com/Comcast/talaria/compare/v0.2.0...v0.2.1
 [v0.2.0]: https://github.com/Comcast/talaria/compare/v0.1.3...v0.2.0
 [v0.1.3]: https://github.com/Comcast/talaria/compare/v0.1.2...v0.1.3
 [v0.1.2]: https://github.com/Comcast/talaria/compare/v0.1.1...v0.1.2
