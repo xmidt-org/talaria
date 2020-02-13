@@ -215,7 +215,7 @@ func (d *dispatcher) OnDeviceEvent(event *device.Event) {
 
 	case device.MessageReceived:
 		if routable, ok := event.Message.(wrp.Routable); ok {
-			var (s
+			var (
 				destination = routable.To()
 				contentType = event.Format.ContentType()
 			)
