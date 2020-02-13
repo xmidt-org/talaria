@@ -2,13 +2,12 @@ package main
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/xmidt-org/webpa-common/convey"
 	"github.com/xmidt-org/webpa-common/device"
-	"github.com/xmidt-org/wrp-go/wrp"
-	"github.com/xmidt-org/wrp-go/wrp/wrpmeta"
+	"github.com/xmidt-org/wrp-go/v2"
+	"github.com/xmidt-org/wrp-go/v2/wrpmeta"
 )
 
 func statusMetadata(d device.Interface) map[string]string {
@@ -23,8 +22,6 @@ func statusMetadata(d device.Interface) map[string]string {
 		wrpmeta.Field{From: "last-reconnect-reason", To: "/last-reconnect-reason"},
 		wrpmeta.Field{From: "protocol", To: "/protocol"}).
 		Set("/trust", d.Trust()).
-		Set("/session-id", d.SessionID()).
-		Set("/partner-ids", strings.Join(d.PartnerIDs(), ",")).
 		Build()
 
 	if allFieldsPresent {
@@ -56,6 +53,7 @@ func newOnlineMessage(source string, d device.Interface) (string, *wrp.Message) 
 		Destination: "event:" + eventType,
 		ContentType: "json",
 		PartnerIDs:  d.PartnerIDs(),
+		SessionID:   d.SessionID(),
 		Metadata:    statusMetadata(d),
 		Payload:     onlinePayload(time.Now(), d),
 	}
@@ -95,6 +93,7 @@ func newOfflineMessage(source string, d device.Interface) (string, *wrp.Message)
 		Destination: "event:" + eventType,
 		ContentType: "json",
 		PartnerIDs:  d.PartnerIDs(),
+		SessionID:   d.SessionID(),
 		Metadata:    statusMetadata(d),
 		Payload:     offlinePayload(time.Now(), d),
 	}

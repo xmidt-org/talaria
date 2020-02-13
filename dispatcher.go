@@ -32,7 +32,7 @@ import (
 	"github.com/xmidt-org/webpa-common/device"
 	"github.com/xmidt-org/webpa-common/event"
 	"github.com/xmidt-org/webpa-common/logging"
-	"github.com/xmidt-org/wrp-go/wrp"
+	"github.com/xmidt-org/wrp-go/v2"
 )
 
 var ErrOutboundQueueFull = errors.New("Outbound message queue full")
@@ -215,7 +215,7 @@ func (d *dispatcher) OnDeviceEvent(event *device.Event) {
 
 	case device.MessageReceived:
 		if routable, ok := event.Message.(wrp.Routable); ok {
-			var (
+			var (s
 				destination = routable.To()
 				contentType = event.Format.ContentType()
 			)
