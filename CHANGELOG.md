@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [v0.2.2]
+- bumped webpa-common to v1.6.3 to make sessionID a first class citizen [#120](https://github.com/xmidt-org/talaria/pull/120)
+
 ## [v0.2.1]
 - bumped webpa-common to v1.6.1 to fix crash [#118](https://github.com/xmidt-org/talaria/pull/118)
 
@@ -24,7 +27,8 @@ Switching to new build process
 ## [v0.1.1] Tue Mar 28 2017 Weston Schmidt - 0.1.1
 - initial creation
 
-[Unreleased]: https://github.com/Comcast/talaria/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/Comcast/talaria/compare/v0.2.2...HEAD
+[v0.2.2]: https://github.com/Comcast/talaria/compare/v0.2.1...v0.2.2
 [v0.2.1]: https://github.com/Comcast/talaria/compare/v0.2.0...v0.2.1
 [v0.2.0]: https://github.com/Comcast/talaria/compare/v0.1.3...v0.2.0
 [v0.1.3]: https://github.com/Comcast/talaria/compare/v0.1.2...v0.1.3

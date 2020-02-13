@@ -27,7 +27,7 @@ import (
 	"github.com/xmidt-org/webpa-common/convey"
 	"github.com/xmidt-org/webpa-common/device"
 	"github.com/xmidt-org/webpa-common/secure"
-	"github.com/xmidt-org/wrp-go/wrp"
+	"github.com/xmidt-org/wrp-go/v2"
 )
 
 func testDispatcherConnectEvent(t *testing.T) {
