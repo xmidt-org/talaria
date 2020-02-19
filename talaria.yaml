@@ -230,6 +230,13 @@ device:
     eventEndpoints:
       default: http://caduceus:6000/api/v3/notify
 
+    # enableConsulRoundRobin will overwrite the eventEndpoints with using consul to discover the caduceus in the datacenter.
+    # NOTE: eventEndpoints still must be set, and in the service section of this config caduceus must be added to the list
+    # of services to watch.
+    # if no services are found, talaria will fail back to the defined endpoint.
+    # (Optional) defaults to false
+    enableConsulRoundRobin: true
+
     # requestTimeout is how long an event will be held on to starting from when it is
     # received till completing the http request.
     # So if the event was in the queue for 124s and using the default value
@@ -404,6 +411,35 @@ service:
   #   watches:
   #     - # service name to watch for updates.
   #       service: "talaria"
+  #
+  #       # tags is a list of strings that must be attached to the services
+  #       # being watched.
+  #       # (Optional) defaults to empty list
+  #       tags:
+  #         - "dev"
+  #         - "docker"
+  #
+  #       # passingOnly determines if only services passing the consul check are returned.
+  #       # (Optional) defaults to false
+  #       passingOnly: true
+  #
+  #       # allDatacenters determines if there is a watch for all datacenter changes.
+  #       # change this to have the devices hash across all datacenters instead of
+  #       # the single datacenter. The datacenter is known by the consul agent who is
+  #       # aware of which datacenter it is in.
+  #       # (Optional) defaults to false, aka only watch for services in the
+  #       # current datacenter.
+  #       allDatacenters: false
+  #
+  #       # queryOptions are options for the consul query, used in conjunction
+  #       # with passingOnly and allDatacenters.
+  #       # defined by https://godoc.org/github.com/hashicorp/consul/api#QueryOptions
+  #       # (Optional) defaults to empty struct
+  #       # queryOptions:
+  #       #   useCache: true
+  #     - # service name to watch for which caduceus to send events to.
+  #       # NOTE: enableConsulRoundRobin must be set to true in order for this to work.
+  #       service: "caduceus"
   #
   #       # tags is a list of strings that must be attached to the services
   #       # being watched.

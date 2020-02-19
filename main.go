@@ -151,24 +151,27 @@ func talaria(arguments []string) int {
 		logger.Log(level.Key(), level.InfoValue(), "configurationFile", v.ConfigFileUsed())
 		e.Register()
 
+		listeners := []monitor.Listener{
+			monitor.NewMetricsListener(metricsRegistry),
+			monitor.NewRegistrarListener(logger, e, true),
+			monitor.NewAccessorListener(e.AccessorFactory(), a.Update),
+			// this rehasher will handle device disconnects in response to service discovery events
+			rehasher.New(
+				manager,
+				rehasher.WithLogger(logger),
+				rehasher.WithIsRegistered(e.IsRegistered),
+				rehasher.WithMetricsProvider(metricsRegistry),
+			),
+		}
+		if watcher != nil {
+			listeners = append(listeners, watcher)
+		}
+
 		_, err = monitor.New(
 			monitor.WithLogger(logger),
 			monitor.WithFilter(monitor.NewNormalizeFilter(e.DefaultScheme())),
 			monitor.WithEnvironment(e),
-			monitor.WithListeners(
-				monitor.NewMetricsListener(metricsRegistry),
-				monitor.NewRegistrarListener(logger, e, true),
-				monitor.NewAccessorListener(e.AccessorFactory(), a.Update),
-				watcher,
-
-				// this rehasher will handle device disconnects in response to service discovery events
-				rehasher.New(
-					manager,
-					rehasher.WithLogger(logger),
-					rehasher.WithIsRegistered(e.IsRegistered),
-					rehasher.WithMetricsProvider(metricsRegistry),
-				),
-			),
+			monitor.WithListeners(listeners...),
 		)
 
 		if err != nil {

@@ -18,7 +18,6 @@ package main
 
 import (
 	"encoding/json"
-
 	"net/http"
 	"time"
 
@@ -60,19 +59,20 @@ const (
 // Outbounder encapsulates the configuration necessary for handling outbound traffic
 // and grants the ability to start the outbounding infrastructure.
 type Outbounder struct {
-	Method            string                 `json:"method"`
-	Retries           int                    `json:"retries"`
-	RequestTimeout    time.Duration          `json:"requestTimeout"`
-	DefaultScheme     string                 `json:"defaultScheme"`
-	AllowedSchemes    []string               `json:"allowedSchemes"`
-	EventEndpoints    map[string]interface{} `json:"eventEndpoints"`
-	OutboundQueueSize uint                   `json:"outboundQueueSize"`
-	WorkerPoolSize    uint                   `json:"workerPoolSize"`
-	Source            string                 `json:"source"`
-	Transport         http.Transport         `json:"transport"`
-	ClientTimeout     time.Duration          `json:"clientTimeout"`
-	AuthKey           []string               `json:"authKey"`
-	Logger            log.Logger             `json:"-"`
+	Method                 string                 `json:"method"`
+	Retries                int                    `json:"retries"`
+	RequestTimeout         time.Duration          `json:"requestTimeout"`
+	DefaultScheme          string                 `json:"defaultScheme"`
+	AllowedSchemes         []string               `json:"allowedSchemes"`
+	EventEndpoints         map[string]interface{} `json:"eventEndpoints"`
+	EnableConsulRoundRobin bool                   `json:"enableConsulRoundRobin"`
+	OutboundQueueSize      uint                   `json:"outboundQueueSize"`
+	WorkerPoolSize         uint                   `json:"workerPoolSize"`
+	Source                 string                 `json:"source"`
+	Transport              http.Transport         `json:"transport"`
+	ClientTimeout          time.Duration          `json:"clientTimeout"`
+	AuthKey                []string               `json:"authKey"`
+	Logger                 log.Logger             `json:"-"`
 }
 
 // NewOutbounder returns an Outbounder unmarshalled from a Viper environment.
@@ -103,12 +103,14 @@ func NewOutbounder(logger log.Logger, v *viper.Viper) (o *Outbounder, watcher *c
 	if v != nil {
 		err = v.Unmarshal(o)
 	}
-	for k := range o.EventEndpoints {
-		options.Watch[k] = "caduceus"
+	if o.EnableConsulRoundRobin {
+		logging.Info(o.Logger).Log(logging.MessageKey(), "Using consul round robin on service discover", "service", "caduceus")
+		for k := range o.EventEndpoints {
+			options.Watch[k] = "caduceus"
+		}
+		watcher = consul.NewConsulWatcher(options)
+		o.Transport.DialContext = xresolver.NewResolver(xresolver.DefaultDialer, watcher).DialContext
 	}
-	watcher = consul.NewConsulWatcher(options)
-	o.Transport.DialContext = xresolver.NewResolver(xresolver.DefaultDialer, watcher).DialContext
-
 	return
 }
 
