@@ -10,7 +10,7 @@ src/vendor
 +src/talaria/talaria
 +src/talaria/debug
 +src/talaria/output
- 
+
  # config
 -src/talaria/talaria.json
 +src/talaria/talaria.json
@@ -49,3 +49,23 @@ _testmain.go
 *.exe
 *.test
 *.prof
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+coverage.txt
+
+*vendor/
+
+#Goland
+.idea/
+
+# helm 
+deploy/k8s/talaria/rendered.*
+
+# binaries
+talaria
+.ignore
+
+# keep talaria directory
+!deploy/helm/talaria
+
