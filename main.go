@@ -38,6 +38,7 @@ import (
 	"github.com/xmidt-org/webpa-common/service/monitor"
 	"github.com/xmidt-org/webpa-common/service/servicecfg"
 	"github.com/xmidt-org/webpa-common/xmetrics"
+	"github.com/xmidt-org/webpa-common/xresolver/consul"
 )
 
 const (
@@ -52,20 +53,20 @@ var (
 	BuildTime = "undefined"
 )
 
-func newDeviceManager(logger log.Logger, r xmetrics.Registry, v *viper.Viper) (device.Manager, error) {
+func newDeviceManager(logger log.Logger, r xmetrics.Registry, v *viper.Viper) (device.Manager, *consul.ConsulWatcher, error) {
 	deviceOptions, err := device.NewOptions(logger, v.Sub(device.DeviceManagerKey))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	outbounder, err := NewOutbounder(logger, v.Sub(OutbounderKey))
+	outbounder, watcher, err := NewOutbounder(logger, v.Sub(OutbounderKey))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	outboundListener, err := outbounder.Start(NewOutboundMeasures(r))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	deviceOptions.MetricsProvider = r
@@ -73,7 +74,7 @@ func newDeviceManager(logger log.Logger, r xmetrics.Registry, v *viper.Viper) (d
 		outboundListener,
 	}
 
-	return device.NewManager(deviceOptions), nil
+	return device.NewManager(deviceOptions), watcher, nil
 }
 
 // talaria is the driver function for Talaria.  It performs everything main() would do,
@@ -107,7 +108,7 @@ func talaria(arguments []string) int {
 		return 1
 	}
 
-	manager, err := newDeviceManager(logger, metricsRegistry, v)
+	manager, watcher, err := newDeviceManager(logger, metricsRegistry, v)
 	if err != nil {
 		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to create device manager", logging.ErrorKey(), err)
 		return 2
@@ -150,23 +151,27 @@ func talaria(arguments []string) int {
 		logger.Log(level.Key(), level.InfoValue(), "configurationFile", v.ConfigFileUsed())
 		e.Register()
 
+		listeners := []monitor.Listener{
+			monitor.NewMetricsListener(metricsRegistry),
+			monitor.NewRegistrarListener(logger, e, true),
+			monitor.NewAccessorListener(e.AccessorFactory(), a.Update),
+			// this rehasher will handle device disconnects in response to service discovery events
+			rehasher.New(
+				manager,
+				rehasher.WithLogger(logger),
+				rehasher.WithIsRegistered(e.IsRegistered),
+				rehasher.WithMetricsProvider(metricsRegistry),
+			),
+		}
+		if watcher != nil {
+			listeners = append(listeners, watcher)
+		}
+
 		_, err = monitor.New(
 			monitor.WithLogger(logger),
 			monitor.WithFilter(monitor.NewNormalizeFilter(e.DefaultScheme())),
 			monitor.WithEnvironment(e),
-			monitor.WithListeners(
-				monitor.NewMetricsListener(metricsRegistry),
-				monitor.NewRegistrarListener(logger, e, true),
-				monitor.NewAccessorListener(e.AccessorFactory(), a.Update),
-
-				// this rehasher will handle device disconnects in response to service discovery events
-				rehasher.New(
-					manager,
-					rehasher.WithLogger(logger),
-					rehasher.WithIsRegistered(e.IsRegistered),
-					rehasher.WithMetricsProvider(metricsRegistry),
-				),
-			),
+			monitor.WithListeners(listeners...),
 		)
 
 		if err != nil {
