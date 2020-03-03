@@ -48,7 +48,6 @@ func wrpRouterHandler(logger log.Logger, router device.Router) wrphttp.HandlerFu
 			}
 
 			errorLogger.Log(logging.MessageKey(), "Could not process device request", logging.ErrorKey(), err, "code", code)
-
 			w.Header().Set("X-Xmidt-Message-Error", err.Error())
 			xhttp.WriteErrorf(
 				w,

@@ -467,7 +467,6 @@ service:
   #       # queryOptions:
   #       #   useCache: true
   
-<<<<<<< HEAD
 apiAccessToDeviceValidator:
   apiJWTHeaderName: "X-Xmidt-Api-Authorization"
   checks: # this will be used to guide the bascule validator
@@ -475,23 +474,3 @@ apiAccessToDeviceValidator:
           apiTablePath: "allowedResources.allowedPartners" ##assumption 
           op: "intersect"
           deviceTablePath: "partner-ids"
-=======
-# deviceAccessValidator:
-#  apiJWTHeaderName: "X-Xmidt-Api-Authorization"
-#  checks: 
-#       - 
-#           userCredentialPath: "user.amazing.list"
-#           op: "intersect"
-#           deviceCredentialPath: "device.amazing.list"
-#       -
-#           userCredentialPath: "user.amazing.list"
-#           op: "contains"
-#           deviceCredentialPath: "device.amazing.item"
-#       -
-#           userCredentialPath: "user.amazing.item"
-#           op: "contains"
-#           deviceCredentialPath: "device.amazing.list"
-#           inversed: true
-
-
->>>>>>> Add comment and sample config
