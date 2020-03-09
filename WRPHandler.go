@@ -8,6 +8,7 @@ import (
 	"github.com/xmidt-org/webpa-common/device"
 	"github.com/xmidt-org/webpa-common/logging"
 	"github.com/xmidt-org/webpa-common/xhttp"
+	"github.com/xmidt-org/wrp-go/v2"
 	"github.com/xmidt-org/wrp-go/v2/wrphttp"
 )
 
@@ -67,7 +68,9 @@ func wrpRouterHandler(logger log.Logger, router device.Router) wrphttp.HandlerFu
 			return
 		}
 
-		if deviceResponse.Format == deviceRequest.Format {
+		responseFormat, _ := wrphttp.DetermineFormat(wrp.Msgpack, r.Original.Header, "Accept")
+
+		if deviceResponse.Format == responseFormat {
 			if len(deviceResponse.Contents) < 1 {
 				_, err = xhttp.WriteErrorf(w, http.StatusInternalServerError, "Transaction response had no content")
 
