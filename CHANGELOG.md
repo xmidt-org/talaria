@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- adding docker automation [#122](https://github.com/xmidt-org/talaria/pull/122)
 
 ## [v0.3.0]
 - add caduceus round robin logic through consul [#69](https://github.com/xmidt-org/talaria/pull/69)
