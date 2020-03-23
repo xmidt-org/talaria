@@ -31,6 +31,8 @@ flavor: (( grab $FLAVOR || "mint" ))
 # change this will only effect spruce and the vars referencing it
 stage: (( grab $STAGE || "dev" ))
 
+# used for building fqdn url aka '.default.svc.cluster.local'
+domain: (( grab $DOMAIN || "" ))
 
 ##############################################################################
 # WebPA Service configuration
@@ -371,7 +373,7 @@ service:
           - (( concat "flavor=" flavor))
 
         # address tells consul where to contact the service.
-        address: (( concat "http://" server ))
+        address: (( concat "http://" server domain ))
 
         # scheme tells consul what scheme to use to contact the service.
         # This is used with the address for calls to this server.
@@ -393,7 +395,7 @@ service:
 
             # http tells consul to check via http rest request at the url
             # provided.
-            http:  (( concat "http://" server ":6201/health" ))
+            http:  (( concat "http://" server domain ":6201/health" ))
 
             # interval is how often to check.
             interval: "30s"
