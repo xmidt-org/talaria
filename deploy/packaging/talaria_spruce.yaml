@@ -31,7 +31,7 @@ flavor: (( grab $FLAVOR || "mint" ))
 # change this will only effect spruce and the vars referencing it
 stage: (( grab $STAGE || "dev" ))
 
-# used for buildingd fqdn url aka '.default.svc.cluster.local'
+# used for building fqdn url aka '.default.svc.cluster.local'
 domain: (( grab $DOMAIN || "" ))
 
 ##############################################################################
