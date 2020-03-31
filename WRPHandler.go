@@ -8,7 +8,6 @@ import (
 	"github.com/xmidt-org/webpa-common/device"
 	"github.com/xmidt-org/webpa-common/logging"
 	"github.com/xmidt-org/webpa-common/xhttp"
-	"github.com/xmidt-org/wrp-go/v2"
 	"github.com/xmidt-org/wrp-go/v2/wrphttp"
 )
 
@@ -68,28 +67,25 @@ func wrpRouterHandler(logger log.Logger, router device.Router) wrphttp.HandlerFu
 			return
 		}
 
-		responseFormat, _ := wrphttp.DetermineFormat(wrp.Msgpack, r.Original.Header, "Accept")
+		if len(deviceResponse.Contents) < 1 {
+			_, err = xhttp.WriteError(
+				w,
+				http.StatusInternalServerError,
+				"Transaction response had no content")
 
-		if deviceResponse.Format == responseFormat {
-			if len(deviceResponse.Contents) < 1 {
-				_, err = xhttp.WriteErrorf(w, http.StatusInternalServerError, "Transaction response had no content")
+			errorLogger.Log(logging.MessageKey(), "Transaction response was empty", logging.ErrorKey(), err)
 
-				errorLogger.Log(logging.MessageKey(), "Transaction response had no content", logging.ErrorKey(), err)
-				return
-			}
+			return
+		}
 
-			w.Header().Set("Content-Type", deviceResponse.Format.ContentType())
-			_, err = w.Write(deviceResponse.Contents)
+		_, err = w.WriteWRP(&wrphttp.Entity{
+			Bytes:   deviceResponse.Contents,
+			Message: *deviceResponse.Message,
+			Format:  deviceResponse.Format,
+		})
 
-			if err != nil {
-				errorLogger.Log(logging.MessageKey(), "Error while writing encoded transaction response", logging.ErrorKey(), err)
-			}
-		} else {
-			_, err := w.WriteWRP(deviceResponse.Message)
-
-			if err != nil {
-				errorLogger.Log(logging.MessageKey(), "Error while writing transaction response", logging.ErrorKey(), err)
-			}
+		if err != nil {
+			errorLogger.Log(logging.MessageKey(), "Error while writing transaction response", logging.ErrorKey(), err)
 		}
 	}
 }

@@ -237,6 +237,10 @@ github.com/xmidt-org/wrp-go/v2 v2.0.0 h1:5qWc3uZDQNxjunUqK9HMrWZcdCaTtUVCtR+SSYW
 github.com/xmidt-org/wrp-go/v2 v2.0.0/go.mod h1:v0HK0go/7OSVDvKbnXsUn6c+M987p0yyxWEs8/Fmf60=
 github.com/xmidt-org/wrp-go/v2 v2.0.1 h1:JWMpAvNCkD1pLXdZLmAs/4g3twxTM7K4YU57dapJvB0=
 github.com/xmidt-org/wrp-go/v2 v2.0.1/go.mod h1:v0HK0go/7OSVDvKbnXsUn6c+M987p0yyxWEs8/Fmf60=
+github.com/xmidt-org/wrp-go/v2 v2.0.2-0.20200309203546-d4c2f6b8e6e2 h1:6eZM077gFvhQNdq3YXLcR0zUYdma56MhShq699iFVJE=
+github.com/xmidt-org/wrp-go/v2 v2.0.2-0.20200309203546-d4c2f6b8e6e2/go.mod h1:v0HK0go/7OSVDvKbnXsUn6c+M987p0yyxWEs8/Fmf60=
+github.com/xmidt-org/wrp-go/v2 v2.0.2-0.20200331181148-cbb4fba7a6e0 h1:aa4ONkQR8/DCz4/eNTmCU4BOhTBOp0inl1D2U+wtRH8=
+github.com/xmidt-org/wrp-go/v2 v2.0.2-0.20200331181148-cbb4fba7a6e0/go.mod h1:v0HK0go/7OSVDvKbnXsUn6c+M987p0yyxWEs8/Fmf60=
 github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77/go.mod h1:aYKd//L2LvnjZzWKhF00oedf4jCCReLcmhLdhm1A27Q=
 go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.uber.org/atomic v1.4.0/go.mod h1:gD2HeocX3+yG+ygLZcrzQJaqmWj9AIm7n08wl/qW/PE=
