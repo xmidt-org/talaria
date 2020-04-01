@@ -39,7 +39,7 @@ import (
 	"github.com/xmidt-org/webpa-common/xhttp/xcontext"
 	"github.com/xmidt-org/webpa-common/xhttp/xfilter"
 	"github.com/xmidt-org/webpa-common/xhttp/xtimeout"
-	"github.com/xmidt-org/wrp-go/v2/wrphttp"
+	"github.com/xmidt-org/wrp-go/v3/wrphttp"
 )
 
 const (
