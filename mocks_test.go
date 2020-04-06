@@ -18,6 +18,7 @@ package main
 
 import (
 	"github.com/stretchr/testify/mock"
+	"github.com/xmidt-org/webpa-common/device"
 )
 
 type mockURLFilter struct {
@@ -27,4 +28,14 @@ type mockURLFilter struct {
 func (m *mockURLFilter) Filter(v string) (string, error) {
 	arguments := m.Called(v)
 	return arguments.String(0), arguments.Error(1)
+}
+
+type mockRouter struct {
+	mock.Mock
+}
+
+func (m *mockRouter) Route(request *device.Request) (*device.Response, error) {
+	arguments := m.Called(request)
+	first, _ := arguments.Get(0).(*device.Response)
+	return first, arguments.Error(1)
 }

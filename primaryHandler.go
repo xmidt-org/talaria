@@ -39,6 +39,7 @@ import (
 	"github.com/xmidt-org/webpa-common/xhttp/xcontext"
 	"github.com/xmidt-org/webpa-common/xhttp/xfilter"
 	"github.com/xmidt-org/webpa-common/xhttp/xtimeout"
+	"github.com/xmidt-org/wrp-go/v3/wrphttp"
 )
 
 const (
@@ -136,11 +137,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 			xtimeout.NewConstructor(xtimeout.Options{
 				Timeout: inboundTimeout,
 			})).
-			Then(
-				&device.MessageHandler{
-					Logger: logger,
-					Router: manager,
-				}),
+			Then(wrphttp.NewHTTPHandler(wrpRouterHandler(logger, manager))),
 	).Methods("POST", "PATCH")
 
 	apiHandler.Handle("/devices", authorizationDecorator(&device.ListHandler{

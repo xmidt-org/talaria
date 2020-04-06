@@ -6,8 +6,8 @@ import (
 
 	"github.com/xmidt-org/webpa-common/convey"
 	"github.com/xmidt-org/webpa-common/device"
-	"github.com/xmidt-org/wrp-go/v2"
-	"github.com/xmidt-org/wrp-go/v2/wrpmeta"
+	"github.com/xmidt-org/wrp-go/v3"
+	"github.com/xmidt-org/wrp-go/v3/wrpmeta"
 )
 
 func statusMetadata(d device.Interface) map[string]string {
