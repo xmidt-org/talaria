@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [v0.4.0]
+- Replace MessageHandler with WRPHandler [#121](https://github.com/xmidt-org/talaria/pull/121)
+
 ## [v0.3.0]
 - add caduceus round robin logic through consul [#69](https://github.com/xmidt-org/talaria/pull/69)
 
@@ -30,7 +33,8 @@ Switching to new build process
 ## [v0.1.1] Tue Mar 28 2017 Weston Schmidt - 0.1.1
 - initial creation
 
-[Unreleased]: https://github.com/Comcast/talaria/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Comcast/talaria/compare/v0.4.0...HEAD
+[v0.4.0]: https://github.com/Comcast/talaria/compare/v0.3.0...v0.4.0
 [v0.3.0]: https://github.com/Comcast/talaria/compare/v0.2.2...v0.3.0
 [v0.2.2]: https://github.com/Comcast/talaria/compare/v0.2.1...v0.2.2
 [v0.2.1]: https://github.com/Comcast/talaria/compare/v0.2.0...v0.2.1
