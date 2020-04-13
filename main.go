@@ -28,7 +28,7 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"github.com/xmidt-org/webpa-common/basculechecks"
+	"github.com/xmidt-org/webpa-common/basculemetrics"
 	"github.com/xmidt-org/webpa-common/concurrent"
 	"github.com/xmidt-org/webpa-common/device"
 	"github.com/xmidt-org/webpa-common/device/devicehealth"
@@ -89,7 +89,7 @@ func talaria(arguments []string) int {
 		f = pflag.NewFlagSet(applicationName, pflag.ContinueOnError)
 		v = viper.New()
 
-		logger, metricsRegistry, webPA, err = server.Initialize(applicationName, arguments, f, v, Metrics, device.Metrics, rehasher.Metrics, service.Metrics, basculechecks.Metrics)
+		logger, metricsRegistry, webPA, err = server.Initialize(applicationName, arguments, f, v, Metrics, device.Metrics, rehasher.Metrics, service.Metrics, basculemetrics.Metrics)
 	)
 
 	if parseErr, done := printVersion(f, arguments); done {

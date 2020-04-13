@@ -4,12 +4,27 @@ import (
 	"context"
 	"net/http"
 
+	gokithttp "github.com/go-kit/kit/transport/http"
+
 	"github.com/go-kit/kit/log"
 	"github.com/xmidt-org/webpa-common/device"
 	"github.com/xmidt-org/webpa-common/logging"
 	"github.com/xmidt-org/webpa-common/xhttp"
 	"github.com/xmidt-org/wrp-go/v3/wrphttp"
 )
+
+func withDeviceAccessCheck(wrpRouterHandler wrphttp.HandlerFunc, d deviceAccess) wrphttp.HandlerFunc {
+	encodeError := gokithttp.DefaultErrorEncoder
+
+	return func(w wrphttp.ResponseWriter, r *wrphttp.Request) {
+		err := d.authorizeWRP(r.Context(), &r.Entity.Message)
+		if err != nil {
+			encodeError(r.Context(), err, w)
+			return
+		}
+		wrpRouterHandler(w, r)
+	}
+}
 
 func wrpRouterHandler(logger log.Logger, router device.Router) wrphttp.HandlerFunc {
 	if logger == nil {

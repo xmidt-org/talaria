@@ -2,9 +2,11 @@ package main
 
 import (
 	"errors"
-	"github.com/spf13/cast"
+	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/spf13/cast"
 )
 
 var (
@@ -12,14 +14,11 @@ var (
 	ErrIntTypeOnly      = errors.New("Only int valiues are supported")
 )
 
+// Supported check operations
 const (
-	//Name of supported operations
 	IntersectOp = "intersect"
-
-	//To be implemented
-	ContainsOp    = "contains"
-	EqualsOp      = "=="
-	GreaterThanOp = ">"
+	ContainsOp  = "contains"
+	EqualsOp    = "=="
 )
 
 //Check describes the behavior of an assertion operation (i.e. contains) that
@@ -35,60 +34,52 @@ func (c CheckFunc) Run(this, that interface{}) (bool, error) {
 	return c(this, that)
 }
 
-//DefaultPathParser simply splits the source string into sep-delimited
-//parts. It never returns an error
-var DefaultPathParser = func(source string, sep string) (Path, error) {
-	return strings.Split(source, sep), nil
-}
-
-//Path is a convenient string list type used as a key path
-//to load values from anywhere in a map
-type Path []string
-
-//PathParser defines the form
-type PathParser func(source, sep string) (Path, error)
-
 type parsedCheck struct {
-	userCredentialPath   Path
-	deviceCredentialPath Path
+	name                 string
+	wrpCredentialPath    string
+	deviceCredentialPath string
 	assertion            Check
 	inversed             bool
 }
 
-type checkParser struct {
-	pathParser PathParser
-}
-
-func (c checkParser) parse(configs []DeviceAccessCheck) ([]parsedCheck, error) {
-	parsedChecks := make([]parsedCheck, len(configs))
+func parseDeviceAccessChecks(configs []deviceAccessCheck) ([]parsedCheck, []error) {
+	var (
+		parsedChecks = make([]parsedCheck, len(configs))
+		errs         []error
+	)
 	for i, config := range configs {
-
-		if config.Sep == "" {
-			config.Sep = "."
-		}
-
-		userCredentialPath, err := c.pathParser(config.UserCredentialPath, config.Sep)
-		if err != nil {
-			return nil, err
-		}
-
-		deviceCredentialPath, err := c.pathParser(config.DeviceCredentialPath, config.Sep)
-		if err != nil {
-			return nil, err
-		}
-
 		parsedCheck := parsedCheck{
-			userCredentialPath:   userCredentialPath,
-			deviceCredentialPath: deviceCredentialPath,
+			name:                 strings.Trim(config.Name, " "),
+			wrpCredentialPath:    strings.Trim(config.WRPCredentialPath, " "),
+			deviceCredentialPath: strings.Trim(config.DeviceCredentialPath, " "),
+			inversed:             config.Inversed,
 		}
 
-		check, err := newCheck(config.Op)
+		errMsg := ""
+		if parsedCheck.name == "" || parsedCheck.wrpCredentialPath == "" || parsedCheck.deviceCredentialPath == "" {
+			errMsg += "No fields should be empty."
+		}
+
+		check, err := newCheck(config.Operation)
 		if err != nil {
-			return nil, err
+			errMsg += " " + err.Error()
+		}
+
+		if len(errMsg) > 0 {
+			errs = append(errs, fmt.Errorf("Check %d: %s", i, errMsg))
+		}
+
+		if len(errs) > 0 {
+			continue
 		}
 
 		parsedCheck.assertion = check
 		parsedChecks[i] = parsedCheck
+	}
+
+	if len(errs) > 0 {
+		return nil, errs
+
 	}
 
 	return parsedChecks, nil
@@ -98,6 +89,8 @@ func newCheck(operation string) (Check, error) {
 	switch operation {
 	case IntersectOp:
 		return Intersection, nil
+	case ContainsOp:
+		return Contains, nil
 	default:
 		return nil, errors.New("Operation not supported")
 	}
@@ -111,35 +104,25 @@ var Intersection CheckFunc = func(this interface{}, that interface{}) (bool, err
 		return false, nil
 	}
 
-	// a, ok := iterable(this)
-	// if !ok {
-	// 	return false, ErrIterableTypeOnly
-	// }
-
 	a := cast.ToSlice(this)
 
 	if a == nil {
 		return false, ErrIterableTypeOnly
 	}
 
-	// b, ok := iterable(that)
-
-	// if !ok {
-	// 	return false, ErrIterableTypeOnly
-	// }
 	b := cast.ToSlice(that)
 	if b == nil {
-		return false, ErrIntTypeOnly
+		return false, ErrIterableTypeOnly
 	}
 
-	m := make(map[interface{}]struct{})
+	m := make(map[interface{}]bool)
 
 	for _, e := range a {
-		m[e] = struct{}{}
+		m[e] = true
 	}
 
 	for _, e := range b {
-		if _, ok := m[e]; ok {
+		if m[e] {
 			return true, nil
 		}
 	}
@@ -191,10 +174,3 @@ var Contains CheckFunc = func(list interface{}, element interface{}) (bool, erro
 var Equal CheckFunc = func(this interface{}, that interface{}) (bool, error) {
 	return reflect.DeepEqual(this, that), nil
 }
-
-// var GreaterThan CheckFunc = func(this interface{}, that interface{}) (bool, error) {
-// 	thisInt, ok := this.(int)
-// 	thatInt, ok := that.(int)
-// 	thatInt := int(that)
-
-// }

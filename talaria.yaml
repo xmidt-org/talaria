@@ -299,6 +299,63 @@ inbound:
   authKey: YXV0aEhlYWRlcg==
 
 ########################################
+#   Authorization Related Configuration
+########################################
+
+# Any combination of these configurations may be used for authorization.
+# If ANY match, the request goes onwards.  If none are provided, no requests
+# will be accepted.
+
+# # jwtValidator provides the details about where to get the keys for JWT
+# # kid values and their associated information (expiration, etc) for JWTs
+# # used as authorization.
+# # If configured, it is used to authenticate devices during registration.
+# # (Optional)
+# jwtValidator:
+#   keys:
+#     factory:
+#       uri: "https://jwt.example.com/keys/{keyId}"
+#     purpose: 0
+#     updateInterval: 604800000000000
+
+# # deviceAccessCheck configures the strategy to ensure WRP messages only reach those devices they
+# # are authorized to (essential to secure multi-tenant clouds). The type can be "monitor" or "enforce".
+# # If restrictions must be applied, select the "enforce" type, otherwise use "monitor" to view the  
+# # unauthorized events without explicit rejections. For either type, transaction
+# # metrics are collected. If no valid type is provided, no checks are provided.
+# # (Optional)
+# deviceAccessCheck:
+#   type: "enforce"
+#   # sep is the delimeter used for the credential paths below
+#   # (Optional) Defaults to "."
+#   sep: ">"
+
+#   checks:
+#     - 
+#       # name is the description of this check
+#       name: "PartnerID"
+
+#       # deviceCredentialPath is the path to the credential within the device's metadata map representation.
+#       deviceCredentialPath: partner-ids
+
+#       # wrpCredentialPath is the path to the credential within the WRP Message map representation.
+#       wrpCredentialPath: PartnerIDs 
+
+#       # operation is the name of the operation that's is meant to be performed. 
+#       # Note: By default operation is applied from deviceCredential to wrpCredential
+#       operation: intersect
+
+#       # inversed should be set to true if operation must be applied from wrpCredential to deviceCredential 
+#       # (Optional)
+#       inversed: true
+
+#     - 
+#       name: Account ID Example check
+#       wrpCredentialPath: creds>account.id # path equals ["creds", "account.id"]
+#       operation: intersect
+#       deviceCredentialPath: secrets>uuid
+
+########################################
 #   Service Discovery Configuration
 ########################################
 
@@ -466,11 +523,4 @@ service:
   #       # (Optional) defaults to empty struct
   #       # queryOptions:
   #       #   useCache: true
-  
-apiAccessToDeviceValidator:
-  apiJWTHeaderName: "X-Xmidt-Api-Authorization"
-  checks: # this will be used to guide the bascule validator
-      - 
-          apiTablePath: "allowedResources.allowedPartners" ##assumption 
-          op: "intersect"
-          deviceTablePath: "partner-ids"
+

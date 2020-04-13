@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -30,12 +31,11 @@ import (
 	"github.com/justinas/alice"
 	"github.com/spf13/viper"
 	"github.com/xmidt-org/bascule"
-	"github.com/xmidt-org/webpa-common/basculechecks"
 	"github.com/xmidt-org/webpa-common/xmetrics"
 
 	"github.com/xmidt-org/bascule/basculehttp"
 	"github.com/xmidt-org/bascule/key"
-	"github.com/xmidt-org/webpa-common/basculechecks"
+	"github.com/xmidt-org/webpa-common/basculemetrics"
 	"github.com/xmidt-org/webpa-common/device"
 	"github.com/xmidt-org/webpa-common/logging"
 	"github.com/xmidt-org/webpa-common/logging/logginghttp"
@@ -60,19 +60,18 @@ const (
 	DefaultKeyID = "current"
 
 	DefaultInboundTimeout time.Duration = 120 * time.Second
+)
 
-	apiJWTAttributeKey = "api-jwt"
-
-	// Configuration file dot-delimited paths for convenience and protection against typos
-
+// Configuration file dot-delimited paths for convenience and protection against typos
+const (
 	//JWTValidatorConfigKey is the path to the JWT
 	//validator config for device registration endpoints
 	JWTValidatorConfigKey = "jwtValidator"
 
-	//DeviceAccessValidatorConfigKey is the path to the validator config for
+	//DeviceAccessCheckConfigKey is the path to the validator config for
 	//restricting API access to devices based on known device metadata and credentials
 	//presented by API consumers
-	DeviceAccessValidatorConfigKey = "deviceAccessValidator"
+	DeviceAccessCheckConfigKey = "deviceAccessCheck"
 
 	//ServiceBasicAuthConfigKey is the path to the list of accepted basic auth keys
 	//for the API endpoints (note: does not include device registration)
@@ -88,8 +87,6 @@ const (
 //such as authentication layers
 var NoOpConstructor = func(h http.Handler) http.Handler { return h }
 
-//TODO: should this be provided by bascule since it is a very similar structure?
-//across all devices
 //JWTValidator provides a convenient way to define jwt validator through config files
 type JWTValidator struct {
 	// JWTKeys is used to create the key.Resolver for JWT verification keys
@@ -107,9 +104,6 @@ func getInboundTimeout(v *viper.Viper) time.Duration {
 
 	return DefaultInboundTimeout
 }
-
-//TODO: See if SetLogger and GetLogger could be provided by bascule since it seems to be
-//boilerplate code across services
 
 func SetLogger(logger log.Logger) func(delegate http.Handler) http.Handler {
 	return func(delegate http.Handler) http.Handler {
@@ -149,10 +143,9 @@ func buildUserPassMap(logger log.Logger, encodedBasicAuthKeys []string) (userPas
 func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper, a service.Accessor, e service.Environment,
 	controlConstructor alice.Constructor, metricsRegistry xmetrics.Registry) (http.Handler, error) {
 	var (
-		serviceBasicAuthKeys = v.GetStringSlice(ServiceBasicAuthConfigKey)
-		inboundTimeout       = getInboundTimeout(v)
-		r                    = mux.NewRouter()
-		apiHandler           = r.PathPrefix(fmt.Sprintf("%s/%s", baseURI, version)).Subrouter()
+		inboundTimeout = getInboundTimeout(v)
+		r              = mux.NewRouter()
+		apiHandler     = r.PathPrefix(fmt.Sprintf("%s/%s", baseURI, version)).Subrouter()
 
 		authConstructor = NoOpConstructor
 		authEnforcer    = NoOpConstructor
@@ -162,16 +155,10 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 
 		infoLogger  = logging.Info(logger)
 		errorLogger = logging.Error(logger)
-		debugLogger = logging.Debug(logger)
 
-		m *basculechecks.JWTValidationMeasures
+		m        = basculemetrics.NewAuthValidationMeasures(metricsRegistry)
+		listener = basculemetrics.NewMetricListener(m)
 	)
-
-	if metricsRegistry != nil {
-		m = basculechecks.NewJWTValidationMeasures(metricsRegistry)
-	}
-
-	listener := basculechecks.NewMetricListener(m)
 
 	authConstructorOptions := []basculehttp.COption{
 		basculehttp.WithCLogger(GetLogger),
@@ -206,44 +193,46 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		}
 	}
 
-	if v.IsSet(DeviceAccessValidatorConfigKey) {
-		deviceAccessValidator := &DeviceAccessValidator{}
+	if v.IsSet(ServiceBasicAuthConfigKey) {
+		userPassMap := buildUserPassMap(logger, v.GetStringSlice(ServiceBasicAuthConfigKey))
 
-		if err := v.UnmarshalKey(DeviceAccessValidatorConfigKey, deviceAccessValidator); err != nil {
-			errorLogger.Log(logging.MessageKey(), "Could not unmarshall validator config for api access to device.")
+		if len(userPassMap) > 0 {
+			authConstructorOptions = append(authConstructorOptions,
+				basculehttp.WithTokenFactory("Basic", basculehttp.BasicTokenFactory(userPassMap)))
+
+			serviceAuthRules = append(serviceAuthRules, bascule.CreateAllowAllCheck())
+		}
+	}
+
+	wrpRouterHandler := wrpRouterHandler(logger, manager)
+
+	if v.IsSet(DeviceAccessCheckConfigKey) {
+		deviceAccessCheckConfig := new(deviceAccessCheckConfig)
+
+		if err := v.UnmarshalKey(DeviceAccessCheckConfigKey, deviceAccessCheckConfig); err != nil {
+			errorLogger.Log(logging.MessageKey(), "Could not unmarshall wrpCheck config for api access to device.")
 			return nil, err
 		}
 
 		infoLogger.Log(logging.MessageKey(), "Enabling validator for API access to devices.")
 
-		deviceAccessValidator.manager = manager
-		deviceAccessValidator.jwtTokenAttributeKey = apiJWTAttributeKey
-		deviceAccessValidator.checkParser = &checkParser{
-			pathParser: DefaultPathParser,
+		parsedChecks, errs := parseDeviceAccessChecks(deviceAccessCheckConfig.Checks)
+		if len(errs) > 0 {
+			for _, err := range errs {
+				errorLogger.Log(logging.ErrorKey(), err, logging.MessageKey(), "wrpCheck parse failure")
+			}
+			return nil, errors.New("Failure parsing WRPChecks")
 		}
 
-		deviceAccessValidator.mapLoader = &simpleMapLoader{}
-
-		if err := deviceAccessValidator.parseChecks(); err != nil {
-			errorLogger.Log(logging.ErrorKey(), err, logging.MessageKey(), "Could not parse api access to device validation checks from config")
-			return nil, err
-		}
-
-		serviceAuthRules = append(serviceAuthRules, deviceAccessValidator)
-
-		userPassMap := buildUserPassMap(logger, serviceBasicAuthKeys)
-		debugLogger.Log("BasicAuthUserPassMap", userPassMap)
-
-		if len(userPassMap) > 0 {
-			authConstructorOptions = append(authConstructorOptions,
-				basculehttp.WithTokenFactory("Basic",
-					&AttributedBasicTokenFactory{
-						UserPassMap:                userPassMap,
-						TargetAttributeKey:         apiJWTAttributeKey,
-						VerifiedJWTTokenHeaderName: deviceAccessValidator.APIJWTHeaderName,
-					}))
-
-			serviceAuthRules = append(serviceAuthRules, bascule.CreateAllowAllCheck())
+		if deviceAccessCheckConfig.Type == "enforce" || deviceAccessCheckConfig.Type == "monitor" {
+			deviceAccess := &talariaDeviceAccess{
+				strict:                  deviceAccessCheckConfig.Type == "enforce",
+				receivedWRPMessageCount: metricsRegistry.NewCounter(ReceivedWRPMessageCount),
+				checks:                  parsedChecks,
+				deviceRegistry:          manager,
+				debugLogger:             logging.Debug(logger),
+			}
+			wrpRouterHandler = withDeviceAccessCheck(wrpRouterHandler, deviceAccess)
 		}
 	}
 
@@ -265,7 +254,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 				Timeout: inboundTimeout,
 			})).
 			Extend(authChain).
-			Then(wrphttp.NewHTTPHandler(wrpRouterHandler(logger, manager))),
+			Then(wrphttp.NewHTTPHandler(wrpRouterHandler)),
 	).Methods("POST", "PATCH")
 
 	apiHandler.Handle("/devices",
@@ -321,6 +310,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 			Append(DeviceMetadataMiddleware).
 			Then(connectHandler),
 	)
+
 	apiHandler.Handle(
 		"/device/{deviceID}/stat",
 		alice.New(

@@ -12,6 +12,7 @@ import (
 	"github.com/xmidt-org/webpa-common/xmetrics"
 )
 
+// Metric names
 const (
 	OutboundInFlightGauge         = "outbound_inflight"
 	OutboundRequestDuration       = "outbound_request_duration_seconds"
@@ -19,16 +20,36 @@ const (
 	OutboundQueueSize             = "outbound_queue_size"
 	OutboundDroppedMessageCounter = "outbound_dropped_messages"
 	OutboundRetries               = "outbound_retries"
-	GateStatus                    = "gate_status"
-	DrainStatus                   = "drain_status"
-	DrainCounter                  = "drain_count"
+
+	GateStatus   = "gate_status"
+	DrainStatus  = "drain_status"
+	DrainCounter = "drain_count"
+
+	ReceivedWRPMessageCount = "received_wrp_message_total"
+)
+
+// Metric label names
+const (
+	ClientIDLabel = "clientid"
+	OutcomeLabel  = "outcome"
+	ReasonLabel   = "reason"
+)
+
+// label values
+const (
+	Accepted = "accepted"
+	Rejected = "rejected"
+
+	WRPPIDMissing  = "wrp_pid_missing"
+	WRPPIDMismatch = "wrp_pid_mismatch"
+	WRPPIDMatch    = "wrp_pid_match"
 )
 
 func Metrics() []xmetrics.Metric {
 	return []xmetrics.Metric{
 		xmetrics.Metric{
 			Name: OutboundInFlightGauge,
-			Type: "gauge",
+			Type: xmetrics.GaugeType,
 			Help: "The number of active, in-flight requests from devices",
 		},
 		xmetrics.Metric{
@@ -39,39 +60,45 @@ func Metrics() []xmetrics.Metric {
 		},
 		xmetrics.Metric{
 			Name:       OutboundRequestCounter,
-			Type:       "counter",
+			Type:       xmetrics.CounterType,
 			Help:       "The count of outbound requests",
 			LabelNames: []string{"code"},
 		},
 		xmetrics.Metric{
 			Name: OutboundQueueSize,
-			Type: "gauge",
+			Type: xmetrics.GaugeType,
 			Help: "The current number of requests waiting to be sent outbound",
 		},
 		xmetrics.Metric{
 			Name: OutboundDroppedMessageCounter,
-			Type: "counter",
+			Type: xmetrics.CounterType,
 			Help: "The total count of messages dropped due to a full outbound queue",
 		},
 		xmetrics.Metric{
 			Name: OutboundRetries,
-			Type: "counter",
+			Type: xmetrics.CounterType,
 			Help: "The total count of outbound HTTP retries",
 		},
 		xmetrics.Metric{
 			Name: GateStatus,
-			Type: "gauge",
+			Type: xmetrics.GaugeType,
 			Help: "Indicates whether the device gate is open (1.0) or closed (0.0)",
 		},
 		xmetrics.Metric{
 			Name: DrainStatus,
-			Type: "gauge",
+			Type: xmetrics.GaugeType,
 			Help: "Indicates whether a device drain operation is currently running",
 		},
 		xmetrics.Metric{
 			Name: DrainCounter,
-			Type: "counter",
+			Type: xmetrics.CounterType,
 			Help: "The total count of devices disconnected due to a drain since the server started",
+		},
+		xmetrics.Metric{
+			Name:       ReceivedWRPMessageCount,
+			Type:       xmetrics.CounterType,
+			Help:       "Number of WRP Messages successfully decoded and ready to route to device.",
+			LabelNames: []string{OutcomeLabel, ClientIDLabel, ReasonLabel},
 		},
 	}
 }
