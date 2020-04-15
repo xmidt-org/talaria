@@ -32,14 +32,16 @@ var (
 // deviceAccessCheck describes a single unit of assertion check between
 // values presented by API users against those of the device
 type deviceAccessCheck struct {
+	// Name provides a short description of the check
 	Name string
-	//UserCredentialPath is the Sep-delimited path to the credential value
+
+	//WRPCredentialPath is the Sep-delimited path to the credential value
 	//presented by API users attempting to contact a device.
 	WRPCredentialPath string
 
 	//Op is the string describing the operation that should be run for this
 	//check (i.e. contains)
-	Operation string
+	Op string
 
 	//DeviceCredentialPath is the Sep-delimited path to the credential value
 	//associated with the device
@@ -115,7 +117,7 @@ func (t *talariaDeviceAccess) authorizeWRP(ctx context.Context, message *wrp.Mes
 
 		t.debugLogger.Log(logging.MessageKey(), "Performing operation applied from this to that", "this", this, "that", that)
 
-		ok, err := c.assertion.Run(this, that)
+		ok, err := c.assertion.Evaluate(this, that)
 		if err != nil {
 			t.debugLogger.Log(logging.MessageKey(), "Check failed to complete", logging.ErrorKey(), err)
 			return ErrDeviceAccessIncompleteCheck

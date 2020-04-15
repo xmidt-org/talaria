@@ -62,11 +62,11 @@ func TestIntersect(t *testing.T) {
 			element: 3,
 		},
 	}
-
+	intersecs := new(intersects)
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			assert := assert.New(t)
-			actual, err := Intersection(testCase.list, testCase.element)
+			actual, err := intersecs.Evaluate(testCase.list, testCase.element)
 
 			assert.Equal(testCase.shouldPass, actual)
 
@@ -112,10 +112,11 @@ func TestContains(t *testing.T) {
 		},
 	}
 
+	contains := new(contains)
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			assert := assert.New(t)
-			ok, err := Contains(testCase.list, testCase.element)
+			ok, err := contains.Evaluate(testCase.list, testCase.element)
 
 			assert.Equal(testCase.shouldPass, ok)
 

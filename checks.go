@@ -5,40 +5,34 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-
-	"github.com/spf13/cast"
 )
 
 var (
-	ErrIterableTypeOnly = errors.New("Only slices and arrays are currently supportd as iterable")
-	ErrIntTypeOnly      = errors.New("Only int valiues are supported")
+	ErrIterableOnly = errors.New("Only slices are currently supported as iterable.")
+	ErrIntTypeOnly  = errors.New("Only int valiues are supported")
 )
 
-// Supported check operations
+// Supported operations
 const (
 	IntersectOp = "intersect"
 	ContainsOp  = "contains"
 	EqualsOp    = "=="
 )
 
-//Check describes the behavior of an assertion operation (i.e. contains) that
-//can be executed. The operation is applied from left to right (i.e. does 'this' contain 'that')
-type Check interface {
-	Run(this, that interface{}) (bool, error)
-}
+// binOp encapsulates the execution of a generic binary operator.
+type binOp interface {
+	//Evaluate applies the operation from left to right
+	Evaluate(left, right interface{}) (bool, error)
 
-//CheckFunc allows functions to satisfy the Check interface
-type CheckFunc func(interface{}, interface{}) (bool, error)
-
-func (c CheckFunc) Run(this, that interface{}) (bool, error) {
-	return c(this, that)
+	// Name is the name of the operation.
+	Name() string
 }
 
 type parsedCheck struct {
 	name                 string
 	wrpCredentialPath    string
 	deviceCredentialPath string
-	assertion            Check
+	assertion            binOp
 	inversed             bool
 }
 
@@ -60,7 +54,7 @@ func parseDeviceAccessChecks(configs []deviceAccessCheck) ([]parsedCheck, []erro
 			errMsg += "No fields should be empty."
 		}
 
-		check, err := newCheck(config.Operation)
+		check, err := newBinOp(config.Op)
 		if err != nil {
 			errMsg += " " + err.Error()
 		}
@@ -85,34 +79,38 @@ func parseDeviceAccessChecks(configs []deviceAccessCheck) ([]parsedCheck, []erro
 	return parsedChecks, nil
 }
 
-func newCheck(operation string) (Check, error) {
+func newBinOp(operation string) (binOp, error) {
 	switch operation {
 	case IntersectOp:
-		return Intersection, nil
+		return new(intersects), nil
 	case ContainsOp:
-		return Contains, nil
+		return new(contains), nil
+	case EqualsOp:
+		return new(equals), nil
 	default:
 		return nil, errors.New("Operation not supported")
 	}
 }
 
-//Intersection returns true if this and that contain some shared member.
-//False otherwise.
-//Note: only slices are currently supported
-var Intersection CheckFunc = func(this interface{}, that interface{}) (bool, error) {
-	if this == nil || that == nil {
+// intersects returns true if left and right contain
+// some shared member. False otherwise.
+// Note:
+// - only elements which can be casted to slices are currently supported.
+type intersects struct{}
+
+func (i intersects) Evaluate(left, right interface{}) (bool, error) {
+	if left == nil || right == nil {
 		return false, nil
 	}
 
-	a := cast.ToSlice(this)
-
-	if a == nil {
-		return false, ErrIterableTypeOnly
+	a, ok := iterable(left)
+	if !ok {
+		return false, ErrIterableOnly
 	}
 
-	b := cast.ToSlice(that)
-	if b == nil {
-		return false, ErrIterableTypeOnly
+	b, ok := iterable(right)
+	if !ok {
+		return false, ErrIterableOnly
 	}
 
 	m := make(map[interface{}]bool)
@@ -128,6 +126,48 @@ var Intersection CheckFunc = func(this interface{}, that interface{}) (bool, err
 	}
 
 	return false, nil
+}
+
+func (i intersects) Name() string {
+	return IntersectOp
+}
+
+// contains returns true if right is a member of left.
+// Note: only slices are supported.
+type contains struct{}
+
+func (c contains) Evaluate(list interface{}, element interface{}) (bool, error) {
+	if list == nil {
+		return false, nil
+	}
+
+	l, ok := iterable(list)
+	if !ok {
+		return false, ErrIterableOnly
+	}
+
+	for _, e := range l {
+		if reflect.DeepEqual(e, element) {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func (c contains) Name() string {
+	return ContainsOp
+}
+
+// equals returns true if left and right at equas as defined by reflect.DeepEqual()
+type equals struct{}
+
+func (e equals) Evaluate(left interface{}, right interface{}) (bool, error) {
+	return reflect.DeepEqual(left, right), nil
+}
+
+func (e equals) Name() string {
+	return EqualsOp
 }
 
 //iterable checks that the given interface is of a
@@ -147,30 +187,4 @@ func iterable(e interface{}) ([]interface{}, bool) {
 	}
 
 	return nil, false
-}
-
-//Contains returns true if e is a member of the iterable object list.
-//ErrIterableTypeOnly is returned if list is not a supported iterable object (Slices and Arrays).
-var Contains CheckFunc = func(list interface{}, element interface{}) (bool, error) {
-	if list == nil {
-		return false, nil
-	}
-
-	l, ok := iterable(list)
-	if !ok {
-		return false, ErrIterableTypeOnly
-	}
-
-	for _, e := range l {
-		if reflect.DeepEqual(e, element) {
-			return true, nil
-		}
-	}
-
-	return false, nil
-}
-
-//Equal delegates its arguments to reflect.DeepEqual()
-var Equal CheckFunc = func(this interface{}, that interface{}) (bool, error) {
-	return reflect.DeepEqual(this, that), nil
 }
