@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	ErrIterableOnly = errors.New("Only slices are currently supported as iterable.")
-	ErrIntTypeOnly  = errors.New("Only int valiues are supported")
+	ErrIterableTypeOnly = errors.New("Only slices and arrays are currently supported as iterable")
+	ErrIntTypeOnly      = errors.New("Only int values are supported")
 )
 
 // Supported operations
@@ -105,12 +105,12 @@ func (i intersects) Evaluate(left, right interface{}) (bool, error) {
 
 	a, ok := iterable(left)
 	if !ok {
-		return false, ErrIterableOnly
+		return false, ErrIterableTypeOnly
 	}
 
 	b, ok := iterable(right)
 	if !ok {
-		return false, ErrIterableOnly
+		return false, ErrIterableTypeOnly
 	}
 
 	m := make(map[interface{}]bool)
@@ -143,7 +143,7 @@ func (c contains) Evaluate(list interface{}, element interface{}) (bool, error) 
 
 	l, ok := iterable(list)
 	if !ok {
-		return false, ErrIterableOnly
+		return false, ErrIterableTypeOnly
 	}
 
 	for _, e := range l {
