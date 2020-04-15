@@ -20,7 +20,7 @@ var (
 	ErrTokenTypeMismatch      = &xhttp.Error{Code: http.StatusInternalServerError, Text: "Token must be a JWT"}
 	ErrPIDMissing             = &xhttp.Error{Code: http.StatusBadRequest, Text: "WRP PartnerIDs field must not be empty"}
 	ErrInvalidAllowedPartners = &xhttp.Error{Code: http.StatusForbidden, Text: "AllowedPartners JWT claim must be a non-empty list of strings"}
-	ErrPIDMismatch            = &xhttp.Error{Code: http.StatusForbidden, Text: "Unauthorized partners credentials in WRP message"}
+	ErrPIDMismatch            = &xhttp.Error{Code: http.StatusForbidden, Text: "Unauthorized partner credentials in WRP message"}
 
 	ErrCredentialsMissing          = &xhttp.Error{Code: http.StatusForbidden, Text: "Could not find credentials to compare"}
 	ErrInvalidWRPDestination       = &xhttp.Error{Code: http.StatusBadRequest, Text: "Invalid WRP Destination"}
@@ -30,7 +30,7 @@ var (
 )
 
 // deviceAccessCheck describes a single unit of assertion check between
-// values presented by API users against those of the device
+// values presented by API users against those of the device.
 type deviceAccessCheck struct {
 	Name string
 	//UserCredentialPath is the Sep-delimited path to the credential value
@@ -38,11 +38,11 @@ type deviceAccessCheck struct {
 	WRPCredentialPath string
 
 	//Op is the string describing the operation that should be run for this
-	//check (i.e. contains)
+	//check (i.e. contains).
 	Operation string
 
 	//DeviceCredentialPath is the Sep-delimited path to the credential value
-	//associated with the device
+	//associated with the device.
 	DeviceCredentialPath string
 
 	//Inversed should be set to true if Op should be applied from
@@ -51,11 +51,11 @@ type deviceAccessCheck struct {
 	Inversed bool
 }
 
-//deviceAccessCheckConfig drives the device access bussiness logic
+//deviceAccessCheckConfig drives the device access business logic.
 type deviceAccessCheckConfig struct {
 	Type string
 
-	//Sep is the separator to be used to split the keys from the given paths
+	//Sep is the separator to be used to split the keys from the given paths.
 	//(Optional. Defaults to '.')
 	Sep string
 

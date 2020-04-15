@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	ErrIterableTypeOnly = errors.New("Only slices and arrays are currently supportd as iterable")
-	ErrIntTypeOnly      = errors.New("Only int valiues are supported")
+	ErrIterableTypeOnly = errors.New("Only slices and arrays are currently supported as iterable")
+	ErrIntTypeOnly      = errors.New("Only int values are supported")
 )
 
 // Supported check operations
