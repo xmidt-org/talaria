@@ -29,15 +29,20 @@ var (
 	ErrDeviceAccessIncompleteCheck = &xhttp.Error{Code: http.StatusForbidden, Text: "Device access check could not complete"}
 )
 
-// deviceAccessCheck describes a single unit of assertion check between
-// values presented by API users against those of the device.
+// deviceAccessCheck describes a single unit of assertion check against a
+// device's credentials.
 type deviceAccessCheck struct {
 	// Name provides a short description of the check
 	Name string
 
-	//WRPCredentialPath is the Sep-delimited path to the credential value
-	//presented by API users attempting to contact a device.
+	// WRPCredentialPath is the Sep-delimited path to the credential value
+	// presented by API users attempting to contact a device.
+	// (Optional when RawValue is specified. If both present, DeviceCredentialExpected is preferred).
 	WRPCredentialPath string
+
+	// DeviceCredentialExpected provides a way to assert on the specific values pointed by DeviceCredentialPath.
+	// (Optional when WRPCredential is specified).
+	DeviceCredentialExpected interface{}
 
 	//Op is the string describing the operation that should be run for this
 	//check (i.e. contains)
@@ -48,7 +53,7 @@ type deviceAccessCheck struct {
 	DeviceCredentialPath string
 
 	//Inversed should be set to true if Op should be applied from
-	//valueAt(DeviceCredentialPath) to valueAt(UserCredentialPath)
+	//valueAt(DeviceCredentialPath) to (either DeviceCredentialExpected or valueAt(WRPCredentialPath))
 	//(Optional)
 	Inversed bool
 }
@@ -87,6 +92,13 @@ func (t *talariaDeviceAccess) withSuccess(labelValues ...string) metrics.Counter
 	return t.receivedWRPMessageCount.With(append(labelValues, OutcomeLabel, Accepted)...)
 }
 
+func getRight(check parsedCheck, wrpCredentials bascule.Attributes) (interface{}, bool) {
+	if check.deviceCredentialExpected != nil {
+		return check.deviceCredentialExpected, true
+	}
+	return wrpCredentials.Get(check.wrpCredentialPath)
+}
+
 // authorizeWRP returns true if the talaria partners access policy checks succeed. Otherwise, false
 // alongside an appropiate error that's friendly to go-kit's HTTP error response encoder.
 // TODO: modify metrics accordingly
@@ -105,21 +117,26 @@ func (t *talariaDeviceAccess) authorizeWRP(ctx context.Context, message *wrp.Mes
 	wrpCredentials := bascule.NewAttributesFromMap(structs.Map(message))
 
 	for _, c := range t.checks {
-		this, thisOk := deviceCredentials.Get(c.deviceCredentialPath)
-		that, thatOk := wrpCredentials.Get(c.wrpCredentialPath)
-		if !thisOk || !thatOk {
+		left, ok := deviceCredentials.Get(c.deviceCredentialPath)
+
+		if !ok {
+			return ErrCredentialsMissing
+		}
+
+		right, ok := getRight(c, wrpCredentials)
+		if !ok {
 			return ErrCredentialsMissing
 		}
 
 		if c.inversed {
-			this, that = that, this
+			left, right = right, left
 		}
 
-		t.debugLogger.Log(logging.MessageKey(), "Performing operation applied from this to that", "this", this, "that", that)
+		t.debugLogger.Log(logging.MessageKey(), "Performing operation applied from left to right", "left", left, "righ", right, "operation", c.name)
 
-		ok, err := c.assertion.Evaluate(this, that)
+		ok, err := c.assertion.Evaluate(left, right)
 		if err != nil {
-			t.debugLogger.Log(logging.MessageKey(), "Check failed to complete", logging.ErrorKey(), err)
+			t.debugLogger.Log(logging.MessageKey(), "Check failed to complete", "check", c.name, logging.ErrorKey(), err)
 			return ErrDeviceAccessIncompleteCheck
 		}
 		if !ok {

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/xmidt-org/bascule"
 )
 
 var (
@@ -28,42 +30,85 @@ type binOp interface {
 	Name() string
 }
 
-type parsedCheck struct {
-	name                 string
-	wrpCredentialPath    string
-	deviceCredentialPath string
-	assertion            binOp
-	inversed             bool
+type namedMultiError struct {
+	name   string
+	errors []error
 }
 
-func parseDeviceAccessChecks(configs []deviceAccessCheck) ([]parsedCheck, []error) {
+func newNamedMultiError(name string, index int) namedMultiError {
+	if name == "" {
+		name = fmt.Sprintf("checks[%d]", index)
+	}
+	return namedMultiError{
+		name: name,
+	}
+}
+
+func (e *namedMultiError) Append(err error) {
+	e.errors = append(e.errors, fmt.Errorf("'%s': %s", e.name, err.Error()))
+}
+
+func (e namedMultiError) Error() string {
+	var errors []string
+	for _, err := range e.errors {
+		errors = append(errors, err.Error())
+	}
+	return strings.Join(errors, "\n")
+}
+
+func (e namedMultiError) Errors() []error {
+	return e.errors
+}
+
+type parsedCheck struct {
+	name                     string
+	wrpCredentialPath        string
+	deviceCredentialPath     string
+	deviceCredentialExpected interface{}
+	assertion                binOp
+	inversed                 bool
+}
+
+func anyEmpty(values ...string) bool {
+	for _, value := range values {
+		if value == "" {
+			return true
+		}
+	}
+	return false
+}
+
+func parseDeviceAccessChecks(configs []deviceAccessCheck) ([]parsedCheck, bascule.MultiError) {
 	var (
 		parsedChecks = make([]parsedCheck, len(configs))
-		errs         []error
+		errs         bascule.Errors
 	)
 	for i, config := range configs {
 		parsedCheck := parsedCheck{
-			name:                 strings.Trim(config.Name, " "),
-			wrpCredentialPath:    strings.Trim(config.WRPCredentialPath, " "),
-			deviceCredentialPath: strings.Trim(config.DeviceCredentialPath, " "),
-			inversed:             config.Inversed,
+			name:                     strings.Trim(config.Name, " "),
+			wrpCredentialPath:        strings.Trim(config.WRPCredentialPath, " "),
+			deviceCredentialPath:     strings.Trim(config.DeviceCredentialPath, " "),
+			deviceCredentialExpected: config.DeviceCredentialExpected,
+			inversed:                 config.Inversed,
 		}
 
-		errMsg := ""
-		if parsedCheck.name == "" || parsedCheck.wrpCredentialPath == "" || parsedCheck.deviceCredentialPath == "" {
-			errMsg += "No fields should be empty."
+		errsForCheck := newNamedMultiError(config.Name, i)
+
+		if anyEmpty(parsedCheck.name, parsedCheck.deviceCredentialPath) {
+			errsForCheck.Append(errors.New("Name and DeviceCredentialPath are required"))
+		}
+
+		if parsedCheck.deviceCredentialExpected == nil && parsedCheck.deviceCredentialPath == "" {
+			errsForCheck.Append(errors.New("Either deviceCredentialExpected or deviceCredentialPath must be provided"))
 		}
 
 		check, err := newBinOp(config.Op)
 		if err != nil {
-			errMsg += " " + err.Error()
+			errsForCheck.Append(err)
 		}
 
-		if len(errMsg) > 0 {
-			errs = append(errs, fmt.Errorf("Check %d: %s", i, errMsg))
-		}
-
-		if len(errs) > 0 {
+		if len(errsForCheck.errors) > 0 {
+			errs = append(errs, errsForCheck)
 			continue
 		}
 
@@ -71,12 +116,7 @@ func parseDeviceAccessChecks(configs []deviceAccessCheck) ([]parsedCheck, []erro
 		parsedChecks[i] = parsedCheck
 	}
 
-	if len(errs) > 0 {
-		return nil, errs
-
-	}
-
-	return parsedChecks, nil
+	return parsedChecks, errs
 }
 
 func newBinOp(operation string) (binOp, error) {
