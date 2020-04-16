@@ -332,13 +332,14 @@ inbound:
 
 #   checks:
 #     - 
-#       # name is the description of this check
+#       # name should be a concise, helpful description of the check
 #       name: "PartnerID"
 
 #       # deviceCredentialPath is the path to the credential within the device's metadata map representation.
-#       deviceCredentialPath: partner-ids
+#       # deviceCredentialPath: partner-ids
 
 #       # wrpCredentialPath is the path to the credential within the WRP Message map representation.
+#       # (Optional if inputValue is provided. If both provided, inputValue will be used during check).
 #       wrpCredentialPath: PartnerIDs 
 
 #       # operation is the name of the operation that's is meant to be performed. 
@@ -350,10 +351,10 @@ inbound:
 #       inversed: true
 
 #     - 
-#       name: Account ID Example check
-#       wrpCredentialPath: creds>account.id # path equals ["creds", "account.id"]
-#       operation: intersect
-#       deviceCredentialPath: secrets>uuid
+#       name: "Devices with trust level >= 1000"
+#       deviceCredentialPath: "example>trust>value" 
+#       inputValue: 1000
+#       operation: gteq 
 
 ########################################
 #   Service Discovery Configuration
