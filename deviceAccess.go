@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/fatih/structs"
@@ -22,12 +23,18 @@ var (
 	ErrInvalidAllowedPartners = &xhttp.Error{Code: http.StatusForbidden, Text: "AllowedPartners JWT claim must be a non-empty list of strings"}
 	ErrPIDMismatch            = &xhttp.Error{Code: http.StatusForbidden, Text: "Unauthorized partner credentials in WRP message"}
 
-	ErrCredentialsMissing          = &xhttp.Error{Code: http.StatusForbidden, Text: "Could not find credentials to compare"}
-	ErrInvalidWRPDestination       = &xhttp.Error{Code: http.StatusBadRequest, Text: "Invalid WRP Destination"}
-	ErrDeviceNotFound              = &xhttp.Error{Code: http.StatusNotFound, Text: "Device not found"}
-	ErrDeviceAccessUnauthorized    = &xhttp.Error{Code: http.StatusForbidden, Text: "Unauthorized device access"}
-	ErrDeviceAccessIncompleteCheck = &xhttp.Error{Code: http.StatusForbidden, Text: "Device access check could not complete"}
+	ErrCredentialsMissing    = &xhttp.Error{Code: http.StatusForbidden, Text: "Could not find credentials to compare"}
+	ErrInvalidWRPDestination = &xhttp.Error{Code: http.StatusBadRequest, Text: "Invalid WRP Destination"}
+	ErrDeviceNotFound        = &xhttp.Error{Code: http.StatusNotFound, Text: "Device not found"}
 )
+
+func errDeviceAccessUnauthorized(checkName string) error {
+	return &xhttp.Error{Code: http.StatusForbidden, Text: fmt.Sprintf("Unauthorized device access. Check '%s' failed.", checkName)}
+}
+
+func errDeviceAccessIncompleteCheck(checkName string) error {
+	return &xhttp.Error{Code: http.StatusForbidden, Text: fmt.Sprintf("Device access check '%s' could not complete", checkName)}
+}
 
 // deviceAccessCheck describes a single unit of assertion check against a
 // device's credentials.
@@ -40,9 +47,9 @@ type deviceAccessCheck struct {
 	// (Optional when RawValue is specified. If both present, DeviceCredentialExpected is preferred).
 	WRPCredentialPath string
 
-	// DeviceCredentialExpected provides a way to assert on the specific values pointed by DeviceCredentialPath.
+	// InputValue provides a way to assert on the specific values pointed by DeviceCredentialPath.
 	// (Optional when WRPCredential is specified).
-	DeviceCredentialExpected interface{}
+	InputValue interface{}
 
 	//Op is the string describing the operation that should be run for this
 	//check (i.e. contains)
@@ -93,8 +100,8 @@ func (t *talariaDeviceAccess) withSuccess(labelValues ...string) metrics.Counter
 }
 
 func getRight(check parsedCheck, wrpCredentials bascule.Attributes) (interface{}, bool) {
-	if check.deviceCredentialExpected != nil {
-		return check.deviceCredentialExpected, true
+	if check.inputValue != nil {
+		return check.inputValue, true
 	}
 	return wrpCredentials.Get(check.wrpCredentialPath)
 }
@@ -132,15 +139,20 @@ func (t *talariaDeviceAccess) authorizeWRP(ctx context.Context, message *wrp.Mes
 			left, right = right, left
 		}
 
-		t.debugLogger.Log(logging.MessageKey(), "Performing operation applied from left to right", "left", left, "righ", right, "operation", c.name)
+		t.debugLogger.Log(
+			logging.MessageKey(), "Performing check with operation applied from left to right",
+			"check", c.name,
+			"left", left,
+			"operation", c.assertion.Name(),
+			"right", right)
 
 		ok, err := c.assertion.Evaluate(left, right)
 		if err != nil {
 			t.debugLogger.Log(logging.MessageKey(), "Check failed to complete", "check", c.name, logging.ErrorKey(), err)
-			return ErrDeviceAccessIncompleteCheck
+			return errDeviceAccessIncompleteCheck(c.name)
 		}
 		if !ok {
-			return ErrDeviceAccessUnauthorized
+			return errDeviceAccessUnauthorized(c.name)
 		}
 	}
 

@@ -215,13 +215,12 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		}
 
 		infoLogger.Log(logging.MessageKey(), "Enabling validator for API access to devices.")
-
 		parsedChecks, errs := parseDeviceAccessChecks(deviceAccessCheckConfig.Checks)
-		if errs != nil {
-			for _, err := range errs.Errors() {
+		if parsingErrors := errs.Errors(); len(parsingErrors) > 0 {
+			for _, err := range parsingErrors {
 				errorLogger.Log(logging.ErrorKey(), err, logging.MessageKey(), "deviceAccesscheck parse failure")
 			}
-			return nil, errors.New("Failure parsing WRPChecks")
+			return nil, errors.New("Failure parsing DeviceAccessChecks")
 		}
 
 		if deviceAccessCheckConfig.Type == "enforce" || deviceAccessCheckConfig.Type == "monitor" {

@@ -6,19 +6,21 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/spf13/cast"
 	"github.com/xmidt-org/bascule"
 )
 
 var (
-	ErrIterableTypeOnly = errors.New("Only slices and arrays are currently supported as iterable")
-	ErrIntTypeOnly      = errors.New("Only int values are supported")
+	ErrIterableTypeOnly  = errors.New("Only slices and arrays are currently supported as iterable")
+	ErrNumericalTypeOnly = errors.New("Only numerical values are supported")
 )
 
 // Supported operations
 const (
-	IntersectOp = "intersect"
-	ContainsOp  = "contains"
-	EqualsOp    = "=="
+	IntersectsOp  = "intersects"
+	ContainsOp    = "contains"
+	EqualsOp      = "eq"
+	GreaterThanOp = "gt"
 )
 
 // binOp encapsulates the execution of a generic binary operator.
@@ -61,12 +63,12 @@ func (e namedMultiError) Errors() []error {
 }
 
 type parsedCheck struct {
-	name                     string
-	wrpCredentialPath        string
-	deviceCredentialPath     string
-	deviceCredentialExpected interface{}
-	assertion                binOp
-	inversed                 bool
+	name                 string
+	deviceCredentialPath string
+	wrpCredentialPath    string
+	inputValue           interface{}
+	assertion            binOp
+	inversed             bool
 }
 
 func anyEmpty(values ...string) bool {
@@ -85,11 +87,11 @@ func parseDeviceAccessChecks(configs []deviceAccessCheck) ([]parsedCheck, bascul
 	)
 	for i, config := range configs {
 		parsedCheck := parsedCheck{
-			name:                     strings.Trim(config.Name, " "),
-			wrpCredentialPath:        strings.Trim(config.WRPCredentialPath, " "),
-			deviceCredentialPath:     strings.Trim(config.DeviceCredentialPath, " "),
-			deviceCredentialExpected: config.DeviceCredentialExpected,
-			inversed:                 config.Inversed,
+			name:                 strings.Trim(config.Name, " "),
+			wrpCredentialPath:    strings.Trim(config.WRPCredentialPath, " "),
+			deviceCredentialPath: strings.Trim(config.DeviceCredentialPath, " "),
+			inputValue:           config.InputValue,
+			inversed:             config.Inversed,
 		}
 
 		errsForCheck := newNamedMultiError(config.Name, i)
@@ -98,8 +100,8 @@ func parseDeviceAccessChecks(configs []deviceAccessCheck) ([]parsedCheck, bascul
 			errsForCheck.Append(errors.New("Name and DeviceCredentialPath are required"))
 		}
 
-		if parsedCheck.deviceCredentialExpected == nil && parsedCheck.deviceCredentialPath == "" {
-			errsForCheck.Append(errors.New("Either deviceCredentialExpected or deviceCredentialPath must be provided"))
+		if parsedCheck.inputValue == nil && parsedCheck.wrpCredentialPath == "" {
+			errsForCheck.Append(errors.New("Either inputValue or wrpCredentialPath must be provided"))
 		}
 
 		check, err := newBinOp(config.Op)
@@ -121,12 +123,14 @@ func parseDeviceAccessChecks(configs []deviceAccessCheck) ([]parsedCheck, bascul
 
 func newBinOp(operation string) (binOp, error) {
 	switch operation {
-	case IntersectOp:
+	case IntersectsOp:
 		return new(intersects), nil
 	case ContainsOp:
 		return new(contains), nil
 	case EqualsOp:
 		return new(equals), nil
+	case GreaterThanOp:
+		return new(greaterThan), nil
 	default:
 		return nil, errors.New("Operation not supported")
 	}
@@ -169,25 +173,25 @@ func (i intersects) Evaluate(left, right interface{}) (bool, error) {
 }
 
 func (i intersects) Name() string {
-	return IntersectOp
+	return IntersectsOp
 }
 
 // contains returns true if right is a member of left.
 // Note: only slices are supported.
 type contains struct{}
 
-func (c contains) Evaluate(list interface{}, element interface{}) (bool, error) {
-	if list == nil {
+func (c contains) Evaluate(left interface{}, right interface{}) (bool, error) {
+	if left == nil {
 		return false, nil
 	}
 
-	l, ok := iterable(list)
+	l, ok := iterable(left)
 	if !ok {
 		return false, ErrIterableTypeOnly
 	}
 
 	for _, e := range l {
-		if reflect.DeepEqual(e, element) {
+		if reflect.DeepEqual(e, right) {
 			return true, nil
 		}
 	}
@@ -199,7 +203,7 @@ func (c contains) Name() string {
 	return ContainsOp
 }
 
-// equals returns true if left and right at equas as defined by reflect.DeepEqual()
+// equals returns true if left and right are equal as defined by reflect.DeepEqual()
 type equals struct{}
 
 func (e equals) Evaluate(left interface{}, right interface{}) (bool, error) {
@@ -208,6 +212,22 @@ func (e equals) Evaluate(left interface{}, right interface{}) (bool, error) {
 
 func (e equals) Name() string {
 	return EqualsOp
+}
+
+type greaterThan struct{}
+
+func (g greaterThan) Evaluate(left interface{}, right interface{}) (bool, error) {
+	leftNumber, leftErr := cast.ToInt64E(left)
+	rightNumber, rightErr := cast.ToInt64E(right)
+	if leftErr != nil || rightErr != nil {
+		return false, ErrNumericalTypeOnly
+	}
+
+	return leftNumber > rightNumber, nil
+}
+
+func (g greaterThan) Name() string {
+	return GreaterThanOp
 }
 
 //iterable checks that the given interface is of a
