@@ -83,7 +83,7 @@ type talariaDeviceAccess struct {
 	strict                  bool
 	receivedWRPMessageCount metrics.Counter
 	deviceRegistry          device.Registry
-	checks                  []parsedCheck
+	checks                  []*parsedCheck
 	sep                     string
 	debugLogger             log.Logger
 }
@@ -103,7 +103,7 @@ func (t *talariaDeviceAccess) withSuccess(labelValues ...string) metrics.Counter
 	return t.receivedWRPMessageCount.With(append(labelValues, OutcomeLabel, Accepted)...)
 }
 
-func getRight(check parsedCheck, wrpCredentials bascule.Attributes) (interface{}, bool) {
+func getRight(check *parsedCheck, wrpCredentials bascule.Attributes) (interface{}, bool) {
 	if check.inputValue != nil {
 		return check.inputValue, true
 	}

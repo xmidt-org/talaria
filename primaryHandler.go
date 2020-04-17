@@ -214,13 +214,19 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 			return nil, err
 		}
 
-		infoLogger.Log(logging.MessageKey(), "Enabling validator for API access to devices.")
-		parsedChecks, errs := parseDeviceAccessChecks(deviceAccessCheckConfig.Checks)
-		if parsingErrors := errs.Errors(); len(parsingErrors) > 0 {
-			for _, err := range parsingErrors {
+		if len(deviceAccessCheckConfig.Checks) < 1 {
+			errorLogger.Log(logging.MessageKey(), "Potential security misconfig. Include a check for deviceAccessCheck or disable it")
+			return nil, errors.New("Failed enabling DeviceAccessCheck")
+		}
+
+		var parsedChecks []*parsedCheck
+		for _, check := range deviceAccessCheckConfig.Checks {
+			parsedCheck, err := parseDeviceAccessCheck(check)
+			if err != nil {
 				errorLogger.Log(logging.ErrorKey(), err, logging.MessageKey(), "deviceAccesscheck parse failure")
+				return nil, errors.New("Failed parsing DeviceAccessChecks")
 			}
-			return nil, errors.New("Failure parsing DeviceAccessChecks")
+			parsedChecks = append(parsedChecks, parsedCheck)
 		}
 
 		if deviceAccessCheckConfig.Type == "enforce" || deviceAccessCheckConfig.Type == "monitor" {
@@ -233,6 +239,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 				sep:                     deviceAccessCheckConfig.Sep,
 			}
 
+			infoLogger.Log(logging.MessageKey(), "Enabling Device Access Validator.")
 			wrpRouterHandler = withDeviceAccessCheck(wrpRouterHandler, deviceAccess)
 		}
 	}

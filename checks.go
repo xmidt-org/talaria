@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-
-	"github.com/xmidt-org/bascule"
 )
 
 type namedMultiError struct {
@@ -13,9 +11,9 @@ type namedMultiError struct {
 	errors []error
 }
 
-func newNamedMultiError(name string, index int) namedMultiError {
+func newNamedMultiError(name, defaultName string) namedMultiError {
 	if name == "" {
-		name = fmt.Sprintf("checks[%d]", index)
+		name = defaultName
 	}
 	return namedMultiError{
 		name: name,
@@ -32,10 +30,6 @@ func (e namedMultiError) Error() string {
 		errors = append(errors, err.Error())
 	}
 	return strings.Join(errors, "\n")
-}
-
-func (e namedMultiError) Errors() []error {
-	return e.errors
 }
 
 type parsedCheck struct {
@@ -56,43 +50,35 @@ func anyEmpty(values ...string) bool {
 	return false
 }
 
-func parseDeviceAccessChecks(configs []deviceAccessCheck) ([]parsedCheck, bascule.MultiError) {
-	var (
-		parsedChecks = make([]parsedCheck, len(configs))
-		errs         bascule.Errors
-	)
-	for i, config := range configs {
-		parsedCheck := parsedCheck{
-			name:                 strings.Trim(config.Name, " "),
-			wrpCredentialPath:    strings.Trim(config.WRPCredentialPath, " "),
-			deviceCredentialPath: strings.Trim(config.DeviceCredentialPath, " "),
-			inputValue:           config.InputValue,
-			inversed:             config.Inversed,
-		}
-
-		errsForCheck := newNamedMultiError(config.Name, i)
-
-		if anyEmpty(parsedCheck.name, parsedCheck.deviceCredentialPath) {
-			errsForCheck.Append(errors.New("Name and DeviceCredentialPath are required"))
-		}
-
-		if parsedCheck.inputValue == nil && parsedCheck.wrpCredentialPath == "" {
-			errsForCheck.Append(errors.New("Either inputValue or wrpCredentialPath must be provided"))
-		}
-
-		check, err := newBinOp(config.Op)
-		if err != nil {
-			errsForCheck.Append(err)
-		}
-
-		if len(errsForCheck.errors) > 0 {
-			errs = append(errs, errsForCheck)
-			continue
-		}
-
-		parsedCheck.assertion = check
-		parsedChecks[i] = parsedCheck
+func parseDeviceAccessCheck(config deviceAccessCheck) (*parsedCheck, error) {
+	parsedCheck := &parsedCheck{
+		name:                 strings.Trim(config.Name, " "),
+		wrpCredentialPath:    strings.Trim(config.WRPCredentialPath, " "),
+		deviceCredentialPath: strings.Trim(config.DeviceCredentialPath, " "),
+		inputValue:           config.InputValue,
+		inversed:             config.Inversed,
 	}
 
-	return parsedChecks, errs
+	errs := newNamedMultiError(config.Name, "DeviceAccessCheck")
+
+	if anyEmpty(parsedCheck.name, parsedCheck.deviceCredentialPath) {
+		errs.Append(errors.New("Name and DeviceCredentialPath are required"))
+	}
+
+	if parsedCheck.inputValue == nil && parsedCheck.wrpCredentialPath == "" {
+		errs.Append(errors.New("Either inputValue or wrpCredentialPath must be provided"))
+	}
+
+	check, err := newBinOp(config.Op)
+	if err != nil {
+		errs.Append(err)
+	}
+
+	parsedCheck.assertion = check
+
+	if len(errs.errors) > 0 {
+		return nil, err
+	}
+
+	return parsedCheck, errs
 }
