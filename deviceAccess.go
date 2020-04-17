@@ -17,15 +17,14 @@ import (
 
 // HTTP response aware errors
 var (
-	ErrTokenMissing           = &xhttp.Error{Code: http.StatusInternalServerError, Text: "No JWT Token was found in context"}
-	ErrTokenTypeMismatch      = &xhttp.Error{Code: http.StatusInternalServerError, Text: "Token must be a JWT"}
-	ErrPIDMissing             = &xhttp.Error{Code: http.StatusBadRequest, Text: "WRP PartnerIDs field must not be empty"}
-	ErrInvalidAllowedPartners = &xhttp.Error{Code: http.StatusForbidden, Text: "AllowedPartners JWT claim must be a non-empty list of strings"}
-	ErrPIDMismatch            = &xhttp.Error{Code: http.StatusForbidden, Text: "Unauthorized partner credentials in WRP message"}
-
-	ErrCredentialsMissing    = &xhttp.Error{Code: http.StatusForbidden, Text: "Could not find credentials to compare"}
-	ErrInvalidWRPDestination = &xhttp.Error{Code: http.StatusBadRequest, Text: "Invalid WRP Destination"}
-	ErrDeviceNotFound        = &xhttp.Error{Code: http.StatusNotFound, Text: "Device not found"}
+	ErrWRPCredentialsMissing   = &xhttp.Error{Code: http.StatusForbidden, Text: "Missing WRP credential"}
+	ErrDeviceCredentialMissing = &xhttp.Error{Code: http.StatusForbidden, Text: "Missing device metadata credential"}
+	ErrInvalidWRPDestination   = &xhttp.Error{Code: http.StatusBadRequest, Text: "Invalid WRP Destination"}
+	ErrDeviceNotFound          = &xhttp.Error{Code: http.StatusNotFound, Text: "Device not found"}
+)
+var (
+	missingDeviceCredentialsLabelPair = []string{ReasonLabel, MissingDeviceCredential}
+	missingWRPCredentialsLabelPair    = []string{ReasonLabel, MissingWRPCredential}
 )
 
 func errDeviceAccessUnauthorized(checkName string) error {
@@ -85,6 +84,7 @@ type talariaDeviceAccess struct {
 	receivedWRPMessageCount metrics.Counter
 	deviceRegistry          device.Registry
 	checks                  []parsedCheck
+	sep                     string
 	debugLogger             log.Logger
 }
 
@@ -92,6 +92,10 @@ func (t *talariaDeviceAccess) withFailure(labelValues ...string) metrics.Counter
 	if !t.strict {
 		return t.withSuccess(labelValues...)
 	}
+	return t.receivedWRPMessageCount.With(append(labelValues, OutcomeLabel, Rejected)...)
+}
+
+func (t *talariaDeviceAccess) withFatal(labelValues ...string) metrics.Counter {
 	return t.receivedWRPMessageCount.With(append(labelValues, OutcomeLabel, Rejected)...)
 }
 
@@ -108,31 +112,48 @@ func getRight(check parsedCheck, wrpCredentials bascule.Attributes) (interface{}
 
 // authorizeWRP returns true if the talaria partners access policy checks succeed. Otherwise, false
 // alongside an appropiate error that's friendly to go-kit's HTTP error response encoder.
-// TODO: modify metrics accordingly
 func (t *talariaDeviceAccess) authorizeWRP(ctx context.Context, message *wrp.Message) error {
 	ID, err := device.ParseID(message.Destination)
 	if err != nil {
+		t.withFatal(ReasonLabel, InvalidWRPDest).Add(1)
 		return ErrInvalidWRPDestination
 	}
 
 	d, ok := t.deviceRegistry.Get(ID)
 	if !ok {
+		t.withFatal(ReasonLabel, DeviceNotFound).Add(1)
 		return ErrDeviceNotFound
 	}
 
-	deviceCredentials := bascule.NewAttributesFromMap(d.Metadata().JWTClaims().Data())
-	wrpCredentials := bascule.NewAttributesFromMap(structs.Map(message))
+	deviceCredentials := bascule.NewAttributesWithOptions(
+		bascule.AttributesOptions{
+			KeyDelimiter:  t.sep,
+			AttributesMap: d.Metadata().JWTClaims().Data(),
+		})
+
+	wrpCredentials := bascule.NewAttributesWithOptions(
+		bascule.AttributesOptions{
+			KeyDelimiter:  t.sep,
+			AttributesMap: structs.Map(message),
+		})
 
 	for _, c := range t.checks {
 		left, ok := deviceCredentials.Get(c.deviceCredentialPath)
-
 		if !ok {
-			return ErrCredentialsMissing
+			t.withFailure(missingDeviceCredentialsLabelPair...).Add(1)
+			if t.strict {
+				return ErrDeviceCredentialMissing
+			}
+			return nil
 		}
 
 		right, ok := getRight(c, wrpCredentials)
 		if !ok {
-			return ErrCredentialsMissing
+			t.withFailure(missingWRPCredentialsLabelPair...).Add(1)
+			if t.strict {
+				return ErrWRPCredentialsMissing
+			}
+			return nil
 		}
 
 		if c.inversed {
@@ -149,12 +170,26 @@ func (t *talariaDeviceAccess) authorizeWRP(ctx context.Context, message *wrp.Mes
 		ok, err := c.assertion.Evaluate(left, right)
 		if err != nil {
 			t.debugLogger.Log(logging.MessageKey(), "Check failed to complete", "check", c.name, logging.ErrorKey(), err)
-			return errDeviceAccessIncompleteCheck(c.name)
+			t.withFailure(ReasonLabel, CheckExecFail)
+
+			if t.strict {
+				return errDeviceAccessIncompleteCheck(c.name)
+			}
+			return nil
 		}
+
 		if !ok {
-			return errDeviceAccessUnauthorized(c.name)
+			t.debugLogger.Log(logging.MessageKey(), "WRP is unauthorized to reach device", "check", c.name)
+			t.withFailure(ReasonLabel, Unauthorized)
+
+			if t.strict {
+				return errDeviceAccessUnauthorized(c.name)
+			}
+
+			return nil
 		}
 	}
 
+	t.withSuccess(ReasonLabel, Authorized).Add(1)
 	return nil
 }

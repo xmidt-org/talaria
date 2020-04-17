@@ -230,7 +230,9 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 				checks:                  parsedChecks,
 				deviceRegistry:          manager,
 				debugLogger:             logging.Debug(logger),
+				sep:                     deviceAccessCheckConfig.Sep,
 			}
+
 			wrpRouterHandler = withDeviceAccessCheck(wrpRouterHandler, deviceAccess)
 		}
 	}
