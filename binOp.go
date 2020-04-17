@@ -7,9 +7,11 @@ import (
 	"github.com/spf13/cast"
 )
 
+// Errors
 var (
 	ErrIterableTypeOnly  = errors.New("Only slices and arrays are currently supported as iterable")
 	ErrNumericalTypeOnly = errors.New("Only numerical values are supported")
+	ErrOpNotSupported    = errors.New("Operation not supported")
 )
 
 // Supported operations
@@ -40,7 +42,7 @@ func newBinOp(operation string) (binOp, error) {
 	case GreaterThanOp:
 		return new(greaterThan), nil
 	default:
-		return nil, errors.New("Operation not supported")
+		return nil, ErrOpNotSupported
 	}
 }
 

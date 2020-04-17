@@ -1,130 +1,162 @@
 package main
 
 import (
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestIntersect(t *testing.T) {
-	testCases := []struct {
-		name       string
-		list       interface{}
-		element    interface{}
-		shouldPass bool
-		shouldErr  bool
-	}{
-		{
-			name:       "Slices",
-			list:       []string{"red", "green", "blue"},
-			element:    []string{"red", "green", "blue"},
-			shouldPass: true,
-		},
-		{
-			name:       "Arrays",
-			list:       [2]string{"red", "green"},
-			element:    [3]string{"red", "green", "blue"},
-			shouldPass: true,
-		},
-		{
-			name:       "Mixed types. Partial intersection",
-			list:       []interface{}{1, "one", 1.0, true},
-			element:    []int{1},
-			shouldPass: true,
-		},
-		{
-			name:    "Mixed types. No intersection",
-			list:    []interface{}{1, "one", 1.0},
-			element: []string{"orange", "apple"},
-		},
-		{
-			name:    "Empty slice",
-			list:    []interface{}{},
-			element: []string{"orange", "apple"},
-		},
-		{
-			name:      "Unsupported type for first argument",
-			list:      true,
-			element:   []string{"orange", "apple"},
-			shouldErr: true,
-		},
+type testCase struct {
+	name        string
+	left        interface{}
+	right       interface{}
+	expected    bool
+	expectedErr error
+}
 
-		{
-			name:      "Unsupported type for second argument",
-			list:      []interface{}{3},
-			element:   3,
-			shouldErr: true,
-		},
+func testBinOp(testCases []testCase, operation string, t *testing.T) {
+	require := require.New(t)
+	op, err := newBinOp(operation)
+	require.Nil(err)
+	require.Equal(op.Name(), operation)
 
-		{
-			name:    "Nil values",
-			list:    nil,
-			element: 3,
-		},
-	}
-	intersecs := new(intersects)
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			assert := assert.New(t)
-			actual, err := intersecs.Evaluate(testCase.list, testCase.element)
+			actual, err := op.Evaluate(testCase.left, testCase.right)
 
-			assert.Equal(testCase.shouldPass, actual)
-
-			if testCase.shouldErr {
-				assert.NotNil(err)
-			} else {
-				assert.Nil(err)
-			}
+			assert.Equal(testCase.expected, actual)
+			assert.Equal(testCase.expectedErr, err)
 		})
 	}
 }
 
+func TestIntersects(t *testing.T) {
+	testCases := []testCase{
+		{
+			name:     "Slices",
+			left:     []string{"red", "green", "blue"},
+			right:    []string{"red", "green", "blue"},
+			expected: true,
+		},
+		{
+			name:     "Arrays",
+			left:     [2]string{"red", "green"},
+			right:    [3]string{"red", "green", "blue"},
+			expected: true,
+		},
+		{
+			name:     "Mixed types. Partial intersection",
+			left:     []interface{}{1, "one", 1.0, true},
+			right:    []int{1},
+			expected: true,
+		},
+		{
+			name:  "Mixed types. No intersection",
+			left:  []interface{}{1, "one", 1.0},
+			right: []string{"orange", "apple"},
+		},
+		{
+			name:  "Empty slice",
+			left:  []interface{}{},
+			right: []string{"orange", "apple"},
+		},
+		{
+			name:        "Unsupported type for first argument",
+			left:        true,
+			right:       []string{"orange", "apple"},
+			expectedErr: ErrIterableTypeOnly,
+		},
+
+		{
+			name:        "Unsupported type for second argument",
+			left:        []interface{}{3},
+			right:       3,
+			expectedErr: ErrIterableTypeOnly,
+		},
+
+		{
+			name:  "Nil values",
+			left:  nil,
+			right: 3,
+		},
+	}
+	testBinOp(testCases, IntersectsOp, t)
+}
+
 func TestContains(t *testing.T) {
-	testCases := []struct {
-		name       string
-		list       interface{}
-		element    interface{}
-		shouldErr  bool
-		shouldPass bool
-	}{
+	testCases := []testCase{
 		{
-			name:       "A member",
-			list:       []interface{}{"two", 2},
-			element:    2,
-			shouldPass: true,
+			name:     "A member",
+			left:     []interface{}{"two", 2},
+			right:    2,
+			expected: true,
 		},
 		{
-			name:    "Not a member",
-			list:    []string{"svalinn", "gungnir"},
-			element: "talaria",
+			name:  "Not a member",
+			left:  []string{"svalinn", "gungnir"},
+			right: "talaria",
 		},
 		{
-			name:      "Type error",
-			list:      3, //not an iterable object
-			element:   "three",
-			shouldErr: true,
+			name:        "Type error",
+			left:        3, //not an iterable object
+			right:       "three",
+			expectedErr: ErrIterableTypeOnly,
 		},
-
 		{
-			name:    "Undefined list argument",
-			list:    nil,
-			element: "three",
+			name:  "Undefined left argument",
+			left:  nil,
+			right: "three",
 		},
 	}
+	testBinOp(testCases, ContainsOp, t)
+}
 
-	contains := new(contains)
-	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
-			assert := assert.New(t)
-			ok, err := contains.Evaluate(testCase.list, testCase.element)
+func TestEquals(t *testing.T) {
+	// no need for thorough tests here as implementation
+	// uses reflect.DeepEqual
+	testCases := []testCase{
+		{
+			name:     "Equals",
+			left:     "theSame",
+			right:    "theSame",
+			expected: true,
+		},
 
-			assert.Equal(testCase.shouldPass, ok)
-
-			if testCase.shouldErr {
-				assert.NotNil(err)
-			} else {
-				assert.Nil(err)
-			}
-		})
+		{
+			name:  "Not Equals",
+			left:  34,
+			right: 43,
+		},
 	}
+	testBinOp(testCases, EqualsOp, t)
+}
+
+func TestGreater(t *testing.T) {
+	testCases := []testCase{
+		{
+			name:        "Not a number",
+			left:        "NaNaNaNaN Batman",
+			right:       0,
+			expectedErr: ErrNumericalTypeOnly,
+		},
+
+		{
+			name:     "Max int64",
+			left:     math.MaxInt64,
+			right:    math.MaxInt8,
+			expected: true,
+		},
+	}
+	testBinOp(testCases, GreaterThanOp, t)
+}
+
+func TestUnsupportedOp(t *testing.T) {
+	assert := assert.New(t)
+
+	op, err := newBinOp("modulo")
+	assert.Nil(op)
+	assert.Equal(ErrOpNotSupported, err)
 }
