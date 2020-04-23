@@ -13,8 +13,8 @@ import (
 	"github.com/xmidt-org/wrp-go/v3/wrphttp"
 )
 
-func withDeviceAccessCheck(wrpRouterHandler wrphttp.HandlerFunc, d deviceAccess) wrphttp.HandlerFunc {
-	encodeError := gokithttp.DefaultErrorEncoder
+func withDeviceAccessCheck(errorLogger log.Logger, wrpRouterHandler wrphttp.HandlerFunc, d deviceAccess) wrphttp.HandlerFunc {
+	encodeError := talariaWRPErrorEncoder(errorLogger)
 
 	return func(w wrphttp.ResponseWriter, r *wrphttp.Request) {
 		err := d.authorizeWRP(r.Context(), &r.Entity.Message)
@@ -116,5 +116,18 @@ func decorateRequestDecoder(decode wrphttp.Decoder) wrphttp.Decoder {
 		}
 
 		return entity, err
+	}
+}
+
+func talariaWRPErrorEncoder(errorLogger log.Logger) gokithttp.ErrorEncoder {
+	return func(_ context.Context, err error, w http.ResponseWriter) {
+		code := http.StatusInternalServerError
+		if sc, ok := err.(gokithttp.StatusCoder); ok {
+			code = sc.StatusCode()
+		}
+		if code == http.StatusInternalServerError {
+			errorLogger.Log(logging.ErrorKey(), err, logging.MessageKey(), "Possibly false internal server error")
+		}
+		w.WriteHeader(code)
 	}
 }

@@ -221,7 +221,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		}
 
 		infoLogger.Log(logging.MessageKey(), "Enabling Device Access Validator.")
-		wrpRouterHandler = withDeviceAccessCheck(wrpRouterHandler, deviceAccessCheck)
+		wrpRouterHandler = withDeviceAccessCheck(errorLogger, wrpRouterHandler, deviceAccessCheck)
 	}
 
 	authConstructor = basculehttp.NewConstructor(authConstructorOptions...)
