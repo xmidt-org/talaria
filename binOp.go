@@ -9,9 +9,9 @@ import (
 
 // Errors
 var (
-	ErrIterableTypeOnly  = errors.New("Only slices and arrays are currently supported as iterable")
-	ErrNumericalTypeOnly = errors.New("Only numerical values are supported")
-	ErrOpNotSupported    = errors.New("Operation not supported")
+	errIterableTypeOnly  = errors.New("Only slices and arrays are currently supported as iterable")
+	errNumericalTypeOnly = errors.New("Only numerical values are supported")
+	errOpNotSupported    = errors.New("Operation not supported")
 )
 
 // Supported operations
@@ -42,7 +42,7 @@ func newBinOp(operation string) (binOp, error) {
 	case GreaterThanOp:
 		return new(greaterThan), nil
 	default:
-		return nil, ErrOpNotSupported
+		return nil, errOpNotSupported
 	}
 }
 
@@ -59,12 +59,12 @@ func (i intersects) Evaluate(left, right interface{}) (bool, error) {
 
 	a, ok := iterable(left)
 	if !ok {
-		return false, ErrIterableTypeOnly
+		return false, errIterableTypeOnly
 	}
 
 	b, ok := iterable(right)
 	if !ok {
-		return false, ErrIterableTypeOnly
+		return false, errIterableTypeOnly
 	}
 
 	m := make(map[interface{}]bool)
@@ -97,7 +97,7 @@ func (c contains) Evaluate(left interface{}, right interface{}) (bool, error) {
 
 	l, ok := iterable(left)
 	if !ok {
-		return false, ErrIterableTypeOnly
+		return false, errIterableTypeOnly
 	}
 
 	for _, e := range l {
@@ -130,7 +130,7 @@ func (g greaterThan) Evaluate(left interface{}, right interface{}) (bool, error)
 	leftNumber, leftErr := cast.ToInt64E(left)
 	rightNumber, rightErr := cast.ToInt64E(right)
 	if leftErr != nil || rightErr != nil {
-		return false, ErrNumericalTypeOnly
+		return false, errNumericalTypeOnly
 	}
 
 	return leftNumber > rightNumber, nil

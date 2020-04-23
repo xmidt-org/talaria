@@ -67,14 +67,14 @@ func TestIntersects(t *testing.T) {
 			name:        "Unsupported type for first argument",
 			left:        true,
 			right:       []string{"orange", "apple"},
-			expectedErr: ErrIterableTypeOnly,
+			expectedErr: errIterableTypeOnly,
 		},
 
 		{
 			name:        "Unsupported type for second argument",
 			left:        []interface{}{3},
 			right:       3,
-			expectedErr: ErrIterableTypeOnly,
+			expectedErr: errIterableTypeOnly,
 		},
 
 		{
@@ -103,7 +103,7 @@ func TestContains(t *testing.T) {
 			name:        "Type error",
 			left:        3, //not an iterable object
 			right:       "three",
-			expectedErr: ErrIterableTypeOnly,
+			expectedErr: errIterableTypeOnly,
 		},
 		{
 			name:  "Undefined left argument",
@@ -140,7 +140,7 @@ func TestGreater(t *testing.T) {
 			name:        "Not a number",
 			left:        "NaNaNaNaN Batman",
 			right:       0,
-			expectedErr: ErrNumericalTypeOnly,
+			expectedErr: errNumericalTypeOnly,
 		},
 
 		{
@@ -158,5 +158,5 @@ func TestUnsupportedOp(t *testing.T) {
 
 	op, err := newBinOp("modulo")
 	assert.Nil(op)
-	assert.Equal(ErrOpNotSupported, err)
+	assert.Equal(errOpNotSupported, err)
 }

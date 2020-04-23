@@ -34,6 +34,10 @@ type deviceAccessCheck struct {
 	// Name provides a short description of the check
 	Name string
 
+	//DeviceCredentialPath is the Sep-delimited path to the credential value
+	//associated with the device.
+	DeviceCredentialPath string
+
 	// WRPCredentialPath is the Sep-delimited path to the credential value
 	// presented by API users attempting to contact a device.
 	// (Optional when RawValue is specified. If both present, DeviceCredentialExpected is preferred).
@@ -46,10 +50,6 @@ type deviceAccessCheck struct {
 	//Op is the string describing the operation that should be run for this
 	//check (i.e. contains)
 	Op string
-
-	//DeviceCredentialPath is the Sep-delimited path to the credential value
-	//associated with the device.
-	DeviceCredentialPath string
 
 	//Inversed should be set to true if Op should be applied from
 	//valueAt(DeviceCredentialPath) to (either DeviceCredentialExpected or valueAt(WRPCredentialPath))
