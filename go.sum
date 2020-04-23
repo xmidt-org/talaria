@@ -237,8 +237,6 @@ github.com/xmidt-org/bascule v0.8.0 h1:xk/c8zqqNjoSW4b4oSrUwemm786Bs5DabmX7AgUgN
 github.com/xmidt-org/bascule v0.8.0/go.mod h1:dPxlbNT3lCwYAtOq2zbzyzTEKgM+azLSbKKcVmgSHBY=
 github.com/xmidt-org/webpa-common v1.1.0/go.mod h1:oCpKzOC+9h2vYHVzAU/06tDTQuBN4RZz+rhgIXptpOI=
 github.com/xmidt-org/webpa-common v1.3.2/go.mod h1:oCpKzOC+9h2vYHVzAU/06tDTQuBN4RZz+rhgIXptpOI=
-github.com/xmidt-org/webpa-common v1.8.0 h1:5qrWT8KcvC1GEK6sB7JfeQPLDyyOn4ujuhegb8Gmmxc=
-github.com/xmidt-org/webpa-common v1.8.0/go.mod h1:GADXfjZbfxZXYpGhV+VY2CaCxBVVn0KGxcnDgeSq48w=
 github.com/xmidt-org/webpa-common v1.8.1-0.20200408224655-6dd4975b82cd h1:vZ4tuO8x1+k8iUYPBwE+3bW797Lymgv2WQR1A/P2IsI=
 github.com/xmidt-org/webpa-common v1.8.1-0.20200408224655-6dd4975b82cd/go.mod h1:8Ml4Ck/bANH1TCTfGgLFqepdiotTzchxNyo89W4aDd4=
 github.com/xmidt-org/wrp-go/v3 v3.0.1 h1:E1FrFwWi21pFDL3c6M4ufqA4ykXWPops9BMnadChUH8=

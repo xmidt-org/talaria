@@ -80,5 +80,5 @@ func parseDeviceAccessCheck(config deviceAccessCheck) (*parsedCheck, error) {
 		return nil, err
 	}
 
-	return parsedCheck, errs
+	return parsedCheck, nil
 }

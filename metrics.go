@@ -25,7 +25,7 @@ const (
 	DrainStatus  = "drain_status"
 	DrainCounter = "drain_count"
 
-	ReceivedWRPMessageCount = "received_wrp_message_total"
+	InboundWRPMessageCounter = "inbound_wrp_messages"
 )
 
 // Metric label names
@@ -44,8 +44,8 @@ const (
 
 	MissingDeviceCredential = "missing_device_cred"
 	MissingWRPCredential    = "missing_wrp_cred"
-	CheckExecFail           = "check_exec_fail"
-	Unauthorized            = "unauthorized"
+	IncompleteCheck         = "incomplete_check"
+	Denied                  = "denied"
 	Authorized              = "authorized"
 )
 
@@ -99,9 +99,9 @@ func Metrics() []xmetrics.Metric {
 			Help: "The total count of devices disconnected due to a drain since the server started",
 		},
 		{
-			Name:       ReceivedWRPMessageCount,
+			Name:       InboundWRPMessageCounter,
 			Type:       xmetrics.CounterType,
-			Help:       "Number of WRP Messages successfully decoded and ready to route to device.",
+			Help:       "Number of inbound WRP Messages successfully decoded and ready to route to device",
 			LabelNames: []string{OutcomeLabel, ReasonLabel},
 		},
 	}

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/fatih/structs"
@@ -21,19 +20,13 @@ var (
 	ErrDeviceCredentialMissing = &xhttp.Error{Code: http.StatusForbidden, Text: "Missing device metadata credential"}
 	ErrInvalidWRPDestination   = &xhttp.Error{Code: http.StatusBadRequest, Text: "Invalid WRP Destination"}
 	ErrDeviceNotFound          = &xhttp.Error{Code: http.StatusNotFound, Text: "Device not found"}
+	ErrIncompleteCheck         = &xhttp.Error{Code: http.StatusForbidden, Text: "Check incomplete"}
+	ErrDeniedDeviceAccess      = &xhttp.Error{Code: http.StatusForbidden, Text: "Denied Access to Device"}
 )
 var (
 	missingDeviceCredentialsLabelPair = []string{ReasonLabel, MissingDeviceCredential}
 	missingWRPCredentialsLabelPair    = []string{ReasonLabel, MissingWRPCredential}
 )
-
-func errDeviceAccessUnauthorized(checkName string) error {
-	return &xhttp.Error{Code: http.StatusForbidden, Text: fmt.Sprintf("Unauthorized device access. Check '%s' failed.", checkName)}
-}
-
-func errDeviceAccessIncompleteCheck(checkName string) error {
-	return &xhttp.Error{Code: http.StatusForbidden, Text: fmt.Sprintf("Device access check '%s' could not complete", checkName)}
-}
 
 // deviceAccessCheck describes a single unit of assertion check against a
 // device's credentials.
@@ -80,27 +73,27 @@ type deviceAccess interface {
 }
 
 type talariaDeviceAccess struct {
-	strict                  bool
-	receivedWRPMessageCount metrics.Counter
-	deviceRegistry          device.Registry
-	checks                  []*parsedCheck
-	sep                     string
-	debugLogger             log.Logger
+	strict             bool
+	wrpMessagesCounter metrics.Counter
+	deviceRegistry     device.Registry
+	checks             []*parsedCheck
+	sep                string
+	debugLogger        log.Logger
 }
 
 func (t *talariaDeviceAccess) withFailure(labelValues ...string) metrics.Counter {
 	if !t.strict {
 		return t.withSuccess(labelValues...)
 	}
-	return t.receivedWRPMessageCount.With(append(labelValues, OutcomeLabel, Rejected)...)
+	return t.wrpMessagesCounter.With(append(labelValues, OutcomeLabel, Rejected)...)
 }
 
 func (t *talariaDeviceAccess) withFatal(labelValues ...string) metrics.Counter {
-	return t.receivedWRPMessageCount.With(append(labelValues, OutcomeLabel, Rejected)...)
+	return t.wrpMessagesCounter.With(append(labelValues, OutcomeLabel, Rejected)...)
 }
 
 func (t *talariaDeviceAccess) withSuccess(labelValues ...string) metrics.Counter {
-	return t.receivedWRPMessageCount.With(append(labelValues, OutcomeLabel, Accepted)...)
+	return t.wrpMessagesCounter.With(append(labelValues, OutcomeLabel, Accepted)...)
 }
 
 func getRight(check *parsedCheck, wrpCredentials bascule.Attributes) (interface{}, bool) {
@@ -112,7 +105,7 @@ func getRight(check *parsedCheck, wrpCredentials bascule.Attributes) (interface{
 
 // authorizeWRP returns true if the talaria partners access policy checks succeed. Otherwise, false
 // alongside an appropiate error that's friendly to go-kit's HTTP error response encoder.
-func (t *talariaDeviceAccess) authorizeWRP(ctx context.Context, message *wrp.Message) error {
+func (t *talariaDeviceAccess) authorizeWRP(_ context.Context, message *wrp.Message) error {
 	ID, err := device.ParseID(message.Destination)
 	if err != nil {
 		t.withFatal(ReasonLabel, InvalidWRPDest).Add(1)
@@ -170,20 +163,20 @@ func (t *talariaDeviceAccess) authorizeWRP(ctx context.Context, message *wrp.Mes
 		ok, err := c.assertion.Evaluate(left, right)
 		if err != nil {
 			t.debugLogger.Log(logging.MessageKey(), "Check failed to complete", "check", c.name, logging.ErrorKey(), err)
-			t.withFailure(ReasonLabel, CheckExecFail)
+			t.withFailure(ReasonLabel, IncompleteCheck).Add(1)
 
 			if t.strict {
-				return errDeviceAccessIncompleteCheck(c.name)
+				return ErrIncompleteCheck
 			}
 			return nil
 		}
 
 		if !ok {
 			t.debugLogger.Log(logging.MessageKey(), "WRP is unauthorized to reach device", "check", c.name)
-			t.withFailure(ReasonLabel, Unauthorized)
+			t.withFailure(ReasonLabel, Denied).Add(1)
 
 			if t.strict {
-				return errDeviceAccessUnauthorized(c.name)
+				return ErrDeniedDeviceAccess
 			}
 
 			return nil

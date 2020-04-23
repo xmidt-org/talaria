@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/metrics"
 	"github.com/goph/emperror"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
@@ -207,41 +208,20 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 	wrpRouterHandler := wrpRouterHandler(logger, manager)
 
 	if v.IsSet(DeviceAccessCheckConfigKey) {
-		deviceAccessCheckConfig := new(deviceAccessCheckConfig)
+		config := new(deviceAccessCheckConfig)
 
-		if err := v.UnmarshalKey(DeviceAccessCheckConfigKey, deviceAccessCheckConfig); err != nil {
+		if err := v.UnmarshalKey(DeviceAccessCheckConfigKey, config); err != nil {
 			errorLogger.Log(logging.MessageKey(), "Could not unmarshall wrpCheck config for api access to device.")
 			return nil, err
 		}
 
-		if len(deviceAccessCheckConfig.Checks) < 1 {
-			errorLogger.Log(logging.MessageKey(), "Potential security misconfig. Include a check for deviceAccessCheck or disable it")
-			return nil, errors.New("Failed enabling DeviceAccessCheck")
+		deviceAccessCheck, err := buildDeviceAccessCheck(config, logger, metricsRegistry.NewCounter(InboundWRPMessageCounter), manager)
+		if err != nil {
+			return nil, err
 		}
 
-		var parsedChecks []*parsedCheck
-		for _, check := range deviceAccessCheckConfig.Checks {
-			parsedCheck, err := parseDeviceAccessCheck(check)
-			if err != nil {
-				errorLogger.Log(logging.ErrorKey(), err, logging.MessageKey(), "deviceAccesscheck parse failure")
-				return nil, errors.New("Failed parsing DeviceAccessChecks")
-			}
-			parsedChecks = append(parsedChecks, parsedCheck)
-		}
-
-		if deviceAccessCheckConfig.Type == "enforce" || deviceAccessCheckConfig.Type == "monitor" {
-			deviceAccess := &talariaDeviceAccess{
-				strict:                  deviceAccessCheckConfig.Type == "enforce",
-				receivedWRPMessageCount: metricsRegistry.NewCounter(ReceivedWRPMessageCount),
-				checks:                  parsedChecks,
-				deviceRegistry:          manager,
-				debugLogger:             logging.Debug(logger),
-				sep:                     deviceAccessCheckConfig.Sep,
-			}
-
-			infoLogger.Log(logging.MessageKey(), "Enabling Device Access Validator.")
-			wrpRouterHandler = withDeviceAccessCheck(wrpRouterHandler, deviceAccess)
-		}
+		infoLogger.Log(logging.MessageKey(), "Enabling Device Access Validator.")
+		wrpRouterHandler = withDeviceAccessCheck(wrpRouterHandler, deviceAccessCheck)
 	}
 
 	authConstructor = basculehttp.NewConstructor(authConstructorOptions...)
@@ -332,4 +312,37 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 	)
 
 	return r, nil
+}
+
+func buildDeviceAccessCheck(config *deviceAccessCheckConfig, logger log.Logger, counter metrics.Counter, deviceRegistry device.Registry) (deviceAccess, error) {
+	errorLogger := logging.Error(logger)
+
+	if len(config.Checks) < 1 {
+		errorLogger.Log(logging.MessageKey(), "Potential security misconfig. Include a check for deviceAccessCheck or disable it")
+		return nil, errors.New("Failed enabling DeviceAccessCheck")
+	}
+
+	var parsedChecks []*parsedCheck
+	for _, check := range config.Checks {
+		parsedCheck, err := parseDeviceAccessCheck(check)
+		if err != nil {
+			errorLogger.Log(logging.ErrorKey(), err, logging.MessageKey(), "deviceAccesscheck parse failure")
+			return nil, errors.New("Failed parsing DeviceAccessChecks")
+		}
+		parsedChecks = append(parsedChecks, parsedCheck)
+	}
+
+	if config.Type == "enforce" || config.Type == "monitor" {
+		return &talariaDeviceAccess{
+			strict:             config.Type == "enforce",
+			wrpMessagesCounter: counter,
+			checks:             parsedChecks,
+			deviceRegistry:     deviceRegistry,
+			debugLogger:        logging.Debug(logger),
+			sep:                config.Sep,
+		}, nil
+
+	}
+
+	return nil, errors.New("Ensure there are no mispellings in the device access check")
 }

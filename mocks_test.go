@@ -39,3 +39,17 @@ func (m *mockRouter) Route(request *device.Request) (*device.Response, error) {
 	first, _ := arguments.Get(0).(*device.Response)
 	return first, arguments.Error(1)
 }
+
+type mockBinOp struct {
+	mock.Mock
+}
+
+func (m *mockBinOp) Evaluate(left, right interface{}) (bool, error) {
+	arguments := m.Called(left, right)
+	return arguments.Bool(0), arguments.Error(1)
+}
+
+func (m *mockBinOp) Name() string {
+	arguments := m.Called()
+	return arguments.String(0)
+}

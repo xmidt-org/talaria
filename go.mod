@@ -4,7 +4,6 @@ go 1.12
 
 require (
 	github.com/c9s/goprocinfo v0.0.0-20190309065803-0b2ad9ac246b // indirect
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/fatih/structs v1.1.0
 	github.com/go-kit/kit v0.8.0
 	github.com/golang/protobuf v1.3.2 // indirect
