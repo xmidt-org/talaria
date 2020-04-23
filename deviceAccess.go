@@ -157,10 +157,10 @@ func (t *talariaDeviceAccess) authorizeWRP(_ context.Context, message *wrp.Messa
 			logging.MessageKey(), "Performing check with operation applied from left to right",
 			"check", c.name,
 			"left", left,
-			"operation", c.assertion.Name(),
+			"operation", c.assertion.name(),
 			"right", right)
 
-		ok, err := c.assertion.Evaluate(left, right)
+		ok, err := c.assertion.evaluate(left, right)
 		if err != nil {
 			t.debugLogger.Log(logging.MessageKey(), "Check failed to complete", "check", c.name, logging.ErrorKey(), err)
 			t.withFailure(ReasonLabel, IncompleteCheck).Add(1)

@@ -20,12 +20,12 @@ func testBinOp(testCases []testCase, operation string, t *testing.T) {
 	require := require.New(t)
 	op, err := newBinOp(operation)
 	require.Nil(err)
-	require.Equal(op.Name(), operation)
+	require.Equal(op.name(), operation)
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			assert := assert.New(t)
-			actual, err := op.Evaluate(testCase.left, testCase.right)
+			actual, err := op.evaluate(testCase.left, testCase.right)
 
 			assert.Equal(testCase.expected, actual)
 			assert.Equal(testCase.expectedErr, err)

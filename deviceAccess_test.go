@@ -49,7 +49,7 @@ func testAuthorizeWRP(t *testing.T, testCases []deviceAccessTestCase, strict boo
 
 			mockDeviceRegistry.On("Get", device.ID(testCase.DeviceID)).Return(mockDevice, !testCase.MissingDevice).Once()
 			mockDevice.On("Metadata").Return(getTestDeviceMetadata()).Once()
-			mockBinOp.On("Name").Return("mockBinOP")
+			mockBinOp.On("name").Return("mockBinOP")
 
 			var checks []*parsedCheck
 			if testCase.MissingDeviceCredential {
@@ -230,7 +230,7 @@ func getFirstMissingDeviceCredentialChecks(t *testing.T, m *mockBinOp) []*parsed
 }
 
 func getSecondCheckMissingWRPCredentiaChecks(t *testing.T, m *mockBinOp) []*parsedCheck {
-	m.On("Evaluate", 100, 100).Return(true, error(nil)).Once()
+	m.On("evaluate", 100, 100).Return(true, error(nil)).Once()
 	m.AssertNotCalled(t, "Evaluate", []string{"comcast", "nbc", "sky"}, "sky")
 	m.AssertNotCalled(t, "Evaluate", true, true)
 
@@ -240,9 +240,10 @@ func getSecondCheckMissingWRPCredentiaChecks(t *testing.T, m *mockBinOp) []*pars
 }
 
 func getSecondCheckWithInputValueChecks(t *testing.T, m *mockBinOp) []*parsedCheck {
-	m.On("Evaluate", 100, 100).Return(true, error(nil)).Once()
-	m.On("Evaluate", []string{"universal"}, "sky").Return(true, error(nil)).Once()
-	m.On("Evaluate", true, true).Return(true, error(nil)).Once()
+	m.On("evaluate", 100, 100).Return(true, error(nil)).Once()
+	m.On("evaluate", []string{"universal"}, "sky").Return(true, error(nil)).Once()
+	m.On("evaluate", true, true).Return(true, error(nil)).Once()
+	m.AssertNotCalled(t, "Evaluate", []string{"comcast", "nbc", "sky"}, "sky")
 
 	baseChecks := getBaseChecks(m)
 	baseChecks[1].inputValue = []string{"universal"}
@@ -250,15 +251,15 @@ func getSecondCheckWithInputValueChecks(t *testing.T, m *mockBinOp) []*parsedChe
 }
 
 func getChecks(t *testing.T, m *mockBinOp, secondCheckIncomplete, thirdCheckAuthorized bool) []*parsedCheck {
-	m.On("Evaluate", 100, 100).Return(true, error(nil)).Once()
+	m.On("evaluate", 100, 100).Return(true, error(nil)).Once()
 	if secondCheckIncomplete {
-		m.On("Evaluate", []string{"comcast", "nbc", "sky"}, "sky").Return(false, errors.New("Could not complete check")).Once()
+		m.On("evaluate", []string{"comcast", "nbc", "sky"}, "sky").Return(false, errors.New("Could not complete check")).Once()
 		m.AssertNotCalled(t, "Evaluate", mock.Anything, mock.Anything)
 		return getBaseChecks(m)
 	}
 
-	m.On("Evaluate", []string{"comcast", "nbc", "sky"}, "sky").Return(true, error(nil)).Once()
-	m.On("Evaluate", true, true).Return(thirdCheckAuthorized, error(nil))
+	m.On("evaluate", []string{"comcast", "nbc", "sky"}, "sky").Return(true, error(nil)).Once()
+	m.On("evaluate", true, true).Return(thirdCheckAuthorized, error(nil))
 	return getBaseChecks(m)
 }
 

@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/xmidt-org/webpa-common/device"
 	"github.com/xmidt-org/webpa-common/logging"
+	"github.com/xmidt-org/webpa-common/xhttp"
 	"github.com/xmidt-org/wrp-go/v3"
 	"github.com/xmidt-org/wrp-go/v3/wrphttp"
 )
@@ -24,6 +25,41 @@ func testWRPHandlerNilRouter(t *testing.T) {
 	assert.Panics(func() {
 		wrpRouterHandler(nil, nil)
 	})
+}
+
+func testWithDeviceAccessCheck(t *testing.T, authorized bool) {
+	var (
+		assert   = assert.New(t)
+		d        = new(mockDeviceAccess)
+		recorder = httptest.NewRecorder()
+		w        = newTestWRPResponseWriter(recorder)
+		r        = &wrphttp.Request{
+			Entity: &wrphttp.Entity{
+				Message: wrp.Message{},
+			},
+		}
+		wrpRouterHandler = func(w wrphttp.ResponseWriter, _ *wrphttp.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("success"))
+		}
+	)
+
+	if authorized {
+		d.On("authorizeWRP", r.Context(), &r.Entity.Message).Return(error(nil))
+	} else {
+		d.On("authorizeWRP", r.Context(), &r.Entity.Message).Return(&xhttp.Error{Code: http.StatusForbidden, Text: "Error body"})
+	}
+
+	wrpRouterHandler = withDeviceAccessCheck(logging.NewTestLogger(nil, t), wrpRouterHandler, d)
+	wrpRouterHandler(w, r)
+
+	if authorized {
+		assert.NotEmpty(recorder.Body.Bytes())
+		assert.Equal(http.StatusOK, recorder.Code)
+	} else {
+		assert.Empty(recorder.Body.Bytes())
+		assert.Equal(http.StatusForbidden, recorder.Code)
+	}
 }
 
 func testMessageHandlerServeHTTPDecodeError(t *testing.T) {
@@ -314,4 +350,36 @@ func TestMessageHandler(t *testing.T) {
 			}
 		})
 	})
+}
+
+func TestMessageHandlerWithDeviceAccessCheck(t *testing.T) {
+	t.Run("Authorized", func(t *testing.T) {
+		testWithDeviceAccessCheck(t, true)
+	})
+
+	t.Run("Denied", func(t *testing.T) {
+		testWithDeviceAccessCheck(t, false)
+	})
+}
+
+type testWRPResponseWriter struct {
+	http.ResponseWriter
+}
+
+func (t *testWRPResponseWriter) WriteWRP(_ *wrphttp.Entity) (int, error) {
+	return 0, nil
+}
+
+func (t *testWRPResponseWriter) WriteWRPBytes(_ wrp.Format, _ []byte) (int, error) {
+	return 0, nil
+}
+
+func (t *testWRPResponseWriter) WRPFormat() wrp.Format {
+	return wrp.Msgpack
+}
+
+func newTestWRPResponseWriter(w *httptest.ResponseRecorder) *testWRPResponseWriter {
+	return &testWRPResponseWriter{
+		ResponseWriter: w,
+	}
 }

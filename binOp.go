@@ -24,11 +24,11 @@ const (
 
 // binOp encapsulates the execution of a generic binary operator.
 type binOp interface {
-	//Evaluate applies the operation from left to right
-	Evaluate(left, right interface{}) (bool, error)
+	// evaluate applies the operation from left to right
+	evaluate(left, right interface{}) (bool, error)
 
-	// Name is the name of the operation.
-	Name() string
+	// name is the name of the operation.
+	name() string
 }
 
 func newBinOp(operation string) (binOp, error) {
@@ -52,7 +52,7 @@ func newBinOp(operation string) (binOp, error) {
 // - only elements which can be casted to slices are currently supported.
 type intersects struct{}
 
-func (i intersects) Evaluate(left, right interface{}) (bool, error) {
+func (i intersects) evaluate(left, right interface{}) (bool, error) {
 	if left == nil || right == nil {
 		return false, nil
 	}
@@ -82,7 +82,7 @@ func (i intersects) Evaluate(left, right interface{}) (bool, error) {
 	return false, nil
 }
 
-func (i intersects) Name() string {
+func (i intersects) name() string {
 	return IntersectsOp
 }
 
@@ -90,7 +90,7 @@ func (i intersects) Name() string {
 // Note: only slices are supported.
 type contains struct{}
 
-func (c contains) Evaluate(left interface{}, right interface{}) (bool, error) {
+func (c contains) evaluate(left interface{}, right interface{}) (bool, error) {
 	if left == nil {
 		return false, nil
 	}
@@ -109,24 +109,24 @@ func (c contains) Evaluate(left interface{}, right interface{}) (bool, error) {
 	return false, nil
 }
 
-func (c contains) Name() string {
+func (c contains) name() string {
 	return ContainsOp
 }
 
 // equals returns true if left and right are equal as defined by reflect.DeepEqual()
 type equals struct{}
 
-func (e equals) Evaluate(left interface{}, right interface{}) (bool, error) {
+func (e equals) evaluate(left interface{}, right interface{}) (bool, error) {
 	return reflect.DeepEqual(left, right), nil
 }
 
-func (e equals) Name() string {
+func (e equals) name() string {
 	return EqualsOp
 }
 
 type greaterThan struct{}
 
-func (g greaterThan) Evaluate(left interface{}, right interface{}) (bool, error) {
+func (g greaterThan) evaluate(left interface{}, right interface{}) (bool, error) {
 	leftNumber, leftErr := cast.ToInt64E(left)
 	rightNumber, rightErr := cast.ToInt64E(right)
 	if leftErr != nil || rightErr != nil {
@@ -136,7 +136,7 @@ func (g greaterThan) Evaluate(left interface{}, right interface{}) (bool, error)
 	return leftNumber > rightNumber, nil
 }
 
-func (g greaterThan) Name() string {
+func (g greaterThan) name() string {
 	return GreaterThanOp
 }
 
