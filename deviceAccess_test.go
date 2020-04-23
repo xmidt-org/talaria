@@ -21,6 +21,7 @@ type deviceAccessTestCase struct {
 	MissingDeviceCredential bool
 	MissingWRPCredential    bool
 	IncompleteCheck         bool
+	InputValueCheck         bool
 	Authorized              bool
 	ExpectedError           error
 	IsFatal                 bool
@@ -35,33 +36,33 @@ func testAuthorizeWRP(t *testing.T, testCases []deviceAccessTestCase, strict boo
 
 				mockDeviceRegistry = new(device.MockRegistry)
 				mockDevice         = new(device.MockDevice)
-				mockBinOP          = new(mockBinOp)
+				mockBinOp          = new(mockBinOp)
 				testLogger         = logging.NewTestLogger(nil, t)
 				counter            = newTestCounter()
+				expectedLabels     = getLabelMaps(testCase.ExpectedError, testCase.IsFatal, strict, testCase.BaseLabelPairs)
 
 				wrpMsg = &wrp.Message{
 					PartnerIDs:  []string{"comcast", "nbc", "sky"},
 					Destination: testCase.DeviceID,
 				}
-
-				deviceAccessAuthority deviceAccess
-				expectedLabels        = getLabelMaps(testCase.ExpectedError, testCase.IsFatal, strict, testCase.BaseLabelPairs)
 			)
 
 			mockDeviceRegistry.On("Get", device.ID(testCase.DeviceID)).Return(mockDevice, !testCase.MissingDevice).Once()
 			mockDevice.On("Metadata").Return(getTestDeviceMetadata()).Once()
-			mockBinOP.On("Name").Return("mockBinOP")
+			mockBinOp.On("Name").Return("mockBinOP")
 
 			var checks []*parsedCheck
 			if testCase.MissingDeviceCredential {
-				checks = getFirstMissingDeviceCredentialChecks(t, mockBinOP)
+				checks = getFirstMissingDeviceCredentialChecks(t, mockBinOp)
 			} else if testCase.MissingWRPCredential {
-				checks = getSecondCheckMissingWRPCredentiaChecks(t, mockBinOP)
+				checks = getSecondCheckMissingWRPCredentiaChecks(t, mockBinOp)
+			} else if testCase.InputValueCheck {
+				checks = getSecondCheckWithInputValueChecks(t, mockBinOp)
 			} else {
-				checks = getChecks(t, mockBinOP, testCase.IncompleteCheck, testCase.Authorized)
+				checks = getChecks(t, mockBinOp, testCase.IncompleteCheck, testCase.Authorized)
 			}
 
-			deviceAccessAuthority = &talariaDeviceAccess{
+			deviceAccessAuthority := &talariaDeviceAccess{
 				strict:             strict,
 				wrpMessagesCounter: counter,
 				deviceRegistry:     mockDeviceRegistry,
@@ -80,7 +81,6 @@ func testAuthorizeWRP(t *testing.T, testCases []deviceAccessTestCase, strict boo
 			assert.Equal(expectedLabels, counter.labelPairs)
 		})
 	}
-
 }
 
 func TestAuthorizeWRP(t *testing.T) {
@@ -236,6 +236,16 @@ func getSecondCheckMissingWRPCredentiaChecks(t *testing.T, m *mockBinOp) []*pars
 
 	baseChecks := getBaseChecks(m)
 	baseChecks[1].wrpCredentialPath = "path>not>found"
+	return baseChecks
+}
+
+func getSecondCheckWithInputValueChecks(t *testing.T, m *mockBinOp) []*parsedCheck {
+	m.On("Evaluate", 100, 100).Return(true, error(nil)).Once()
+	m.On("Evaluate", []string{"universal"}, "sky").Return(true, error(nil)).Once()
+	m.On("Evaluate", true, true).Return(true, error(nil)).Once()
+
+	baseChecks := getBaseChecks(m)
+	baseChecks[1].inputValue = []string{"universal"}
 	return baseChecks
 }
 
