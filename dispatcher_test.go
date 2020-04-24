@@ -37,9 +37,7 @@ func genTestMetadata() (m device.Metadata) {
 		device.TrustClaimKey:     0,
 	}
 
-	jwtClaims := device.NewJWTClaims(claims)
-
-	m.SetJWTClaims(jwtClaims)
+	m.SetJWTClaims(device.JWTClaims(claims))
 	return
 }
 

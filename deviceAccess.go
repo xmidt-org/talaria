@@ -121,7 +121,7 @@ func (t *talariaDeviceAccess) authorizeWRP(_ context.Context, message *wrp.Messa
 	deviceCredentials := bascule.NewAttributesWithOptions(
 		bascule.AttributesOptions{
 			KeyDelimiter:  t.sep,
-			AttributesMap: d.Metadata().JWTClaims().Data(),
+			AttributesMap: d.Metadata().JWTClaims().ToMap(),
 		})
 
 	wrpCredentials := bascule.NewAttributesWithOptions(

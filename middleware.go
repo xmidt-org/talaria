@@ -17,7 +17,7 @@ func DeviceMetadataMiddleware(delegate http.Handler) http.Handler {
 			deviceMetadata := device.NewDeviceMetadata()
 
 			if auth, authOk := bascule.FromContext(ctx); authOk {
-				deviceMetadata.SetJWTClaims(device.NewJWTClaims(auth.Token.Attributes().FullView()))
+				deviceMetadata.SetJWTClaims(device.JWTClaims(auth.Token.Attributes().FullView()))
 			}
 
 			delegate.ServeHTTP(w, r.WithContext(device.WithDeviceMetadata(ctx, deviceMetadata)))

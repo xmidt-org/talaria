@@ -217,7 +217,7 @@ func getTestDeviceMetadata() device.Metadata {
 		"nested":                 map[string]interface{}{"happy": true},
 	}
 
-	metadata.SetJWTClaims(device.NewJWTClaims(claims))
+	metadata.SetJWTClaims(device.JWTClaims(claims))
 	return metadata
 }
 
