@@ -65,30 +65,30 @@ const (
 
 // Configuration file dot-delimited paths for convenience and protection against typos
 const (
-	//JWTValidatorConfigKey is the path to the JWT
-	//validator config for device registration endpoints
+	// JWTValidatorConfigKey is the path to the JWT
+	// validator config for device registration endpoints
 	JWTValidatorConfigKey = "jwtValidator"
 
-	//DeviceAccessCheckConfigKey is the path to the validator config for
-	//restricting API access to devices based on known device metadata and credentials
-	//presented by API consumers
+	// DeviceAccessCheckConfigKey is the path to the validator config for
+	// restricting API access to devices based on known device metadata and credentials
+	// presented by API consumers
 	DeviceAccessCheckConfigKey = "deviceAccessCheck"
 
-	//ServiceBasicAuthConfigKey is the path to the list of accepted basic auth keys
-	//for the API endpoints (note: does not include device registration)
+	// ServiceBasicAuthConfigKey is the path to the list of accepted basic auth keys
+	// for the API endpoints (note: does not include device registration)
 	ServiceBasicAuthConfigKey = "inbound.authKey"
 
-	//InboundTimeoutConfigKey is the path to the request timeout duration for
-	//requests inbound to devices connected to talaria
+	// InboundTimeoutConfigKey is the path to the request timeout duration for
+	// requests inbound to devices connected to talaria
 	InboundTimeoutConfigKey = "inbound.timeout"
 )
 
-//NoOpConstructor provides a transparent way for constructors that make up
-//our middleware chains to work out of the box even without configuration
-//such as authentication layers
+// NoOpConstructor provides a transparent way for constructors that make up
+// our middleware chains to work out of the box even without configuration
+// such as authentication layers
 var NoOpConstructor = func(h http.Handler) http.Handler { return h }
 
-//JWTValidator provides a convenient way to define jwt validator through config files
+// JWTValidator provides a convenient way to define jwt validator through config files
 type JWTValidator struct {
 	// JWTKeys is used to create the key.Resolver for JWT verification keys
 	Keys key.ResolverFactory `json:"keys"`

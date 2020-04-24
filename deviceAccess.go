@@ -16,26 +16,22 @@ import (
 
 // HTTP response aware errors
 var (
-	ErrWRPCredentialsMissing   = &xhttp.Error{Code: http.StatusForbidden, Text: "Missing WRP credential"}
-	ErrDeviceCredentialMissing = &xhttp.Error{Code: http.StatusForbidden, Text: "Missing device metadata credential"}
-	ErrInvalidWRPDestination   = &xhttp.Error{Code: http.StatusBadRequest, Text: "Invalid WRP Destination"}
-	ErrDeviceNotFound          = &xhttp.Error{Code: http.StatusNotFound, Text: "Device not found"}
-	ErrIncompleteCheck         = &xhttp.Error{Code: http.StatusForbidden, Text: "Check incomplete"}
-	ErrDeniedDeviceAccess      = &xhttp.Error{Code: http.StatusForbidden, Text: "Denied Access to Device"}
-)
-var (
-	missingDeviceCredentialsLabelPair = []string{ReasonLabel, MissingDeviceCredential}
-	missingWRPCredentialsLabelPair    = []string{ReasonLabel, MissingWRPCredential}
+	errWRPCredentialsMissing   = &xhttp.Error{Code: http.StatusForbidden, Text: "Missing WRP credential"}
+	errDeviceCredentialMissing = &xhttp.Error{Code: http.StatusForbidden, Text: "Missing device metadata credential"}
+	errInvalidWRPDestination   = &xhttp.Error{Code: http.StatusBadRequest, Text: "Invalid WRP Destination"}
+	errDeviceNotFound          = &xhttp.Error{Code: http.StatusNotFound, Text: "Device not found"}
+	errIncompleteCheck         = &xhttp.Error{Code: http.StatusForbidden, Text: "Check incomplete"}
+	errDeniedDeviceAccess      = &xhttp.Error{Code: http.StatusForbidden, Text: "Denied Access to Device"}
 )
 
 // deviceAccessCheck describes a single unit of assertion check against a
 // device's credentials.
 type deviceAccessCheck struct {
-	// Name provides a short description of the check
+	// Name provides a short description of the check.
 	Name string
 
-	//DeviceCredentialPath is the Sep-delimited path to the credential value
-	//associated with the device.
+	// DeviceCredentialPath is the Sep-delimited path to the credential value
+	// associated with the device.
 	DeviceCredentialPath string
 
 	// WRPCredentialPath is the Sep-delimited path to the credential value
@@ -47,24 +43,27 @@ type deviceAccessCheck struct {
 	// (Optional when WRPCredential is specified).
 	InputValue interface{}
 
-	//Op is the string describing the operation that should be run for this
-	//check (i.e. contains)
+	// Op is the string describing the operation that should be run for this
+	// check (i.e. contains).
 	Op string
 
-	//Inversed should be set to true if Op should be applied from
-	//valueAt(DeviceCredentialPath) to (either DeviceCredentialExpected or valueAt(WRPCredentialPath))
-	//(Optional)
+	// Inversed should be set to true if Op should be applied from
+	// valueAt(DeviceCredentialPath) to (either DeviceCredentialExpected or valueAt(WRPCredentialPath))
+	// (Optional).
 	Inversed bool
 }
 
-//deviceAccessCheckConfig drives the device access business logic.
+// deviceAccessCheckConfig drives the device access business logic.
 type deviceAccessCheckConfig struct {
+	// Type can either be "enforce" or "monitor" and refers to the
+	// whether or not this check is in strict mode.
 	Type string
 
-	//Sep is the separator to be used to split the keys from the given paths.
-	//(Optional. Defaults to '.')
+	// Sep is the separator to be used to split the keys from the given paths.
+	// (Optional. Defaults to '.').
 	Sep string
 
+	// Checks is the list of checks that will be run against inbound WRP messages.
 	Checks []deviceAccessCheck
 }
 
@@ -85,15 +84,15 @@ func (t *talariaDeviceAccess) withFailure(labelValues ...string) metrics.Counter
 	if !t.strict {
 		return t.withSuccess(labelValues...)
 	}
-	return t.wrpMessagesCounter.With(append(labelValues, OutcomeLabel, Rejected)...)
+	return t.wrpMessagesCounter.With(append(labelValues, outcomeLabel, rejected)...)
 }
 
 func (t *talariaDeviceAccess) withFatal(labelValues ...string) metrics.Counter {
-	return t.wrpMessagesCounter.With(append(labelValues, OutcomeLabel, Rejected)...)
+	return t.wrpMessagesCounter.With(append(labelValues, outcomeLabel, rejected)...)
 }
 
 func (t *talariaDeviceAccess) withSuccess(labelValues ...string) metrics.Counter {
-	return t.wrpMessagesCounter.With(append(labelValues, OutcomeLabel, Accepted)...)
+	return t.wrpMessagesCounter.With(append(labelValues, outcomeLabel, accepted)...)
 }
 
 func getRight(check *parsedCheck, wrpCredentials bascule.Attributes) (interface{}, bool) {
@@ -108,14 +107,14 @@ func getRight(check *parsedCheck, wrpCredentials bascule.Attributes) (interface{
 func (t *talariaDeviceAccess) authorizeWRP(_ context.Context, message *wrp.Message) error {
 	ID, err := device.ParseID(message.Destination)
 	if err != nil {
-		t.withFatal(ReasonLabel, InvalidWRPDest).Add(1)
-		return ErrInvalidWRPDestination
+		t.withFatal(reasonLabel, invalidWRPDest).Add(1)
+		return errInvalidWRPDestination
 	}
 
 	d, ok := t.deviceRegistry.Get(ID)
 	if !ok {
-		t.withFatal(ReasonLabel, DeviceNotFound).Add(1)
-		return ErrDeviceNotFound
+		t.withFatal(reasonLabel, deviceNotFound).Add(1)
+		return errDeviceNotFound
 	}
 
 	deviceCredentials := bascule.NewAttributesWithOptions(
@@ -133,18 +132,18 @@ func (t *talariaDeviceAccess) authorizeWRP(_ context.Context, message *wrp.Messa
 	for _, c := range t.checks {
 		left, ok := deviceCredentials.Get(c.deviceCredentialPath)
 		if !ok {
-			t.withFailure(missingDeviceCredentialsLabelPair...).Add(1)
+			t.withFailure(reasonLabel, missingDeviceCredential).Add(1)
 			if t.strict {
-				return ErrDeviceCredentialMissing
+				return errDeviceCredentialMissing
 			}
 			return nil
 		}
 
 		right, ok := getRight(c, wrpCredentials)
 		if !ok {
-			t.withFailure(missingWRPCredentialsLabelPair...).Add(1)
+			t.withFailure(reasonLabel, missingWRPCredential).Add(1)
 			if t.strict {
-				return ErrWRPCredentialsMissing
+				return errWRPCredentialsMissing
 			}
 			return nil
 		}
@@ -163,26 +162,26 @@ func (t *talariaDeviceAccess) authorizeWRP(_ context.Context, message *wrp.Messa
 		ok, err := c.assertion.evaluate(left, right)
 		if err != nil {
 			t.debugLogger.Log(logging.MessageKey(), "Check failed to complete", "check", c.name, logging.ErrorKey(), err)
-			t.withFailure(ReasonLabel, IncompleteCheck).Add(1)
+			t.withFailure(reasonLabel, incompleteCheck).Add(1)
 
 			if t.strict {
-				return ErrIncompleteCheck
+				return errIncompleteCheck
 			}
 			return nil
 		}
 
 		if !ok {
 			t.debugLogger.Log(logging.MessageKey(), "WRP is unauthorized to reach device", "check", c.name)
-			t.withFailure(ReasonLabel, Denied).Add(1)
+			t.withFailure(reasonLabel, denied).Add(1)
 
 			if t.strict {
-				return ErrDeniedDeviceAccess
+				return errDeniedDeviceAccess
 			}
 
 			return nil
 		}
 	}
 
-	t.withSuccess(ReasonLabel, Authorized).Add(1)
+	t.withSuccess(reasonLabel, authorized).Add(1)
 	return nil
 }

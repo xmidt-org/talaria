@@ -30,23 +30,23 @@ const (
 
 // Metric label names
 const (
-	OutcomeLabel = "outcome"
-	ReasonLabel  = "reason"
+	outcomeLabel = "outcome"
+	reasonLabel  = "reason"
 )
 
 // label values
 const (
-	Accepted = "accepted"
-	Rejected = "rejected"
+	accepted = "accepted"
+	rejected = "rejected"
 
-	DeviceNotFound = "device_not_found"
-	InvalidWRPDest = "invalid_wrp_dest"
+	deviceNotFound = "device_not_found"
+	invalidWRPDest = "invalid_wrp_dest"
 
-	MissingDeviceCredential = "missing_device_cred"
-	MissingWRPCredential    = "missing_wrp_cred"
-	IncompleteCheck         = "incomplete_check"
-	Denied                  = "denied"
-	Authorized              = "authorized"
+	missingDeviceCredential = "missing_device_cred"
+	missingWRPCredential    = "missing_wrp_cred"
+	incompleteCheck         = "incomplete_check"
+	denied                  = "denied"
+	authorized              = "authorized"
 )
 
 func Metrics() []xmetrics.Metric {
@@ -102,7 +102,7 @@ func Metrics() []xmetrics.Metric {
 			Name:       InboundWRPMessageCounter,
 			Type:       xmetrics.CounterType,
 			Help:       "Number of inbound WRP Messages successfully decoded and ready to route to device",
-			LabelNames: []string{OutcomeLabel, ReasonLabel},
+			LabelNames: []string{outcomeLabel, reasonLabel},
 		},
 	}
 }

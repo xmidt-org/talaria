@@ -89,9 +89,9 @@ func TestAuthorizeWRP(t *testing.T) {
 			Name:     "Invalid WRP Destination",
 			DeviceID: "McD's:1122334455",
 			BaseLabelPairs: map[string]string{
-				ReasonLabel: InvalidWRPDest,
+				reasonLabel: invalidWRPDest,
 			},
-			ExpectedError: ErrInvalidWRPDestination,
+			ExpectedError: errInvalidWRPDestination,
 			IsFatal:       true,
 		},
 		{
@@ -99,55 +99,55 @@ func TestAuthorizeWRP(t *testing.T) {
 			DeviceID:      "mac:112233445566",
 			MissingDevice: true,
 			BaseLabelPairs: map[string]string{
-				ReasonLabel: DeviceNotFound,
+				reasonLabel: deviceNotFound,
 			},
-			ExpectedError: ErrDeviceNotFound,
+			ExpectedError: errDeviceNotFound,
 			IsFatal:       true,
 		},
 		{
 			Name:     "Device Credential Missing",
 			DeviceID: "mac:112233445566",
 			BaseLabelPairs: map[string]string{
-				ReasonLabel: MissingDeviceCredential,
+				reasonLabel: missingDeviceCredential,
 			},
 			MissingDeviceCredential: true,
-			ExpectedError:           ErrDeviceCredentialMissing,
+			ExpectedError:           errDeviceCredentialMissing,
 		},
 
 		{
 			Name:     "WRP Credential Missing",
 			DeviceID: "mac:112233445566",
 			BaseLabelPairs: map[string]string{
-				ReasonLabel: MissingWRPCredential,
+				reasonLabel: missingWRPCredential,
 			},
 			MissingWRPCredential: true,
-			ExpectedError:        ErrWRPCredentialsMissing,
+			ExpectedError:        errWRPCredentialsMissing,
 		},
 
 		{
 			Name:     "Second Check doesn't complete",
 			DeviceID: "mac:112233445566",
 			BaseLabelPairs: map[string]string{
-				ReasonLabel: IncompleteCheck,
+				reasonLabel: incompleteCheck,
 			},
 			IncompleteCheck: true,
-			ExpectedError:   ErrIncompleteCheck,
+			ExpectedError:   errIncompleteCheck,
 		},
 		{
 			Name:     "Unauthorized Device Access",
 			DeviceID: "mac:112233445566",
 			BaseLabelPairs: map[string]string{
-				ReasonLabel: Denied,
+				reasonLabel: denied,
 			},
 			Authorized:    false,
-			ExpectedError: ErrDeniedDeviceAccess,
+			ExpectedError: errDeniedDeviceAccess,
 		},
 
 		{
 			Name:     "Authorized Device Access",
 			DeviceID: "mac:112233445566",
 			BaseLabelPairs: map[string]string{
-				ReasonLabel: Authorized,
+				reasonLabel: authorized,
 			},
 			Authorized: true,
 		},
@@ -177,12 +177,12 @@ func getLabelMaps(err error, isFatal, strict bool, baseLabelPairs map[string]str
 		out[k] = v
 	}
 
-	outcome := Accepted
+	outcome := accepted
 
 	if err != nil && (isFatal || strict) {
-		outcome = Rejected
+		outcome = rejected
 	}
-	out[OutcomeLabel] = outcome
+	out[outcomeLabel] = outcome
 
 	return out
 }
