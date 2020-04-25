@@ -318,8 +318,13 @@ func buildDeviceAccessCheck(config *deviceAccessCheckConfig, logger log.Logger, 
 	errorLogger := logging.Error(logger)
 
 	if len(config.Checks) < 1 {
-		errorLogger.Log(logging.MessageKey(), "Potential security misconfig. Include a check for deviceAccessCheck or disable it")
+		errorLogger.Log(logging.MessageKey(), "Potential security misconfig. Include checks for deviceAccessCheck or disable it")
 		return nil, errors.New("Failed enabling DeviceAccessCheck")
+	}
+
+	if config.Type != "enforce" && config.Type != "monitor" {
+		errorLogger.Log(logging.MessageKey(), "Unexpected type for deviceAccessCheck. Supported types are 'monitor' and 'enforce'")
+		return nil, errors.New("Failed verifying DeviceAccessCheck type")
 	}
 
 	var parsedChecks []*parsedCheck
@@ -327,22 +332,17 @@ func buildDeviceAccessCheck(config *deviceAccessCheckConfig, logger log.Logger, 
 		parsedCheck, err := parseDeviceAccessCheck(check)
 		if err != nil {
 			errorLogger.Log(logging.ErrorKey(), err, logging.MessageKey(), "deviceAccesscheck parse failure")
-			return nil, errors.New("Failed parsing DeviceAccessChecks")
+			return nil, errors.New("Failed parsing DeviceAccessCheck checks")
 		}
 		parsedChecks = append(parsedChecks, parsedCheck)
 	}
 
-	if config.Type == "enforce" || config.Type == "monitor" {
-		return &talariaDeviceAccess{
-			strict:             config.Type == "enforce",
-			wrpMessagesCounter: counter,
-			checks:             parsedChecks,
-			deviceRegistry:     deviceRegistry,
-			debugLogger:        logging.Debug(logger),
-			sep:                config.Sep,
-		}, nil
-
-	}
-
-	return nil, errors.New("Ensure there are no mispellings in the device access check")
+	return &talariaDeviceAccess{
+		strict:             config.Type == "enforce",
+		wrpMessagesCounter: counter,
+		checks:             parsedChecks,
+		deviceRegistry:     deviceRegistry,
+		debugLogger:        logging.Debug(logger),
+		sep:                config.Sep,
+	}, nil
 }
