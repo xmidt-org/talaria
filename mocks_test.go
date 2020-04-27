@@ -17,8 +17,11 @@
 package main
 
 import (
+	"context"
+
 	"github.com/stretchr/testify/mock"
 	"github.com/xmidt-org/webpa-common/device"
+	"github.com/xmidt-org/wrp-go/v3"
 )
 
 type mockURLFilter struct {
@@ -38,4 +41,27 @@ func (m *mockRouter) Route(request *device.Request) (*device.Response, error) {
 	arguments := m.Called(request)
 	first, _ := arguments.Get(0).(*device.Response)
 	return first, arguments.Error(1)
+}
+
+type mockBinOp struct {
+	mock.Mock
+}
+
+func (m *mockBinOp) evaluate(left, right interface{}) (bool, error) {
+	arguments := m.Called(left, right)
+	return arguments.Bool(0), arguments.Error(1)
+}
+
+func (m *mockBinOp) name() string {
+	arguments := m.Called()
+	return arguments.String(0)
+}
+
+type mockDeviceAccess struct {
+	mock.Mock
+}
+
+func (m *mockDeviceAccess) authorizeWRP(ctx context.Context, message *wrp.Message) error {
+	arguments := m.Called(ctx, message)
+	return arguments.Error(0)
 }

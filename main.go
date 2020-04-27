@@ -28,6 +28,7 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"github.com/xmidt-org/webpa-common/basculemetrics"
 	"github.com/xmidt-org/webpa-common/concurrent"
 	"github.com/xmidt-org/webpa-common/device"
 	"github.com/xmidt-org/webpa-common/device/devicehealth"
@@ -88,7 +89,7 @@ func talaria(arguments []string) int {
 		f = pflag.NewFlagSet(applicationName, pflag.ContinueOnError)
 		v = viper.New()
 
-		logger, metricsRegistry, webPA, err = server.Initialize(applicationName, arguments, f, v, Metrics, device.Metrics, rehasher.Metrics, service.Metrics)
+		logger, metricsRegistry, webPA, err = server.Initialize(applicationName, arguments, f, v, Metrics, device.Metrics, rehasher.Metrics, service.Metrics, basculemetrics.Metrics)
 	)
 
 	if parseErr, done := printVersion(f, arguments); done {
@@ -133,7 +134,7 @@ func talaria(arguments []string) int {
 		a = new(service.UpdatableAccessor)
 	}
 
-	primaryHandler, err := NewPrimaryHandler(logger, manager, v, a, e, controlConstructor)
+	primaryHandler, err := NewPrimaryHandler(logger, manager, v, a, e, controlConstructor, metricsRegistry)
 	if err != nil {
 		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to start device management", logging.ErrorKey(), err)
 		return 4
@@ -183,17 +184,12 @@ func talaria(arguments []string) int {
 	}
 
 	signals := make(chan os.Signal, 10)
-	signal.Notify(signals)
+	signal.Notify(signals, os.Kill, os.Interrupt)
 	for exit := false; !exit; {
 		select {
 		case s := <-signals:
-			if s != os.Kill && s != os.Interrupt {
-				logger.Log(level.Key(), level.InfoValue(), logging.MessageKey(), "ignoring signal", "signal", s)
-			} else {
-				logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "exiting due to signal", "signal", s)
-				exit = true
-			}
-
+			logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "exiting due to signal", "signal", s)
+			exit = true
 		case <-done:
 			logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "one or more servers exited")
 			exit = true

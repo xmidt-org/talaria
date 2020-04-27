@@ -21,7 +21,7 @@ func statusMetadata(d device.Interface) map[string]string {
 		wrpmeta.Field{From: "fw-name", To: "/fw-name"},
 		wrpmeta.Field{From: "last-reconnect-reason", To: "/last-reconnect-reason"},
 		wrpmeta.Field{From: "protocol", To: "/protocol"}).
-		Set("/trust", d.Trust()).
+		Set("/trust", string(d.Metadata().JWTClaims().Trust())).
 		Build()
 
 	if allFieldsPresent {
@@ -52,8 +52,8 @@ func newOnlineMessage(source string, d device.Interface) (string, *wrp.Message) 
 		Source:      source,
 		Destination: "event:" + eventType,
 		ContentType: "json",
-		PartnerIDs:  d.PartnerIDs(),
-		SessionID:   d.SessionID(),
+		PartnerIDs:  []string{d.Metadata().JWTClaims().PartnerID()},
+		SessionID:   d.Metadata().SessionID(),
 		Metadata:    statusMetadata(d),
 		Payload:     onlinePayload(time.Now(), d),
 	}
@@ -92,8 +92,8 @@ func newOfflineMessage(source string, d device.Interface) (string, *wrp.Message)
 		Source:      source,
 		Destination: "event:" + eventType,
 		ContentType: "json",
-		PartnerIDs:  d.PartnerIDs(),
-		SessionID:   d.SessionID(),
+		PartnerIDs:  []string{d.Metadata().JWTClaims().PartnerID()},
+		SessionID:   d.Metadata().SessionID(),
 		Metadata:    statusMetadata(d),
 		Payload:     offlinePayload(time.Now(), d),
 	}

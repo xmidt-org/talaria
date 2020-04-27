@@ -17,22 +17,29 @@
 package main
 
 import (
+	"bytes"
+	"context"
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/SermoDigital/jose/jwt"
 	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/kit/metrics"
+	"github.com/goph/emperror"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
 	"github.com/spf13/viper"
+	"github.com/xmidt-org/bascule"
+	"github.com/xmidt-org/webpa-common/xmetrics"
+
+	"github.com/xmidt-org/bascule/basculehttp"
+	"github.com/xmidt-org/bascule/key"
+	"github.com/xmidt-org/webpa-common/basculemetrics"
 	"github.com/xmidt-org/webpa-common/device"
 	"github.com/xmidt-org/webpa-common/logging"
 	"github.com/xmidt-org/webpa-common/logging/logginghttp"
-	"github.com/xmidt-org/webpa-common/secure"
-	"github.com/xmidt-org/webpa-common/secure/handler"
-	"github.com/xmidt-org/webpa-common/secure/key"
 	"github.com/xmidt-org/webpa-common/service"
 	"github.com/xmidt-org/webpa-common/service/servicehttp"
 	"github.com/xmidt-org/webpa-common/xhttp"
@@ -51,99 +58,198 @@ const (
 	// TODO: This should be configurable at some point
 	poolSize = 1000
 
-	DefaultKeyId = "current"
+	DefaultKeyID = "current"
 
 	DefaultInboundTimeout time.Duration = 120 * time.Second
 )
 
+// Configuration file dot-delimited paths for convenience and protection against typos
+const (
+	// JWTValidatorConfigKey is the path to the JWT
+	// validator config for device registration endpoints
+	JWTValidatorConfigKey = "jwtValidator"
+
+	// DeviceAccessCheckConfigKey is the path to the validator config for
+	// restricting API access to devices based on known device metadata and credentials
+	// presented by API consumers
+	DeviceAccessCheckConfigKey = "deviceAccessCheck"
+
+	// ServiceBasicAuthConfigKey is the path to the list of accepted basic auth keys
+	// for the API endpoints (note: does not include device registration)
+	ServiceBasicAuthConfigKey = "inbound.authKey"
+
+	// InboundTimeoutConfigKey is the path to the request timeout duration for
+	// requests inbound to devices connected to talaria
+	InboundTimeoutConfigKey = "inbound.timeout"
+)
+
+// NoOpConstructor provides a transparent way for constructors that make up
+// our middleware chains to work out of the box even without configuration
+// such as authentication layers
+var NoOpConstructor = func(h http.Handler) http.Handler { return h }
+
+// JWTValidator provides a convenient way to define jwt validator through config files
 type JWTValidator struct {
 	// JWTKeys is used to create the key.Resolver for JWT verification keys
 	Keys key.ResolverFactory `json:"keys"`
 
-	// Custom is an optional configuration section that defines
-	// custom rules for validation over and above the standard RFC rules.
-	Custom secure.JWTValidatorFactory `json:"custom"`
+	// Leeway is used to set the amount of time buffer should be given to JWT
+	// time values, such as nbf
+	Leeway bascule.Leeway
 }
 
 func getInboundTimeout(v *viper.Viper) time.Duration {
-	if t, err := time.ParseDuration(v.GetString("inbound.timeout")); err == nil {
+	if t, err := time.ParseDuration(v.GetString(InboundTimeoutConfigKey)); err == nil {
 		return t
 	}
 
 	return DefaultInboundTimeout
 }
 
-func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper, a service.Accessor, e service.Environment, controlConstructor func(http.Handler) http.Handler) (http.Handler, error) {
+func SetLogger(logger log.Logger) func(delegate http.Handler) http.Handler {
+	return func(delegate http.Handler) http.Handler {
+		return http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+				r = r.WithContext(logging.WithLogger(r.Context(),
+					log.With(logger, "requestHeaders", r.Header, "requestURL", r.URL.EscapedPath(), "method", r.Method)))
+				delegate.ServeHTTP(w, r)
+			})
+	}
+}
+
+func GetLogger(ctx context.Context) bascule.Logger {
+	logger := log.With(logging.GetLogger(ctx), "ts", log.DefaultTimestampUTC, "caller", log.DefaultCaller)
+	return logger
+}
+
+//buildUserPassMap decodes base64-encoded strings of the form user:pass and write them to a map from user -> pass
+func buildUserPassMap(logger log.Logger, encodedBasicAuthKeys []string) (userPass map[string]string) {
+	userPass = make(map[string]string)
+
+	for _, encodedKey := range encodedBasicAuthKeys {
+		decoded, err := base64.StdEncoding.DecodeString(encodedKey)
+		if err != nil {
+			logging.Info(logger).Log(logging.MessageKey(), "Failed to base64-decode basic auth key", "key", encodedKey, logging.ErrorKey(), err)
+		}
+
+		i := bytes.IndexByte(decoded, ':')
+		logging.Debug(logger).Log(logging.MessageKey(), "Decoded basic auth key", "key", decoded, "delimeterIndex", i)
+		if i > 0 {
+			userPass[string(decoded[:i])] = string(decoded[i+1:])
+		}
+	}
+	return
+}
+
+func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper, a service.Accessor, e service.Environment,
+	controlConstructor alice.Constructor, metricsRegistry xmetrics.Registry) (http.Handler, error) {
 	var (
-		authKeys                     = v.GetStringSlice("inbound.authKey")
-		inboundTimeout               = getInboundTimeout(v)
-		r                            = mux.NewRouter()
-		apiHandler                   = r.PathPrefix(fmt.Sprintf("%s/%s", baseURI, version)).Subrouter()
-		authorizationDecorator       = func(h http.Handler) http.Handler { return h }
-		authorizationDecoratorDevice = func(h http.Handler) http.Handler { return h }
+		inboundTimeout = getInboundTimeout(v)
+		r              = mux.NewRouter()
+		apiHandler     = r.PathPrefix(fmt.Sprintf("%s/%s", baseURI, version)).Subrouter()
+
+		authConstructor = NoOpConstructor
+		authEnforcer    = NoOpConstructor
+
+		deviceAuthRules  = bascule.Validators{} //auth rules for device registration endpoints
+		serviceAuthRules = bascule.Validators{} //auth rules for everything else
+
+		infoLogger  = logging.Info(logger)
+		errorLogger = logging.Error(logger)
+
+		m        = basculemetrics.NewAuthValidationMeasures(metricsRegistry)
+		listener = basculemetrics.NewMetricListener(m)
 	)
 
-	if len(authKeys) > 0 {
-		logger.Log(level.Key(), level.InfoValue(), logging.MessageKey(), "using basic auth", "keyCount", len(authKeys))
-		validators := secure.Validators{}
-		for _, k := range authKeys {
-			validators = append(validators, secure.ExactMatchValidator(k))
-		}
-
-		authorizationDecorator = handler.AuthorizationHandler{
-			Logger:    logger,
-			Validator: validators,
-		}.Decorate
+	authConstructorOptions := []basculehttp.COption{
+		basculehttp.WithCLogger(GetLogger),
+		basculehttp.WithCErrorResponseFunc(listener.OnErrorResponse),
 	}
 
-	if v.IsSet("jwtValidators") {
-		var validator secure.Validator
-		var cfg_validators []JWTValidator
+	if v.IsSet(JWTValidatorConfigKey) {
+		var jwtVal JWTValidator
+		v.UnmarshalKey(JWTValidatorConfigKey, &jwtVal)
 
-		if err := v.UnmarshalKey("jwtValidators", &cfg_validators); err != nil {
-			return nil, err
-		} else {
-			validators := make(secure.Validators, 0, len(cfg_validators))
-
-			for _, validatorDescriptor := range cfg_validators {
-				keyResolver, err := validatorDescriptor.Keys.NewResolver()
-				if err != nil {
-					return nil, fmt.Errorf("Unable to create key resolver: %s", err)
-				}
-
-				validators = append(
-					validators,
-					secure.JWSValidator{
-						DefaultKeyId:  DefaultKeyId,
-						Resolver:      keyResolver,
-						JWTValidators: []*jwt.Validator{validatorDescriptor.Custom.New()},
-					},
-				)
+		if jwtVal.Keys.URI != "" {
+			resolver, err := jwtVal.Keys.NewResolver()
+			if err != nil {
+				return nil, emperror.With(err, "Failed to create JWT token key resolver")
 			}
 
-			validator = validators
-		}
+			authConstructorOptions = append(authConstructorOptions,
+				basculehttp.WithTokenFactory("Bearer",
+					basculehttp.BearerTokenFactory{
+						DefaultKeyId: DefaultKeyID,
+						Resolver:     resolver,
+						Parser:       bascule.DefaultJWTParser,
+						Leeway:       jwtVal.Leeway,
+					}))
 
-		authorizationDecoratorDevice = handler.AuthorizationHandler{
-			Logger:    logger,
-			Validator: validator,
-		}.Decorate
+			deviceAuthRules = append(deviceAuthRules,
+				bascule.Validators{
+					bascule.CreateNonEmptyPrincipalCheck(),
+					bascule.CreateNonEmptyTypeCheck(),
+					bascule.CreateValidTypeCheck([]string{"jwt"}),
+				})
+		}
 	}
 
-	apiHandler.Handle(
-		"/device/send",
+	if v.IsSet(ServiceBasicAuthConfigKey) {
+		userPassMap := buildUserPassMap(logger, v.GetStringSlice(ServiceBasicAuthConfigKey))
+
+		if len(userPassMap) > 0 {
+			authConstructorOptions = append(authConstructorOptions,
+				basculehttp.WithTokenFactory("Basic", basculehttp.BasicTokenFactory(userPassMap)))
+
+			serviceAuthRules = append(serviceAuthRules, bascule.CreateAllowAllCheck())
+		}
+	}
+
+	wrpRouterHandler := wrpRouterHandler(logger, manager)
+
+	if v.IsSet(DeviceAccessCheckConfigKey) {
+		config := new(deviceAccessCheckConfig)
+
+		if err := v.UnmarshalKey(DeviceAccessCheckConfigKey, config); err != nil {
+			errorLogger.Log(logging.MessageKey(), "Could not unmarshall wrpCheck config for api access to device.")
+			return nil, err
+		}
+
+		deviceAccessCheck, err := buildDeviceAccessCheck(config, logger, metricsRegistry.NewCounter(InboundWRPMessageCounter), manager)
+		if err != nil {
+			return nil, err
+		}
+
+		infoLogger.Log(logging.MessageKey(), "Enabling Device Access Validator.")
+		wrpRouterHandler = withDeviceAccessCheck(errorLogger, wrpRouterHandler, deviceAccessCheck)
+	}
+
+	authConstructor = basculehttp.NewConstructor(authConstructorOptions...)
+
+	authEnforcer = basculehttp.NewEnforcer(
+		basculehttp.WithELogger(GetLogger),
+		basculehttp.WithRules("Basic", serviceAuthRules),
+		basculehttp.WithRules("Bearer", deviceAuthRules),
+		basculehttp.WithEErrorResponseFunc(listener.OnErrorResponse),
+	)
+
+	authChain := alice.New(SetLogger(logger), authConstructor, authEnforcer, basculehttp.NewListenerDecorator(listener))
+
+	apiHandler.Handle("/device/send",
 		alice.New(
-			authorizationDecorator,
+			device.UseID.FromHeader,
 			xtimeout.NewConstructor(xtimeout.Options{
 				Timeout: inboundTimeout,
 			})).
-			Then(wrphttp.NewHTTPHandler(wrpRouterHandler(logger, manager))),
+			Extend(authChain).
+			Then(wrphttp.NewHTTPHandler(wrpRouterHandler)),
 	).Methods("POST", "PATCH")
 
-	apiHandler.Handle("/devices", authorizationDecorator(&device.ListHandler{
-		Logger:   logger,
-		Registry: manager,
-	})).Methods("GET")
+	apiHandler.Handle("/devices",
+		authChain.Then(&device.ListHandler{
+			Logger:   logger,
+			Registry: manager,
+		})).Methods("GET")
 
 	var (
 		// the basic decorator chain all device connect handlers use
@@ -180,23 +286,63 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 	// the secured variant of the device connect handler
 	apiHandler.Handle(
 		"/device",
-		deviceConnectChain.Append(authorizationDecoratorDevice).Then(connectHandler),
+		deviceConnectChain.
+			Extend(authChain).
+			Append(DeviceMetadataMiddleware).
+			Then(connectHandler),
 	).HeadersRegexp("Authorization", ".*")
 
-	// fail open if no authorization header is sent
 	apiHandler.Handle(
 		"/device",
-		deviceConnectChain.Then(connectHandler),
+		deviceConnectChain.
+			Append(DeviceMetadataMiddleware).
+			Then(connectHandler),
 	)
 
 	apiHandler.Handle(
 		"/device/{deviceID}/stat",
-		authorizationDecorator(&device.StatHandler{
-			Logger:   logger,
-			Registry: manager,
-			Variable: "deviceID",
-		}),
+		alice.New(
+			device.UseID.FromPath("deviceID")).
+			Extend(authChain).
+			Then(&device.StatHandler{
+				Logger:   logger,
+				Registry: manager,
+				Variable: "deviceID",
+			}),
 	)
 
 	return r, nil
+}
+
+func buildDeviceAccessCheck(config *deviceAccessCheckConfig, logger log.Logger, counter metrics.Counter, deviceRegistry device.Registry) (deviceAccess, error) {
+	errorLogger := logging.Error(logger)
+
+	if len(config.Checks) < 1 {
+		errorLogger.Log(logging.MessageKey(), "Potential security misconfig. Include checks for deviceAccessCheck or disable it")
+		return nil, errors.New("Failed enabling DeviceAccessCheck")
+	}
+
+	if config.Type != "enforce" && config.Type != "monitor" {
+		errorLogger.Log(logging.MessageKey(), "Unexpected type for deviceAccessCheck. Supported types are 'monitor' and 'enforce'")
+		return nil, errors.New("Failed verifying DeviceAccessCheck type")
+	}
+
+	var parsedChecks []*parsedCheck
+	for _, check := range config.Checks {
+		parsedCheck, err := parseDeviceAccessCheck(check)
+		if err != nil {
+			errorLogger.Log(logging.ErrorKey(), err, logging.MessageKey(), "deviceAccesscheck parse failure")
+			return nil, errors.New("Failed parsing DeviceAccessCheck checks")
+		}
+		parsedChecks = append(parsedChecks, parsedCheck)
+	}
+
+	return &talariaDeviceAccess{
+		strict:             config.Type == "enforce",
+		wrpMessagesCounter: counter,
+		checks:             parsedChecks,
+		deviceRegistry:     deviceRegistry,
+		debugLogger:        logging.Debug(logger),
+		sep:                config.Sep,
+	}, nil
 }
