@@ -23,7 +23,6 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"syscall"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -185,20 +184,12 @@ func talaria(arguments []string) int {
 	}
 
 	signals := make(chan os.Signal, 10)
-	signal.Notify(signals)
+	signal.Notify(signals, os.Kill, os.Interrupt)
 	for exit := false; !exit; {
 		select {
 		case s := <-signals:
-			switch s {
-			case syscall.SIGURG:
-				// We are getting bombarded with SIGURGS due to Go1.14's new way to async preempt goroutines  https://github.com/golang/go/issues/37942
-				// Don't log as info as it will fill log with unnecessary entries
-			case os.Kill, os.Interrupt:
-				logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "exiting due to signal", "signal", s)
-				exit = true
-			default:
-				logger.Log(level.Key(), level.InfoValue(), logging.MessageKey(), "ignoring signal", "signal", s)
-			}
+			logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "exiting due to signal", "signal", s)
+			exit = true
 		case <-done:
 			logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "one or more servers exited")
 			exit = true
