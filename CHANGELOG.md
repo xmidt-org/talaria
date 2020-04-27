@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- Added deviceAccessCheck which includes partner ID checking [#117](https://github.com/xmidt-org/talaria/pull/117)
 
 ## [v0.4.0]
 - Replace MessageHandler with WRPHandler [#121](https://github.com/xmidt-org/talaria/pull/121)
