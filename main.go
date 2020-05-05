@@ -55,6 +55,7 @@ var (
 )
 
 func setupDefaultConfigValues(v *viper.Viper) {
+	v.SetTypeByDefaultValue(true)
 	v.SetDefault(RehasherServicesConfigKey, []string{applicationName})
 }
 
