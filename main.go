@@ -166,7 +166,7 @@ func talaria(arguments []string) int {
 			// this rehasher will handle device disconnects in response to service discovery events
 			rehasher.New(
 				manager,
-				v.GetStringSlice("device.rehasher.services"),
+				v.GetStringSlice(RehasherServicesConfigKey),
 				rehasher.WithLogger(logger),
 				rehasher.WithIsRegistered(e.IsRegistered),
 				rehasher.WithMetricsProvider(metricsRegistry),
