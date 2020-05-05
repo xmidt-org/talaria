@@ -6,8 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ## [v0.5.1]
-- Fixed service discovery metrics label to only include actual service name [#127](https://github.com/xmidt-org/talaria/pull/127)
-- Fixed rehasher issue in which it was not filtering out service discovery events from irrelevant services [#127](https://github.com/xmidt-org/talaria/pull/127)
+### Fixed
+- Service discovery metrics label includes correct service name for consul. [#127](https://github.com/xmidt-org/talaria/pull/127)
+- Rehasher filters out service discovery events from services it wasn't configured with. [#127](https://github.com/xmidt-org/talaria/pull/127)
 
 ## [v0.5.0]
 - Added deviceAccessCheck which includes partner ID checking [#117](https://github.com/xmidt-org/talaria/pull/117)
