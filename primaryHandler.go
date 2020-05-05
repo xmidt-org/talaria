@@ -63,24 +63,28 @@ const (
 	DefaultInboundTimeout time.Duration = 120 * time.Second
 )
 
-// Configuration file dot-delimited paths for convenience and protection against typos
+// Paths to configuration values for convenience and protection against typos.
 const (
 	// JWTValidatorConfigKey is the path to the JWT
-	// validator config for device registration endpoints
+	// validator config for device registration endpoints.
 	JWTValidatorConfigKey = "jwtValidator"
 
 	// DeviceAccessCheckConfigKey is the path to the validator config for
 	// restricting API access to devices based on known device metadata and credentials
-	// presented by API consumers
+	// presented by API consumers.
 	DeviceAccessCheckConfigKey = "deviceAccessCheck"
 
 	// ServiceBasicAuthConfigKey is the path to the list of accepted basic auth keys
-	// for the API endpoints (note: does not include device registration)
+	// for the API endpoints (note: does not include device registration).
 	ServiceBasicAuthConfigKey = "inbound.authKey"
 
 	// InboundTimeoutConfigKey is the path to the request timeout duration for
-	// requests inbound to devices connected to talaria
+	// requests inbound to devices connected to talaria.
 	InboundTimeoutConfigKey = "inbound.timeout"
+
+	// RehasherServicesConfigKey is the path to the services for whose events talaria's
+	// rehasher should listen to.
+	RehasherServicesConfigKey = "device.rehasher.services"
 )
 
 // NoOpConstructor provides a transparent way for constructors that make up

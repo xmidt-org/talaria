@@ -54,6 +54,11 @@ var (
 	BuildTime = "undefined"
 )
 
+func setupDefaultConfigValues(v *viper.Viper) {
+	v.SetTypeByDefaultValue(true)
+	v.SetDefault(RehasherServicesConfigKey, []string{applicationName})
+}
+
 func newDeviceManager(logger log.Logger, r xmetrics.Registry, v *viper.Viper) (device.Manager, *consul.ConsulWatcher, error) {
 	deviceOptions, err := device.NewOptions(logger, v.Sub(device.DeviceManagerKey))
 	if err != nil {
@@ -103,6 +108,8 @@ func talaria(arguments []string) int {
 		}
 		os.Exit(0)
 	}
+
+	setupDefaultConfigValues(v)
 
 	if err != nil {
 		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to initialize Viper environment", logging.ErrorKey(), err)
@@ -159,6 +166,7 @@ func talaria(arguments []string) int {
 			// this rehasher will handle device disconnects in response to service discovery events
 			rehasher.New(
 				manager,
+				v.GetStringSlice(RehasherServicesConfigKey),
 				rehasher.WithLogger(logger),
 				rehasher.WithIsRegistered(e.IsRegistered),
 				rehasher.WithMetricsProvider(metricsRegistry),

@@ -237,8 +237,8 @@ github.com/xmidt-org/bascule v0.8.0 h1:xk/c8zqqNjoSW4b4oSrUwemm786Bs5DabmX7AgUgN
 github.com/xmidt-org/bascule v0.8.0/go.mod h1:dPxlbNT3lCwYAtOq2zbzyzTEKgM+azLSbKKcVmgSHBY=
 github.com/xmidt-org/webpa-common v1.1.0/go.mod h1:oCpKzOC+9h2vYHVzAU/06tDTQuBN4RZz+rhgIXptpOI=
 github.com/xmidt-org/webpa-common v1.3.2/go.mod h1:oCpKzOC+9h2vYHVzAU/06tDTQuBN4RZz+rhgIXptpOI=
-github.com/xmidt-org/webpa-common v1.9.0 h1:6Nc0joRNJKLVIQhTUSfY9zyn8QWJzppFIzhUj1wWBLA=
-github.com/xmidt-org/webpa-common v1.9.0/go.mod h1:8Ml4Ck/bANH1TCTfGgLFqepdiotTzchxNyo89W4aDd4=
+github.com/xmidt-org/webpa-common v1.10.0 h1:Z5acRa2M2eVIpEDwazAaSAGKYrfYaSqHY0raVkYIDXY=
+github.com/xmidt-org/webpa-common v1.10.0/go.mod h1:8Ml4Ck/bANH1TCTfGgLFqepdiotTzchxNyo89W4aDd4=
 github.com/xmidt-org/wrp-go/v3 v3.0.1 h1:E1FrFwWi21pFDL3c6M4ufqA4ykXWPops9BMnadChUH8=
 github.com/xmidt-org/wrp-go/v3 v3.0.1/go.mod h1:08zAEevd+fM81/asCgsMJdgO8sfKLvqclqJGX1pphnE=
 github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77/go.mod h1:aYKd//L2LvnjZzWKhF00oedf4jCCReLcmhLdhm1A27Q=
