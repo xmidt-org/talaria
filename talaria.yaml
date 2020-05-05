@@ -217,6 +217,7 @@ device:
   # # rehasher defines the services for which a monitor listener will rehash 
   # # and disconnect devices in response to service discovery events.
   # # https://pkg.go.dev/github.com/xmidt-org/webpa-common@v1.9.0/device/rehasher
+  # # (Optional) rehasher.services defaults to ["talaria"]
   # rehasher:
   #   services:
   #     - talaria
