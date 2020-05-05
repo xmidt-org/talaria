@@ -173,8 +173,10 @@ log:
 ########################################
 
 # device configures the generic talaria configuration.
-# It has three parts: manager, outbound, and inbound.
+# It has four parts: manager, rehasher, outbound, and inbound.
 # The manager section handles the actual device connection configuration.
+# The rehasher section configures the services for whose events the 
+# rehasher (a service discovery listener) should respond to.
 # The outbound section configures the outbound requests to caduceus or some other receiver of messages.
 # The inbound section configures the api inbound requests.
 device:
@@ -211,6 +213,13 @@ device:
     # requestTimeout is the timeout for all inbound HTTP requests.
     # (Optional) defaults to 30s
     requestTimeout: "15s"
+
+  # # rehasher defines the services for which a monitor listener will rehash 
+  # # and disconnect devices in response to service discovery events.
+  # # https://pkg.go.dev/github.com/xmidt-org/webpa-common@v1.9.0/device/rehasher
+  # rehasher:
+  #   services:
+  #     - talaria
 
   # outbound handles api request to push messages to a receiver (usually caduceus).
   # defined by https://github.com/xmidt-org/talaria/blob/master/outbounder.go
