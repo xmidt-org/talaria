@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/xmidt-org/webpa-common/convey"
@@ -21,7 +22,7 @@ func statusMetadata(d device.Interface) map[string]string {
 		wrpmeta.Field{From: "fw-name", To: "/fw-name"},
 		wrpmeta.Field{From: "last-reconnect-reason", To: "/last-reconnect-reason"},
 		wrpmeta.Field{From: "protocol", To: "/protocol"}).
-		Set("/trust", string(d.Metadata().JWTClaims().Trust())).
+		Set("/trust", strconv.Itoa(d.Metadata().JWTClaims().Trust())).
 		Build()
 
 	if allFieldsPresent {
