@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
+## [v0.5.3]
+### Fixed
+- Update webpa-common version with data race fix for a device's metadata claims getter [#134](https://github.com/xmidt-org/talaria/pull/134)
+
 ## [v0.5.2]
 ### Fixed
 - Perform proper conversion of device trust integer value into a string. [#130](https://github.com/xmidt-org/talaria/pull/130)
@@ -45,7 +49,8 @@ Switching to new build process
 ## [v0.1.1] Tue Mar 28 2017 Weston Schmidt - 0.1.1
 - initial creation
 
-[Unreleased]: https://github.com/Comcast/talaria/compare/v0.5.2...HEAD
+[Unreleased]: https://github.com/Comcast/talaria/compare/v0.5.3...HEAD
+[v0.5.3]: https://github.com/Comcast/talaria/compare/v0.5.2...v0.5.3
 [v0.5.2]: https://github.com/Comcast/talaria/compare/v0.5.1...v0.5.2
 [v0.5.1]: https://github.com/Comcast/talaria/compare/v0.5.0...v0.5.1
 [v0.5.0]: https://github.com/Comcast/talaria/compare/v0.4.0...v0.5.0
