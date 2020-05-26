@@ -241,7 +241,6 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 
 	apiHandler.Handle("/device/send",
 		alice.New(
-			device.UseID.FromHeader,
 			xtimeout.NewConstructor(xtimeout.Options{
 				Timeout: inboundTimeout,
 			})).
