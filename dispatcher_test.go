@@ -29,16 +29,16 @@ import (
 	"github.com/xmidt-org/wrp-go/v3"
 )
 
-func genTestMetadata() (m device.Metadata) {
-	m = device.NewDeviceMetadata()
+func genTestMetadata() *device.Metadata {
+	m := new(device.Metadata)
 
 	claims := map[string]interface{}{
 		device.PartnerIDClaimKey: "partner-1",
 		device.TrustClaimKey:     0,
 	}
 
-	m.SetJWTClaims(device.JWTClaims(claims))
-	return
+	m.SetClaims(claims)
+	return m
 }
 
 func testDispatcherConnectEvent(t *testing.T) {

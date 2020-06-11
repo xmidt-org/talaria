@@ -340,6 +340,10 @@ func buildDeviceAccessCheck(config *deviceAccessCheckConfig, logger log.Logger, 
 		parsedChecks = append(parsedChecks, parsedCheck)
 	}
 
+	if config.Sep == "" {
+		config.Sep = "."
+	}
+
 	return &talariaDeviceAccess{
 		strict:             config.Type == "enforce",
 		wrpMessagesCounter: counter,

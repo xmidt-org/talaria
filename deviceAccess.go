@@ -7,7 +7,7 @@ import (
 	"github.com/fatih/structs"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/metrics"
-	"github.com/xmidt-org/bascule"
+	"github.com/thedevsaddam/gojsonq/v2"
 	"github.com/xmidt-org/webpa-common/device"
 	"github.com/xmidt-org/webpa-common/logging"
 	"github.com/xmidt-org/webpa-common/xhttp"
@@ -95,11 +95,12 @@ func (t *talariaDeviceAccess) withSuccess(labelValues ...string) metrics.Counter
 	return t.wrpMessagesCounter.With(append(labelValues, outcomeLabel, accepted)...)
 }
 
-func getRight(check *parsedCheck, wrpCredentials bascule.Attributes) (interface{}, bool) {
+func getRight(check *parsedCheck, wrpCredentials *gojsonq.JSONQ) interface{} {
 	if check.inputValue != nil {
-		return check.inputValue, true
+		return check.inputValue
 	}
-	return wrpCredentials.Get(check.wrpCredentialPath)
+
+	return wrpCredentials.Reset().Find(check.wrpCredentialPath)
 }
 
 // authorizeWRP returns true if the talaria partners access policy checks succeed. Otherwise, false
@@ -116,23 +117,13 @@ func (t *talariaDeviceAccess) authorizeWRP(_ context.Context, message *wrp.Messa
 		t.withFatal(reasonLabel, deviceNotFound).Add(1)
 		return errDeviceNotFound
 	}
-
-	deviceCredentials := bascule.NewAttributesWithOptions(
-		bascule.AttributesOptions{
-
-			KeyDelimiter:  t.sep,
-			AttributesMap: d.Metadata().JWTClaims(),
-		})
-
-	wrpCredentials := bascule.NewAttributesWithOptions(
-		bascule.AttributesOptions{
-			KeyDelimiter:  t.sep,
-			AttributesMap: structs.Map(message),
-		})
+	deviceCredentials := gojsonq.New(gojsonq.WithSeparator(t.sep)).FromInterface(d.Metadata().Claims())
+	wrpCredentials := gojsonq.New(gojsonq.WithSeparator(t.sep)).FromInterface(structs.Map(message))
 
 	for _, c := range t.checks {
-		left, ok := deviceCredentials.Get(c.deviceCredentialPath)
-		if !ok {
+		left := deviceCredentials.Reset().Find(c.deviceCredentialPath)
+
+		if left == nil {
 			t.withFailure(reasonLabel, missingDeviceCredential).Add(1)
 			if t.strict {
 				return errDeviceCredentialMissing
@@ -140,8 +131,8 @@ func (t *talariaDeviceAccess) authorizeWRP(_ context.Context, message *wrp.Messa
 			return nil
 		}
 
-		right, ok := getRight(c, wrpCredentials)
-		if !ok {
+		right := getRight(c, wrpCredentials)
+		if right == nil {
 			t.withFailure(reasonLabel, missingWRPCredential).Add(1)
 			if t.strict {
 				return errWRPCredentialsMissing
