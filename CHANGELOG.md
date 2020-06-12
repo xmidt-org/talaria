@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.5.3]
 ### Fixed
-- Update webpa-common version with data race fix for a device's metadata claims getter [#134](https://github.com/xmidt-org/talaria/pull/134)
+- Update webpa-common version with data race fix for a device's metadata claims getter. [#134](https://github.com/xmidt-org/talaria/pull/134)
 
 ## [v0.5.2]
 ### Fixed
