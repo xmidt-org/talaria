@@ -157,7 +157,7 @@ log:
 
   # level is the logging level to use - INFO, DEBUG, WARN, ERROR
   # (Optional) defaults to ERROR
-  level: "DEBUG"
+  level: (( grab $LOG_LEVEL || "INFO" ))
 
   # maxsize is the maximum file size in MB
   # (Optional) defaults to max 100MB
@@ -295,7 +295,7 @@ device:
     # authKey is the basic auth token used for sending messages to the receiver.
     # (Optional) defaults to no auth token
     # WARNING: This is an example auth token. DO NOT use this in production.
-    authKey: (( grab $AUTH_TOKEN || "YXV0aEhlYWRlcg==" ))
+    authKey: (( grab $AUTH_TOKEN || "dXNlcjpwYXNz" ))
 
 # inbound configures the api inbound requests.
 # (Optional) defaults described below
@@ -303,7 +303,7 @@ inbound:
   # authKey is the basic auth token incoming api requests like /stat, and /devices
   # (Optional) defaults to no auth token
   # WARNING: This is an example auth token. DO NOT use this in production.
-  authKey: (( grab $AUTH_HEADER || "YXV0aEhlYWRlcg==" ))
+  authKey: (( grab $AUTH_HEADER || "dXNlcjpwYXNz" ))
 
 ########################################
 #   Service Discovery Configuration

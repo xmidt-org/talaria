@@ -534,4 +534,5 @@ service:
   #       # (Optional) defaults to empty struct
   #       # queryOptions:
   #       #   useCache: true
+  #       #   datacenter: "dc1"
 

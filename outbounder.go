@@ -105,11 +105,11 @@ func NewOutbounder(logger log.Logger, v *viper.Viper) (o *Outbounder, watcher *c
 	}
 	if o.EnableConsulRoundRobin {
 		logging.Info(o.Logger).Log(logging.MessageKey(), "Using consul round robin on service discover", "service", "caduceus")
-		for k := range o.EventEndpoints {
-			options.Watch[k] = "caduceus"
+		for _, url := range o.EventEndpoints {
+			options.Watch[url.(string)] = "caduceus"
 		}
 		watcher = consul.NewConsulWatcher(options)
-		o.Transport.DialContext = xresolver.NewResolver(xresolver.DefaultDialer, watcher).DialContext
+		o.Transport.DialContext = xresolver.NewResolver(xresolver.DefaultDialer, log.WithPrefix(logger, "component", "xresolver"), watcher).DialContext
 	}
 	return
 }
