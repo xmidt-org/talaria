@@ -47,8 +47,10 @@ func testAuthorizeWRP(t *testing.T, testCases []deviceAccessTestCase, strict boo
 				}
 			)
 
+			testMetadata := getTestDeviceMetadata()
+
 			mockDeviceRegistry.On("Get", device.ID(testCase.DeviceID)).Return(mockDevice, !testCase.MissingDevice).Once()
-			mockDevice.On("Metadata").Return(getTestDeviceMetadata()).Once()
+			mockDevice.On("Metadata").Return(testMetadata).Once()
 			mockBinOp.On("name").Return("mockBinOP")
 
 			var checks []*parsedCheck
@@ -209,20 +211,20 @@ func newTestCounter() *testCounter {
 	}
 }
 
-func getTestDeviceMetadata() device.Metadata {
-	var metadata = device.NewDeviceMetadata()
+func getTestDeviceMetadata() *device.Metadata {
+	metadata := new(device.Metadata)
 	claims := map[string]interface{}{
 		device.PartnerIDClaimKey: "sky",
 		device.TrustClaimKey:     100,
 		"nested":                 map[string]interface{}{"happy": true},
 	}
 
-	metadata.SetJWTClaims(device.JWTClaims(claims))
+	metadata.SetClaims(claims)
 	return metadata
 }
 
 func getFirstMissingDeviceCredentialChecks(t *testing.T, m *mockBinOp) []*parsedCheck {
-	m.AssertNotCalled(t, "Evaluate", mock.Anything, mock.Anything)
+	m.AssertNotCalled(t, "evaluate", mock.Anything, mock.Anything)
 
 	baseChecks := getBaseChecks(m)
 	baseChecks[0].deviceCredentialPath = "path>not>found"
@@ -231,8 +233,8 @@ func getFirstMissingDeviceCredentialChecks(t *testing.T, m *mockBinOp) []*parsed
 
 func getSecondCheckMissingWRPCredentiaChecks(t *testing.T, m *mockBinOp) []*parsedCheck {
 	m.On("evaluate", 100, 100).Return(true, error(nil)).Once()
-	m.AssertNotCalled(t, "Evaluate", []string{"comcast", "nbc", "sky"}, "sky")
-	m.AssertNotCalled(t, "Evaluate", true, true)
+	m.AssertNotCalled(t, "evaluate", []string{"comcast", "nbc", "sky"}, "sky")
+	m.AssertNotCalled(t, "evaluate", true, true)
 
 	baseChecks := getBaseChecks(m)
 	baseChecks[1].wrpCredentialPath = "path>not>found"
@@ -243,7 +245,7 @@ func getSecondCheckWithInputValueChecks(t *testing.T, m *mockBinOp) []*parsedChe
 	m.On("evaluate", 100, 100).Return(true, error(nil)).Once()
 	m.On("evaluate", []string{"universal"}, "sky").Return(true, error(nil)).Once()
 	m.On("evaluate", true, true).Return(true, error(nil)).Once()
-	m.AssertNotCalled(t, "Evaluate", []string{"comcast", "nbc", "sky"}, "sky")
+	m.AssertNotCalled(t, "evaluate", []string{"comcast", "nbc", "sky"}, "sky")
 
 	baseChecks := getBaseChecks(m)
 	baseChecks[1].inputValue = []string{"universal"}
@@ -254,7 +256,7 @@ func getChecks(t *testing.T, m *mockBinOp, secondCheckIncomplete, thirdCheckAuth
 	m.On("evaluate", 100, 100).Return(true, error(nil)).Once()
 	if secondCheckIncomplete {
 		m.On("evaluate", []string{"comcast", "nbc", "sky"}, "sky").Return(false, errors.New("Could not complete check")).Once()
-		m.AssertNotCalled(t, "Evaluate", mock.Anything, mock.Anything)
+		m.AssertNotCalled(t, "evaluate", mock.Anything, mock.Anything)
 		return getBaseChecks(m)
 	}
 
@@ -274,7 +276,7 @@ func getBaseChecks(m *mockBinOp) []*parsedCheck {
 		{
 			name:                 "partnerID",
 			deviceCredentialPath: device.PartnerIDClaimKey,
-			wrpCredentialPath:    "partnerIDs",
+			wrpCredentialPath:    "PartnerIDs",
 			assertion:            m,
 			inversed:             true,
 		},

@@ -3,9 +3,14 @@ package main
 import (
 	"net/http"
 
+	"github.com/segmentio/ksuid"
 	"github.com/xmidt-org/bascule"
 	"github.com/xmidt-org/webpa-common/device"
 )
+
+func init() {
+	ksuid.SetRand(ksuid.FastRander)
+}
 
 // DeviceMetadataMiddleware is a device registration endpoint middleware
 // which initializes the metadata a device carries throughout its
@@ -14,12 +19,13 @@ func DeviceMetadataMiddleware(delegate http.Handler) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
-			deviceMetadata := device.NewDeviceMetadata()
+			metadata := new(device.Metadata)
+			metadata.SetSessionID(ksuid.New().String())
 
-			if auth, authOk := bascule.FromContext(ctx); authOk {
-				deviceMetadata.SetJWTClaims(device.JWTClaims(auth.Token.Attributes().FullView()))
+			if auth, ok := bascule.FromContext(ctx); ok {
+				metadata.SetClaims(auth.Token.Attributes().FullView())
 			}
 
-			delegate.ServeHTTP(w, r.WithContext(device.WithDeviceMetadata(ctx, deviceMetadata)))
+			delegate.ServeHTTP(w, r.WithContext(device.WithDeviceMetadata(ctx, metadata)))
 		})
 }
