@@ -22,7 +22,7 @@ require (
 	github.com/stretchr/testify v1.4.0
 	github.com/thedevsaddam/gojsonq/v2 v2.5.2
 	github.com/xmidt-org/bascule v0.8.0
-	github.com/xmidt-org/webpa-common v1.10.2-0.20200611002257-171ba0ef3208
+	github.com/xmidt-org/webpa-common v1.10.2
 	github.com/xmidt-org/wrp-go/v3 v3.0.1
 	golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4 // indirect
 	golang.org/x/text v0.3.2 // indirect

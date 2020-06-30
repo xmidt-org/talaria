@@ -286,8 +286,8 @@ github.com/xmidt-org/themis v0.4.4 h1:KewitRxStW1xOehDBi0YyGZyRv3PjFdYUEDvQFf1Nm
 github.com/xmidt-org/themis v0.4.4/go.mod h1:0qRYFvKdrQhwjxH/1nAiTgBGT4cegJR76gfEYF5P7so=
 github.com/xmidt-org/webpa-common v1.1.0/go.mod h1:oCpKzOC+9h2vYHVzAU/06tDTQuBN4RZz+rhgIXptpOI=
 github.com/xmidt-org/webpa-common v1.3.2/go.mod h1:oCpKzOC+9h2vYHVzAU/06tDTQuBN4RZz+rhgIXptpOI=
-github.com/xmidt-org/webpa-common v1.10.2-0.20200611002257-171ba0ef3208 h1:U5EH2a5HmTmKS/es4m1krALyuL8Cnhodl/s5C63+pc8=
-github.com/xmidt-org/webpa-common v1.10.2-0.20200611002257-171ba0ef3208/go.mod h1:Fmt3wIxBzwJY0KeRHX6RaLZx2xpKTbXCLEA3Xtd6kq8=
+github.com/xmidt-org/webpa-common v1.10.2 h1:XOykCu8sc6sVs8vlR4CS/dAk+Z6rVqSyUlBW+tIz+IQ=
+github.com/xmidt-org/webpa-common v1.10.2/go.mod h1:Fmt3wIxBzwJY0KeRHX6RaLZx2xpKTbXCLEA3Xtd6kq8=
 github.com/xmidt-org/wrp-go/v3 v3.0.1 h1:E1FrFwWi21pFDL3c6M4ufqA4ykXWPops9BMnadChUH8=
 github.com/xmidt-org/wrp-go/v3 v3.0.1/go.mod h1:08zAEevd+fM81/asCgsMJdgO8sfKLvqclqJGX1pphnE=
 github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77/go.mod h1:aYKd//L2LvnjZzWKhF00oedf4jCCReLcmhLdhm1A27Q=
