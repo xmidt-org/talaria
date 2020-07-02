@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
+
+
+## [v0.5.5]
 ### Changed
 - Query values from device claims without modifying map. [#137](https://github.com/xmidt-org/talaria/pull/137)
 
@@ -61,7 +64,8 @@ Switching to new build process
 ## [v0.1.1] Tue Mar 28 2017 Weston Schmidt - 0.1.1
 - initial creation
 
-[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.5.4...HEAD
+[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.5.5...HEAD
+[v0.5.5]: https://github.com/xmidt-org/talaria/compare/v0.5.4...v0.5.5
 [v0.5.4]: https://github.com/xmidt-org/talaria/compare/v0.5.3...v0.5.4
 [v0.5.3]: https://github.com/xmidt-org/talaria/compare/v0.5.2...v0.5.3
 [v0.5.2]: https://github.com/xmidt-org/talaria/compare/v0.5.1...v0.5.2
