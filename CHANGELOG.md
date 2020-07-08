@@ -67,7 +67,7 @@ Switching to new build process
 - initial creation
 
 [Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.5.6...HEAD
-[v0.5.5]: https://github.com/xmidt-org/talaria/compare/v0.5.5...v0.5.6
+[v0.5.6]: https://github.com/xmidt-org/talaria/compare/v0.5.5...v0.5.6
 [v0.5.5]: https://github.com/xmidt-org/talaria/compare/v0.5.4...v0.5.5
 [v0.5.4]: https://github.com/xmidt-org/talaria/compare/v0.5.3...v0.5.4
 [v0.5.3]: https://github.com/xmidt-org/talaria/compare/v0.5.2...v0.5.3
@@ -82,4 +82,3 @@ Switching to new build process
 [v0.1.3]: https://github.com/xmidt-org/talaria/compare/v0.1.2...v0.1.3
 [v0.1.2]: https://github.com/xmidt-org/talaria/compare/v0.1.1...v0.1.2
 [v0.1.1]: https://github.com/xmidt-org/talaria/compare/v0.1.0...v0.1.1
-
