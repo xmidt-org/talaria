@@ -66,7 +66,8 @@ Switching to new build process
 ## [v0.1.1] Tue Mar 28 2017 Weston Schmidt - 0.1.1
 - initial creation
 
-[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.5.5...HEAD
+[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.5.6...HEAD
+[v0.5.5]: https://github.com/xmidt-org/talaria/compare/v0.5.5...v0.5.6
 [v0.5.5]: https://github.com/xmidt-org/talaria/compare/v0.5.4...v0.5.5
 [v0.5.4]: https://github.com/xmidt-org/talaria/compare/v0.5.3...v0.5.4
 [v0.5.3]: https://github.com/xmidt-org/talaria/compare/v0.5.2...v0.5.3
