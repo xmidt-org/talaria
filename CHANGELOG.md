@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
+## [v0.5.6]
+- fixed xresolver failing to route traffic to caduceus using default http and https ports. [#143](https://github.com/xmidt-org/talaria/pull/143)
 
 ## [v0.5.5]
 ### Changed
