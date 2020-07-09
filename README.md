@@ -1,12 +1,12 @@
 # talaria
 (pronounced "tuh-laa-ree-uh")
 
-[![Build Status](https://travis-ci.com/xmidt-org/talaria.svg?branch=master)](https://travis-ci.com/xmidt-org/talaria)
-[![codecov.io](http://codecov.io/github/xmidt-org/talaria/coverage.svg?branch=master)](http://codecov.io/github/xmidt-org/talaria?branch=master)
+[![Build Status](https://travis-ci.com/xmidt-org/talaria.svg?branch=main)](https://travis-ci.com/xmidt-org/talaria)
+[![codecov.io](http://codecov.io/github/xmidt-org/talaria/coverage.svg?branch=main)](http://codecov.io/github/xmidt-org/talaria?branch=main)
 [![Code Climate](https://codeclimate.com/github/xmidt-org/talaria/badges/gpa.svg)](https://codeclimate.com/github/xmidt-org/talaria)
 [![Issue Count](https://codeclimate.com/github/xmidt-org/talaria/badges/issue_count.svg)](https://codeclimate.com/github/xmidt-org/talaria)
 [![Go Report Card](https://goreportcard.com/badge/github.com/xmidt-org/talaria)](https://goreportcard.com/report/github.com/xmidt-org/talaria)
-[![Apache V2 License](http://img.shields.io/badge/license-Apache%20V2-blue.svg)](https://github.com/xmidt-org/talaria/blob/master/LICENSE)
+[![Apache V2 License](http://img.shields.io/badge/license-Apache%20V2-blue.svg)](https://github.com/xmidt-org/talaria/blob/main/LICENSE)
 [![GitHub release](https://img.shields.io/github/release/xmidt-org/talaria.svg)](CHANGELOG.md)
 
 ## Summary

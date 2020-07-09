@@ -223,7 +223,7 @@ device:
   #     - talaria
 
   # outbound handles api request to push messages to a receiver (usually caduceus).
-  # defined by https://github.com/xmidt-org/talaria/blob/master/outbounder.go
+  # defined by https://github.com/xmidt-org/talaria/blob/main/outbounder.go
   # TODO: link godoc instead
   outbound:
     # method is the http method to use against the receiving server.
