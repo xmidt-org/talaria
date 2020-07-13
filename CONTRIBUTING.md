@@ -14,7 +14,7 @@ Documentation
 -------------
 
 If you contribute anything that changes the behavior of the
-application, document it in the [README](https://github.com/Comcast/talaria/blob/master/README.md) or [wiki](https://github.com/Comcast/talaria/wiki)! This includes new features, additional variants of behavior and breaking changes.
+application, document it in the [README](https://github.com/Comcast/talaria/blob/main/README.md) or [wiki](https://github.com/Comcast/talaria/wiki)! This includes new features, additional variants of behavior and breaking changes.
 
 Testing
 -------
