@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
+### Changed 
+- Update references to the main branch. [#144](https://github.com/xmidt-org/talaria/pull/144)
 
 ## [v0.5.6]
 - fixed xresolver failing to route traffic to caduceus using default http and https ports. [#143](https://github.com/xmidt-org/talaria/pull/143)
