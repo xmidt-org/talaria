@@ -4,8 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
+
+
+## [v0.5.7]
+### Added
+- New labels for the `hardware_model` gauge from webpa-common. [#146](https://github.com/xmidt-org/talaria/pull/146)
+
 ### Changed 
 - Update references to the main branch. [#144](https://github.com/xmidt-org/talaria/pull/144)
+
 
 ## [v0.5.6]
 - fixed xresolver failing to route traffic to caduceus using default http and https ports. [#143](https://github.com/xmidt-org/talaria/pull/143)
@@ -68,7 +75,8 @@ Switching to new build process
 ## [v0.1.1] Tue Mar 28 2017 Weston Schmidt - 0.1.1
 - initial creation
 
-[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.5.6...HEAD
+[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.5.7...HEAD
+[v0.5.7]: https://github.com/xmidt-org/talaria/compare/v0.5.6...v0.5.7
 [v0.5.6]: https://github.com/xmidt-org/talaria/compare/v0.5.5...v0.5.6
 [v0.5.5]: https://github.com/xmidt-org/talaria/compare/v0.5.4...v0.5.5
 [v0.5.4]: https://github.com/xmidt-org/talaria/compare/v0.5.3...v0.5.4
