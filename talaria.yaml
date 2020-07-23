@@ -491,10 +491,11 @@ service:
   #       # (Optional) defaults to false
   #       passingOnly: true
   #
-  #       # crossDatacenter determines if there is a watch for all datacenter changes.
+  #       # crossDatacenter determines if there is a watch for all datacenter changes, split by datacenter.
   #       # change this to have the devices hash across all datacenters instead of
   #       # the single datacenter. The datacenter is known by the consul agent who is
   #       # aware of which datacenter it is in.
+  #       # It is recommended to keep this as false for talaria.
   #       # (Optional) defaults to false, aka only watch for services in the
   #       # current datacenter.
   #       crossDatacenter: false
@@ -520,10 +521,11 @@ service:
   #       # (Optional) defaults to false
   #       passingOnly: true
   #
-  #       # crossDatacenter determines if there is a watch for all datacenter changes.
+  #       # crossDatacenter determines if there is a watch for all datacenter changes, split by datacenter
   #       # change this to have the devices hash across all datacenters instead of
   #       # the single datacenter. The datacenter is known by the consul agent who is
   #       # aware of which datacenter it is in.
+  #       # It is recommended to keep this as false for talaria.
   #       # (Optional) defaults to false, aka only watch for services in the
   #       # current datacenter.
   #       crossDatacenter: false
