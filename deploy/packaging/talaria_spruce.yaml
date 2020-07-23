@@ -375,10 +375,6 @@ service:
         # address tells consul where to contact the service.
         address: (( concat "http://" server domain ))
 
-        # scheme tells consul what scheme to use to contact the service.
-        # This is used with the address for calls to this server.
-        scheme: "http"
-
         # port tells consul what port to use to contact the service.  This is
         # used with the address for calls to this server.
         port: 6200
