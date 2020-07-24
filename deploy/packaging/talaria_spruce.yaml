@@ -375,10 +375,6 @@ service:
         # address tells consul where to contact the service.
         address: (( concat "http://" server domain ))
 
-        # scheme tells consul what scheme to use to contact the service.
-        # This is used with the address for calls to this server.
-        scheme: "http"
-
         # port tells consul what port to use to contact the service.  This is
         # used with the address for calls to this server.
         port: 6200
@@ -424,16 +420,17 @@ service:
         # (Optional) defaults to false
         passingOnly: true
 
-        # allDatacenters determines if there is a watch for all datacenter changes.
+        # crossDatacenter determines if there is a watch for all datacenter changes, split by datacenter.
         # change this to have the devices hash across all datacenters instead of
         # the single datacenter. The datacenter is known by the consul agent who is
         # aware of which datacenter it is in.
+        # It is recommended to leave this as false for talaria.
         # (Optional) defaults to false, aka only watch for services in the
         # current datacenter.
-        allDatacenters: false
+        crossDatacenter: false
 
         # queryOptions are options for the consul query, used in conjunction
-        # with passingOnly and allDatacenters.
+        # with passingOnly.
         # defined by https://godoc.org/github.com/hashicorp/consul/api#QueryOptions
         # (Optional) defaults to empty struct
         # queryOptions:
@@ -453,16 +450,17 @@ service:
         # (Optional) defaults to false
         passingOnly: true
 
-        # allDatacenters determines if there is a watch for all datacenter changes.
+        # crossDatacenter determines if there is a watch for all datacenter changes, split by datacenter.
         # change this to have the devices hash across all datacenters instead of
         # the single datacenter. The datacenter is known by the consul agent who is
         # aware of which datacenter it is in.
+        # It is recommended to leave this as false for talaria.
         # (Optional) defaults to false, aka only watch for services in the
         # current datacenter.
-        allDatacenters: false
+        crossDatacenter: false
 
         # queryOptions are options for the consul query, used in conjunction
-        # with passingOnly and allDatacenters.
+        # with passingOnly.
         # defined by https://godoc.org/github.com/hashicorp/consul/api#QueryOptions
         # (Optional) defaults to empty struct
         # queryOptions:

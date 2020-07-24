@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
+## [v0.5.8]
+- bumped webpa-common to fix consul last wait index and AllDatacenters [#147](https://github.com/xmidt-org/talaria/pull/147)
 
 ## [v0.5.7]
 ### Added
