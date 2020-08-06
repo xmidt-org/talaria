@@ -5,6 +5,19 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
+
+## [v0.5.9]
+### Added
+- Added `trust` label to hardware_model gauge. [#151](https://github.com/xmidt-org/talaria/pull/151)
+
+### Fixed
+- Fix device Metadata Trust() method float64 casting to int. [#151](https://github.com/xmidt-org/talaria/pull/151)
+
+### Changed
+- Add configurable check for the source of inbound (device => cloud service) WRP messages. [#151](https://github.com/xmidt-org/talaria/pull/151)
+- Populate empty inbound WRP.content_type field with `application/octet-stream`. [#151](https://github.com/xmidt-org/talaria/pull/151)
+
+
 ## [v0.5.8]
 - bumped webpa-common to fix consul last wait index and AllDatacenters [#147](https://github.com/xmidt-org/talaria/pull/147)
 
@@ -77,7 +90,9 @@ Switching to new build process
 ## [v0.1.1] Tue Mar 28 2017 Weston Schmidt - 0.1.1
 - initial creation
 
-[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.5.7...HEAD
+[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.5.9...HEAD
+[v0.5.9]: https://github.com/xmidt-org/talaria/compare/v0.5.8...v0.5.9
+[v0.5.8]: https://github.com/xmidt-org/talaria/compare/v0.5.7...v0.5.8
 [v0.5.7]: https://github.com/xmidt-org/talaria/compare/v0.5.6...v0.5.7
 [v0.5.6]: https://github.com/xmidt-org/talaria/compare/v0.5.5...v0.5.6
 [v0.5.5]: https://github.com/xmidt-org/talaria/compare/v0.5.4...v0.5.5
