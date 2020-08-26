@@ -183,6 +183,15 @@ device:
   # manager handles the device manager related configuration.
   # defined by https://godoc.org/github.com/xmidt-org/webpa-common/device#Options
   manager:
+    # wrpSourceCheck configures behavior around source validation of WRP messages 
+    # originating from the device. It's intended to prevent connected devices from 
+    # spoofing the source of the messages they send.
+    wrpSourceCheck:
+      # When type=enforce, all messages with a source which doesn't match the device
+      # ID of the websocket connection (1) will be ignored, (2) logged as a security event and
+      # (3) the wrp_source_check counter will be updated accordingly. When the type=monitor,
+      # only the last two take place.
+      type: monitor
     # upgrader is the gorilla mux websocket configuration, which upgrades an
     # incoming device connection from http to websocket.
     # defined by https://godoc.org/github.com/gorilla/websocket#Upgrader
