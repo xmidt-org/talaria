@@ -4,8 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
+
+
+## [v0.5.10]
 ### Fixed
 - Add documentation around WRP source checking. [#154](https://github.com/xmidt-org/talaria/pull/154)
+- Fixes from [this](https://github.com/xmidt-org/webpa-common/blob/main/CHANGELOG.md#v1108) version of webpa-common. [#156](https://github.com/xmidt-org/talaria/pull/156)
+
 
 ## [v0.5.9]
 ### Added
@@ -91,7 +96,8 @@ Switching to new build process
 ## [v0.1.1] Tue Mar 28 2017 Weston Schmidt - 0.1.1
 - initial creation
 
-[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.5.9...HEAD
+[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.5.10...HEAD
+[v0.5.10]: https://github.com/xmidt-org/talaria/compare/v0.5.9...v0.5.10
 [v0.5.9]: https://github.com/xmidt-org/talaria/compare/v0.5.8...v0.5.9
 [v0.5.8]: https://github.com/xmidt-org/talaria/compare/v0.5.7...v0.5.8
 [v0.5.7]: https://github.com/xmidt-org/talaria/compare/v0.5.6...v0.5.7
