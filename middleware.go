@@ -23,7 +23,7 @@ func DeviceMetadataMiddleware(delegate http.Handler) http.Handler {
 			metadata.SetSessionID(ksuid.New().String())
 
 			if auth, ok := bascule.FromContext(ctx); ok {
-				metadata.SetClaims(auth.Token.Attributes().FullView())
+				metadata.SetClaims(auth.Token.Attributes().(rawAttributes).GetRawAttributes())
 			}
 
 			delegate.ServeHTTP(w, r.WithContext(device.WithDeviceMetadata(ctx, metadata)))

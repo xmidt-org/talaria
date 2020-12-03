@@ -182,8 +182,8 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 
 			authConstructorOptions = append(authConstructorOptions,
 				basculehttp.WithTokenFactory("Bearer",
-					basculehttp.BearerTokenFactory{
-						DefaultKeyId: DefaultKeyID,
+					RawAttributesBearerTokenFactory{
+						DefaultKeyID: DefaultKeyID,
 						Resolver:     resolver,
 						Parser:       bascule.DefaultJWTParser,
 						Leeway:       jwtVal.Leeway,

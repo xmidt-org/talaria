@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/stretchr/testify/mock"
 	"github.com/xmidt-org/webpa-common/device"
 	"github.com/xmidt-org/wrp-go/v3"
@@ -64,4 +65,14 @@ type mockDeviceAccess struct {
 func (m *mockDeviceAccess) authorizeWRP(ctx context.Context, message *wrp.Message) error {
 	arguments := m.Called(ctx, message)
 	return arguments.Error(0)
+}
+
+type mockJWTParser struct {
+	mock.Mock
+}
+
+func (parser *mockJWTParser) ParseJWT(token string, claims jwt.Claims, parseFunc jwt.Keyfunc) (*jwt.Token, error) {
+	arguments := parser.Called(token)
+	jwtToken, _ := arguments.Get(0).(*jwt.Token)
+	return jwtToken, arguments.Error(1)
 }
