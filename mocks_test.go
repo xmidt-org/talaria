@@ -72,7 +72,7 @@ type mockJWTParser struct {
 }
 
 func (parser *mockJWTParser) ParseJWT(token string, claims jwt.Claims, parseFunc jwt.Keyfunc) (*jwt.Token, error) {
-	arguments := parser.Called(token)
+	arguments := parser.Called(token, claims, parseFunc)
 	jwtToken, _ := arguments.Get(0).(*jwt.Token)
 	return jwtToken, arguments.Error(1)
 }

@@ -15,7 +15,6 @@ import (
 )
 
 func TestRawAttributesBearerTokenFactory(t *testing.T) {
-
 	tests := []struct {
 		description   string
 		value         string
@@ -141,10 +140,8 @@ func TestRawAttributesBearerTokenFactory(t *testing.T) {
 			} else {
 				assert.Contains(err.Error(), tc.expectedErr.Error())
 			}
-
 		})
 	}
-
 }
 
 func TestDefaultKeyFunc(t *testing.T) {
