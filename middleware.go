@@ -23,7 +23,21 @@ func DeviceMetadataMiddleware(delegate http.Handler) http.Handler {
 			metadata.SetSessionID(ksuid.New().String())
 
 			if auth, ok := bascule.FromContext(ctx); ok {
-				metadata.SetClaims(auth.Token.Attributes().FullView())
+				if tokenAttributes, ok := auth.Token.Attributes().(RawAttributes); ok {
+					metadata.SetClaims(tokenAttributes.GetRawAttributes())
+				} else {
+					claimsMap := make(map[string]interface{})
+					if partnerIDClaim, ok := auth.Token.Attributes().Get(device.PartnerIDClaimKey); ok {
+						claimsMap[device.PartnerIDClaimKey] = partnerIDClaim
+					}
+
+					if trustClaim, ok := auth.Token.Attributes().Get(device.TrustClaimKey); ok {
+						claimsMap[device.TrustClaimKey] = trustClaim
+					}
+
+					metadata.SetClaims(claimsMap)
+
+				}
 			}
 
 			delegate.ServeHTTP(w, r.WithContext(device.WithDeviceMetadata(ctx, metadata)))
