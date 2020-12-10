@@ -5,7 +5,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Added
 - Added RawAttributes interface. [#162](https://github.com/xmidt-org/talaria/pull/162)
+
+### Changed
+- Update buildtime format in Makefile to match RPM spec file. [#164](https://github.com/xmidt-org/talaria/pull/164)
 
 ## [v0.5.10]
 ### Fixed
