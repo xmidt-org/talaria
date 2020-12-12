@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- Migrate to github actions, normalize analysis tools, Dockerfiles and Makefiles. [#166](https://github.com/xmidt-org/talaria/pull/166)
 
 ### Added
 - Added RawAttributes interface. [#162](https://github.com/xmidt-org/talaria/pull/162)
