@@ -36,6 +36,12 @@ func StartControlServer(logger log.Logger, manager device.Manager, deviceGate de
 
 	options.Logger = logger
 
+	const (
+		gatePath   = "/device/gate"
+		filterPath = "/device/gate/filter"
+		drainPath  = "/device/drain"
+	)
+
 	var (
 		g = gate.New(
 			true,
@@ -51,26 +57,25 @@ func StartControlServer(logger log.Logger, manager device.Manager, deviceGate de
 
 		gateLogger    = devicegate.GateLogger{Logger: logger}
 		filterHandler = &devicegate.FilterHandler{Gate: deviceGate}
-
-		r          = mux.NewRouter()
-		apiHandler = r.PathPrefix(fmt.Sprintf("%s/%s", baseURI, version)).Subrouter()
+		r             = mux.NewRouter()
+		apiHandler    = r.PathPrefix(fmt.Sprintf("%s/%s", baseURI, version)).Subrouter()
 	)
 
-	apiHandler.Handle("/device/gate", &gate.Lever{Gate: g, Parameter: "open"}).Methods("POST", "PUT", "PATCH")
+	apiHandler.Handle(gatePath, &gate.Lever{Gate: g, Parameter: "open"}).Methods("POST", "PUT", "PATCH")
 
-	apiHandler.Handle("/device/gate", &gate.Status{Gate: g}).Methods("GET")
+	apiHandler.Handle(gatePath, &gate.Status{Gate: g}).Methods("GET")
 
-	apiHandler.HandleFunc("/device/gate/filter", filterHandler.GetFilters).Methods("GET")
+	apiHandler.HandleFunc(filterPath, filterHandler.GetFilters).Methods("GET")
 
-	apiHandler.Handle("/device/gate/filter", alice.New(gateLogger.LogFilters).Then(http.HandlerFunc(filterHandler.UpdateFilters))).Methods("POST", "PUT")
+	apiHandler.Handle(filterPath, alice.New(gateLogger.LogFilters).Then(http.HandlerFunc(filterHandler.UpdateFilters))).Methods("POST", "PUT")
 
-	apiHandler.Handle("/device/gate/filter", alice.New(gateLogger.LogFilters).Then(http.HandlerFunc(filterHandler.DeleteFilter))).Methods("DELETE")
+	apiHandler.Handle(filterPath, alice.New(gateLogger.LogFilters).Then(http.HandlerFunc(filterHandler.DeleteFilter))).Methods("DELETE")
 
-	apiHandler.Handle("/device/drain", &drain.Start{Drainer: d}).Methods("POST", "PUT", "PATCH")
+	apiHandler.Handle(drainPath, &drain.Start{Drainer: d}).Methods("POST", "PUT", "PATCH")
 
-	apiHandler.Handle("/device/drain", &drain.Cancel{Drainer: d}).Methods("DELETE")
+	apiHandler.Handle(drainPath, &drain.Cancel{Drainer: d}).Methods("DELETE")
 
-	apiHandler.Handle("/device/drain", &drain.Status{Drainer: d}).Methods("GET")
+	apiHandler.Handle(drainPath, &drain.Status{Drainer: d}).Methods("GET")
 
 	server := xhttp.NewServer(options)
 	server.Handler = xcontext.Populate(logginghttp.SetLogger(logger))(r)
