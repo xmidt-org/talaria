@@ -66,11 +66,11 @@ func StartControlServer(logger log.Logger, manager device.Manager, deviceGate de
 
 	apiHandler.Handle("/device/gate/filter", alice.New(gateLogger.LogFilters).Then(http.HandlerFunc(filterHandler.DeleteFilter))).Methods("DELETE")
 
-	apiHandler.Handle("/device/drain", &drain.Start{d}).Methods("POST", "PUT", "PATCH")
+	apiHandler.Handle("/device/drain", &drain.Start{Drainer: d}).Methods("POST", "PUT", "PATCH")
 
-	apiHandler.Handle("/device/drain", &drain.Cancel{d}).Methods("DELETE")
+	apiHandler.Handle("/device/drain", &drain.Cancel{Drainer: d}).Methods("DELETE")
 
-	apiHandler.Handle("/device/drain", &drain.Status{d}).Methods("GET")
+	apiHandler.Handle("/device/drain", &drain.Status{Drainer: d}).Methods("GET")
 
 	server := xhttp.NewServer(options)
 	server.Handler = xcontext.Populate(logginghttp.SetLogger(logger))(r)
