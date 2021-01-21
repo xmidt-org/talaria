@@ -25,6 +25,100 @@ This endpoint is idempotent.
 Any attempt to open the gate when it is already open or close it when it is already closed results in a **200** status.
 If this endpoint did change the status of the gate, a **201** status is returned.
 
+### Gate Filtering
+In addition to disallowing all incoming websocket connection requests, Talaria can also reject incoming websocket connection requests that match specific device metadata parameters.
+
+* `GET host:control_port/api/v2/device/gate/filter` returns a JSON message with the current filters that are in place.
+For example, 
+
+```
+{
+  "filters": {
+    "partner-id": [
+      "test",
+      "comcast",
+    ]
+  },
+  "allowedFilters": ["partner-id"]
+}
+```
+
+indicates that all incoming websocket connection requests that have partner-ids of either test or comcast are not allowed. Furthermore, `allowedFilters` shows that this talaria only allows requests to be filtered by `partner-id`. If `allowedFilters` is null, that means that this talaria accepts any filter keys to filter requests by.
+
+* `POST/PUT host:control_port/api/v2/device/gate/filter` adds or updates to the list of filters in place. The request body must be in JSON format with the following attributes: 
+  * `key` - Required. The parameter to filter connection requests by (can think of this as the metadata key)
+  * `values` - Required. This is an array of strings. These are the metadata values to filter requests by 
+
+An example request:
+
+```
+{
+  "key": "partner-id",
+  "values": ["comcast", "sky"]
+}
+```
+
+This will prevent any devices with a partner-id of comcast or sky from connecting. Example responses:
+
+HTTP/1.1 201 Created
+
+Response Body:
+```{
+  "filters": {
+    "partner-id": [
+      "comcast",
+      "sky"
+    ]
+  },
+  "allowedFilters": ["partner-id"]
+}
+```
+The above response would indicate a filter key has been created. The response body shows the updated state of the filters.
+
+HTTP/1.1 200 OK
+
+Response Body:
+```{
+  "filters": {
+    "partner-id": [
+      "comcast",
+      "sky"
+    ]
+  },
+  "allowedFilters": ["partner-id"]
+}
+```
+The above response would indicate the filter key already exists and has been updated. The response body shows the updated state of the filters.
+
+Note that this request completely upserts the values connected to a filter key, if the filter key already previously existed.
+
+
+* `DELETE host:control_port/api/v2/device/gate/filter` Deletes a filter key and the values associated with it from the list of filters. The request body must be in JSON format with the following attribute: 
+  * `key` - Required. The filter key to delete (can think of this as the metadata key)
+
+An example request:
+
+```
+{
+  "key": "partner-id",
+}
+```
+
+The request would mean that the talaria will no longer gate device connection requests by the partner-id parameter
+
+An example response:
+
+HTTP/1.1 200 OK
+
+Response Body:
+```{
+  "filters": {},
+  "allowedFilters": ["partner-id"]
+}
+```
+
+This shows a successful delete request. This specific response body means that there are currently no filters in place after the `DELETE` request.
+
 ### Metrics
 `xmidt_talaria_gate_status` is the exposed Prometheus metric that indicates the status of the gate.
 When this gauge is 0.0, the gate is closed.  When this gauge is 1.0, the gate is open.
@@ -100,6 +194,17 @@ Several parameters may be supplied to customize the drain:
   Every minute 30 devices will be remove. Since the draining of devices are
   spread out over the tick period, the 1m tick at a rate of 30 is the same as
   a tick of 2s and a rate of 1.
+
+  If attempting to drain by a specific device parameter in the metadata, such as `partner-id`, supply a body to the request, like so:
+
+  ```
+  {
+    "key": "partner-id",
+    "values": ["comcast"]
+  }
+  ```
+
+  This request will drain all devices that have comcast as the partner-id.
 
 
 * `DELETE host:control_port/api/v2/device/drain` attempts to cancel any running drain job.

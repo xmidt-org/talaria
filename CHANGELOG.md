@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 - Added RawAttributes interface. [#162](https://github.com/xmidt-org/talaria/pull/162)
+- Added abiliy to gate and drain by specific device metadata parameters. [#172](https://github.com/xmidt-org/talaria/pull/172)
 
 ### Changed
 - Update buildtime format in Makefile to match RPM spec file. [#164](https://github.com/xmidt-org/talaria/pull/164)
