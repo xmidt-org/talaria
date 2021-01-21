@@ -49,21 +49,16 @@ func StartControlServer(logger log.Logger, manager device.Manager, deviceGate de
 			drain.WithDrainCounter(registry.NewCounter(DrainCounter)),
 		)
 
-		gateLogger = devicegate.GateLogger{
-			Logger: logger,
-		}
-
+		gateLogger    = devicegate.GateLogger{Logger: logger}
 		filterHandler = &devicegate.FilterHandler{Gate: deviceGate}
 
 		r          = mux.NewRouter()
 		apiHandler = r.PathPrefix(fmt.Sprintf("%s/%s", baseURI, version)).Subrouter()
 	)
 
-	apiHandler.Handle("/device/gate", &gate.Lever{Gate: g, Parameter: "open"}).
-		Methods("POST", "PUT", "PATCH")
+	apiHandler.Handle("/device/gate", &gate.Lever{Gate: g, Parameter: "open"}).Methods("POST", "PUT", "PATCH")
 
-	apiHandler.Handle("/device/gate", &gate.Status{Gate: g}).
-		Methods("GET")
+	apiHandler.Handle("/device/gate", &gate.Status{Gate: g}).Methods("GET")
 
 	apiHandler.HandleFunc("/device/gate/filter", filterHandler.GetFilters).Methods("GET")
 
@@ -71,14 +66,11 @@ func StartControlServer(logger log.Logger, manager device.Manager, deviceGate de
 
 	apiHandler.Handle("/device/gate/filter", alice.New(gateLogger.LogFilters).Then(http.HandlerFunc(filterHandler.DeleteFilter))).Methods("DELETE")
 
-	apiHandler.Handle("/device/drain", &drain.Start{d}).
-		Methods("POST", "PUT", "PATCH")
+	apiHandler.Handle("/device/drain", &drain.Start{d}).Methods("POST", "PUT", "PATCH")
 
-	apiHandler.Handle("/device/drain", &drain.Cancel{d}).
-		Methods("DELETE")
+	apiHandler.Handle("/device/drain", &drain.Cancel{d}).Methods("DELETE")
 
-	apiHandler.Handle("/device/drain", &drain.Status{d}).
-		Methods("GET")
+	apiHandler.Handle("/device/drain", &drain.Status{d}).Methods("GET")
 
 	server := xhttp.NewServer(options)
 	server.Handler = xcontext.Populate(logginghttp.SetLogger(logger))(r)
