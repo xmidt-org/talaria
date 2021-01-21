@@ -31,6 +31,7 @@ import (
 	"github.com/xmidt-org/webpa-common/basculemetrics"
 	"github.com/xmidt-org/webpa-common/concurrent"
 	"github.com/xmidt-org/webpa-common/device"
+	"github.com/xmidt-org/webpa-common/device/devicegate"
 	"github.com/xmidt-org/webpa-common/device/devicehealth"
 	"github.com/xmidt-org/webpa-common/device/rehasher"
 	"github.com/xmidt-org/webpa-common/logging"
@@ -59,20 +60,20 @@ func setupDefaultConfigValues(v *viper.Viper) {
 	v.SetDefault(RehasherServicesConfigKey, []string{applicationName})
 }
 
-func newDeviceManager(logger log.Logger, r xmetrics.Registry, v *viper.Viper) (device.Manager, *consul.ConsulWatcher, error) {
+func newDeviceManager(logger log.Logger, r xmetrics.Registry, v *viper.Viper) (device.Manager, devicegate.Interface, *consul.ConsulWatcher, error) {
 	deviceOptions, err := device.NewOptions(logger, v.Sub(device.DeviceManagerKey))
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	outbounder, watcher, err := NewOutbounder(logger, v.Sub(OutbounderKey))
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	outboundListener, err := outbounder.Start(NewOutboundMeasures(r))
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	deviceOptions.MetricsProvider = r
@@ -80,7 +81,14 @@ func newDeviceManager(logger log.Logger, r xmetrics.Registry, v *viper.Viper) (d
 		outboundListener,
 	}
 
-	return device.NewManager(deviceOptions), watcher, nil
+	g := &devicegate.FilterGate{
+		FilterStore: make(devicegate.FilterStore),
+	}
+
+	deviceOptions.Filter = g
+
+	return device.NewManager(deviceOptions), g, watcher, nil
+
 }
 
 // talaria is the driver function for Talaria.  It performs everything main() would do,
@@ -116,7 +124,7 @@ func talaria(arguments []string) int {
 		return 1
 	}
 
-	manager, watcher, err := newDeviceManager(logger, metricsRegistry, v)
+	manager, filterGate, watcher, err := newDeviceManager(logger, metricsRegistry, v)
 	if err != nil {
 		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to create device manager", logging.ErrorKey(), err)
 		return 2
@@ -128,7 +136,7 @@ func talaria(arguments []string) int {
 		return 4
 	}
 
-	controlConstructor, err := StartControlServer(logger, manager, metricsRegistry, v)
+	controlConstructor, err := StartControlServer(logger, manager, filterGate, metricsRegistry, v)
 	if err != nil {
 		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to create control server", logging.ErrorKey(), err)
 		return 3
