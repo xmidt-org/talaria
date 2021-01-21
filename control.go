@@ -22,6 +22,9 @@ import (
 
 const (
 	ControlKey = "control"
+	gatePath   = "/device/gate"
+	filterPath = "/device/gate/filter"
+	drainPath  = "/device/drain"
 )
 
 func StartControlServer(logger log.Logger, manager device.Manager, deviceGate devicegate.Interface, registry xmetrics.Registry, v *viper.Viper) (func(http.Handler) http.Handler, error) {
@@ -35,12 +38,6 @@ func StartControlServer(logger log.Logger, manager device.Manager, deviceGate de
 	}
 
 	options.Logger = logger
-
-	const (
-		gatePath   = "/device/gate"
-		filterPath = "/device/gate/filter"
-		drainPath  = "/device/drain"
-	)
 
 	var (
 		g = gate.New(
@@ -57,8 +54,9 @@ func StartControlServer(logger log.Logger, manager device.Manager, deviceGate de
 
 		gateLogger    = devicegate.GateLogger{Logger: logger}
 		filterHandler = &devicegate.FilterHandler{Gate: deviceGate}
-		r             = mux.NewRouter()
-		apiHandler    = r.PathPrefix(fmt.Sprintf("%s/%s", baseURI, version)).Subrouter()
+
+		r          = mux.NewRouter()
+		apiHandler = r.PathPrefix(fmt.Sprintf("%s/%s", baseURI, version)).Subrouter()
 	)
 
 	apiHandler.Handle(gatePath, &gate.Lever{Gate: g, Parameter: "open"}).Methods("POST", "PUT", "PATCH")
