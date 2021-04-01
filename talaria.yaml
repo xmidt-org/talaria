@@ -347,7 +347,7 @@ inbound:
 #   type: "enforce"
 #   # sep is the delimeter used for the credential paths below
 #   # (Optional) Defaults to "."
-#   sep: ">"
+#   sep: ","
 
 #   checks:
 #     - 
@@ -362,6 +362,7 @@ inbound:
 #       wrpCredentialPath: PartnerIDs 
 
 #       # operation is the name of the operation that's is meant to be performed. 
+#       # Supported operations include: "intersects", "contains", "eq" (equal) and "gt" (greater than).
 #       # Note: By default operation is applied from deviceCredential to wrpCredential
 #       operation: intersect
 
@@ -370,10 +371,20 @@ inbound:
 #       inversed: true
 
 #     - 
-#       name: "Devices with trust level >= 1000"
-#       deviceCredentialPath: "example>trust>value" 
-#       inputValue: 1000
-#       operation: gteq 
+#       name: "Devices with trust level > 999"
+#       # For this check to succeed, the device should have connected with a JWT with the claims:
+#       # {
+#       # ...
+#       #   "security": {
+#       #     "trust": 1000
+#       #   }
+#       # ...
+#       # }
+#       #    
+#       #
+#       deviceCredentialPath: "security,trust" 
+#       inputValue: 999
+#       operation: gt
 
 ########################################
 #   Service Discovery Configuration

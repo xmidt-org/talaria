@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 - Migrate to github actions, normalize analysis tools, Dockerfiles and Makefiles. [#166](https://github.com/xmidt-org/talaria/pull/166)
+- Clarify comments of options in config file. [#176](https://github.com/xmidt-org/talaria/pull/176)
 
 ### Added
 - Added RawAttributes interface. [#162](https://github.com/xmidt-org/talaria/pull/162)
