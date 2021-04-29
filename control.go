@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/xmidt-org/candlelight"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 	"net/http"
 
 	"github.com/go-kit/kit/log"
@@ -27,7 +29,7 @@ const (
 	drainPath  = "/device/drain"
 )
 
-func StartControlServer(logger log.Logger, manager device.Manager, deviceGate devicegate.Interface, registry xmetrics.Registry, v *viper.Viper) (func(http.Handler) http.Handler, error) {
+func StartControlServer(logger log.Logger, manager device.Manager, deviceGate devicegate.Interface, registry xmetrics.Registry, v *viper.Viper, tracing candlelight.Tracing) (func(http.Handler) http.Handler, error) {
 	if !v.IsSet(ControlKey) {
 		return xhttp.NilConstructor, nil
 	}
@@ -58,6 +60,13 @@ func StartControlServer(logger log.Logger, manager device.Manager, deviceGate de
 		r          = mux.NewRouter()
 		apiHandler = r.PathPrefix(fmt.Sprintf("%s/%s", baseURI, version)).Subrouter()
 	)
+
+	otelMuxOptions := []otelmux.Option{
+		otelmux.WithPropagators(tracing.Propagator),
+		otelmux.WithTracerProvider(tracing.TracerProvider),
+	}
+
+	apiHandler.Use(otelmux.Middleware("mainSpan", otelMuxOptions...), candlelight.EchoFirstTraceNodeInfo(tracing.Propagator))
 
 	apiHandler.Handle(gatePath, &gate.Lever{Gate: g, Parameter: "open"}).Methods("POST", "PUT", "PATCH")
 

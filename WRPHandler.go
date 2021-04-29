@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"github.com/go-kit/kit/log/level"
+	"github.com/xmidt-org/bascule"
 	"net/http"
 
 	gokithttp "github.com/go-kit/kit/transport/http"
@@ -26,7 +28,7 @@ func withDeviceAccessCheck(errorLogger log.Logger, wrpRouterHandler wrphttp.Hand
 	}
 }
 
-func wrpRouterHandler(logger log.Logger, router device.Router) wrphttp.HandlerFunc {
+func wrpRouterHandler(logger log.Logger, router device.Router, ctxlogger func(ctx context.Context) bascule.Logger) wrphttp.HandlerFunc {
 	if logger == nil {
 		logger = logging.DefaultLogger()
 	}
@@ -35,13 +37,17 @@ func wrpRouterHandler(logger log.Logger, router device.Router) wrphttp.HandlerFu
 		panic("router is a required component")
 	}
 
-	errorLogger := logging.Error(logger)
-
 	return func(w wrphttp.ResponseWriter, r *wrphttp.Request) {
 		deviceRequest := &device.Request{
 			Message:  &r.Entity.Message,
 			Format:   r.Entity.Format,
 			Contents: r.Entity.Bytes,
+		}
+		var errorLogger log.Logger
+		if ctxlogger(r.Context()) != nil {
+			errorLogger = logging.Error(ctxlogger(r.Context()))
+		} else {
+			errorLogger = level.Error(logger)
 		}
 
 		// deviceRequest carries the context through the routing infrastructure
