@@ -191,7 +191,7 @@ func talaria(arguments []string) int {
 		otelmux.WithPropagators(tracing.Propagator),
 		otelmux.WithTracerProvider(tracing.TracerProvider),
 	}
-	rootRouter.Use(otelmux.Middleware("mainSpan", otelMuxOptions...), candlelight.EchoFirstTraceNodeInfo(tracing.Propagator))
+	rootRouter.Use(otelmux.Middleware("primary", otelMuxOptions...), candlelight.EchoFirstTraceNodeInfo(tracing.Propagator))
 
 	primaryHandler, err := NewPrimaryHandler(logger, manager, v, a, e, controlConstructor, metricsRegistry, rootRouter)
 	if err != nil {
