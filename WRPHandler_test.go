@@ -23,7 +23,7 @@ import (
 func testWRPHandlerNilRouter(t *testing.T) {
 	assert := assert.New(t)
 	assert.Panics(func() {
-		wrpRouterHandler(nil, nil)
+		wrpRouterHandler(nil, nil, nil)
 	})
 }
 
@@ -73,7 +73,7 @@ func testMessageHandlerServeHTTPDecodeError(t *testing.T) {
 		actualResponseBody map[string]interface{}
 
 		router  = new(mockRouter)
-		handler = wrphttp.NewHTTPHandler(wrpRouterHandler(nil, router), wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())))
+		handler = wrphttp.NewHTTPHandler(wrpRouterHandler(nil, router, nil), wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())))
 	)
 
 	handler.ServeHTTP(response, request)
@@ -122,7 +122,7 @@ func testMessageHandlerServeHTTPEncodeError(t *testing.T) {
 
 		router  = new(mockRouter)
 		d       = new(device.MockDevice)
-		handler = wrphttp.NewHTTPHandler(wrpRouterHandler(nil, router), wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())))
+		handler = wrphttp.NewHTTPHandler(wrpRouterHandler(nil, router, nil), wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())))
 
 		actualResponseBody     map[string]interface{}
 		expectedDeviceResponse = &device.Response{
@@ -174,7 +174,7 @@ func testMessageHandlerServeHTTPRouteError(t *testing.T, routeError error, expec
 		actualResponseBody map[string]interface{}
 
 		router  = new(mockRouter)
-		handler = wrphttp.NewHTTPHandler(wrpRouterHandler(nil, router), wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())))
+		handler = wrphttp.NewHTTPHandler(wrpRouterHandler(nil, router, nil), wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())))
 	)
 
 	router.On(
@@ -223,7 +223,7 @@ func testMessageHandlerServeHTTPEvent(t *testing.T, requestFormat wrp.Format) {
 		request  = httptest.NewRequest("POST", "/foo", bytes.NewReader(requestContents))
 
 		router  = new(mockRouter)
-		handler = wrphttp.NewHTTPHandler(wrpRouterHandler(logging.NewTestLogger(nil, t), router), wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())))
+		handler = wrphttp.NewHTTPHandler(wrpRouterHandler(logging.NewTestLogger(nil, t), router, nil), wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())))
 
 		actualDeviceRequest *device.Request
 	)
@@ -286,7 +286,7 @@ func testMessageHandlerServeHTTPRequestResponse(t *testing.T, responseFormat, re
 
 		router  = new(mockRouter)
 		d       = new(device.MockDevice)
-		handler = wrphttp.NewHTTPHandler(wrpRouterHandler(logging.NewTestLogger(nil, t), router), wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())))
+		handler = wrphttp.NewHTTPHandler(wrpRouterHandler(logging.NewTestLogger(nil, t), router, nil), wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())))
 
 		actualDeviceRequest    *device.Request
 		expectedDeviceResponse = &device.Response{
