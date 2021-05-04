@@ -44,7 +44,7 @@ func wrpRouterHandler(logger log.Logger, router device.Router, ctxlogger func(ct
 			Contents: r.Entity.Bytes,
 		}
 		var errorLogger log.Logger
-		if ctxlogger(r.Context()) != nil {
+		if ctxlogger != nil && ctxlogger(r.Context()) != nil {
 			errorLogger = logging.Error(ctxlogger(r.Context()))
 		} else {
 			errorLogger = level.Error(logger)
