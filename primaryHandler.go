@@ -22,6 +22,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/xmidt-org/candlelight"
 	"net/http"
 	"time"
 
@@ -114,9 +115,10 @@ func SetLogger(logger log.Logger) func(delegate http.Handler) http.Handler {
 	return func(delegate http.Handler) http.Handler {
 		return http.HandlerFunc(
 			func(w http.ResponseWriter, r *http.Request) {
-				r = r.WithContext(logging.WithLogger(r.Context(),
-					log.With(logger, "requestHeaders", r.Header, "requestURL", r.URL.EscapedPath(), "method", r.Method)))
-				delegate.ServeHTTP(w, r)
+				kvs := []interface{}{"requestHeaders", r.Header, "requestURL", r.URL.EscapedPath(), "method", r.Method}
+				kvs, _ = candlelight.AppendTraceInfo(r.Context(), kvs)
+				ctx := r.WithContext(logging.WithLogger(r.Context(), log.With(logger, kvs...)))
+				delegate.ServeHTTP(w, ctx)
 			})
 	}
 }
@@ -146,10 +148,9 @@ func buildUserPassMap(logger log.Logger, encodedBasicAuthKeys []string) (userPas
 }
 
 func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper, a service.Accessor, e service.Environment,
-	controlConstructor alice.Constructor, metricsRegistry xmetrics.Registry) (http.Handler, error) {
+	controlConstructor alice.Constructor, metricsRegistry xmetrics.Registry, r *mux.Router) (http.Handler, error) {
 	var (
 		inboundTimeout = getInboundTimeout(v)
-		r              = mux.NewRouter()
 		apiHandler     = r.PathPrefix(fmt.Sprintf("%s/%s", baseURI, version)).Subrouter()
 
 		authConstructor = NoOpConstructor
@@ -209,7 +210,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		}
 	}
 
-	wrpRouterHandler := wrpRouterHandler(logger, manager)
+	wrpRouterHandler := wrpRouterHandler(logger, manager, GetLogger)
 
 	if v.IsSet(DeviceAccessCheckConfigKey) {
 		config := new(deviceAccessCheckConfig)

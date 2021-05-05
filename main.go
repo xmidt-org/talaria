@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/gorilla/mux"
 	"io"
 	_ "net/http/pprof"
 	"os"
@@ -28,6 +29,7 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"github.com/xmidt-org/candlelight"
 	"github.com/xmidt-org/webpa-common/basculemetrics"
 	"github.com/xmidt-org/webpa-common/concurrent"
 	"github.com/xmidt-org/webpa-common/device"
@@ -41,12 +43,16 @@ import (
 	"github.com/xmidt-org/webpa-common/service/servicecfg"
 	"github.com/xmidt-org/webpa-common/xmetrics"
 	"github.com/xmidt-org/webpa-common/xresolver/consul"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
 	applicationName       = "talaria"
 	release               = "Developer"
 	defaultVnodeCount int = 211
+	tracingConfigKey      = "tracing"
 )
 
 var (
@@ -91,6 +97,29 @@ func newDeviceManager(logger log.Logger, r xmetrics.Registry, v *viper.Viper) (d
 
 }
 
+func loadTracing(v *viper.Viper, appName string) (candlelight.Tracing, error) {
+	var tracing = candlelight.Tracing{
+		Enabled:        false,
+		Propagator:     propagation.TraceContext{},
+		TracerProvider: trace.NewNoopTracerProvider(),
+	}
+	var traceConfig candlelight.Config
+	err := v.UnmarshalKey(tracingConfigKey, &traceConfig)
+	if err != nil {
+		return candlelight.Tracing{}, err
+	}
+	traceConfig.ApplicationName = appName
+	tracerProvider, err := candlelight.ConfigureTracerProvider(traceConfig)
+	if err != nil {
+		return candlelight.Tracing{}, err
+	}
+	if len(traceConfig.Provider) != 0 && traceConfig.Provider != candlelight.DefaultTracerProvider {
+		tracing.Enabled = true
+	}
+	tracing.TracerProvider = tracerProvider
+	return tracing, nil
+}
+
 // talaria is the driver function for Talaria.  It performs everything main() would do,
 // except for obtaining the command-line arguments (which are passed to it).
 func talaria(arguments []string) int {
@@ -103,6 +132,7 @@ func talaria(arguments []string) int {
 		v = viper.New()
 
 		logger, metricsRegistry, webPA, err = server.Initialize(applicationName, arguments, f, v, Metrics, device.Metrics, rehasher.Metrics, service.Metrics, basculemetrics.Metrics)
+		infoLogger                          = level.Info(logger)
 	)
 
 	if parseErr, done := printVersion(f, arguments); done {
@@ -124,6 +154,13 @@ func talaria(arguments []string) int {
 		return 1
 	}
 
+	tracing, err := loadTracing(v, applicationName)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to build tracing component: %v \n", err)
+		return 1
+	}
+	infoLogger.Log(logging.MessageKey(), "tracing status", "enabled", tracing.Enabled)
+
 	manager, filterGate, watcher, err := newDeviceManager(logger, metricsRegistry, v)
 	if err != nil {
 		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to create device manager", logging.ErrorKey(), err)
@@ -136,7 +173,7 @@ func talaria(arguments []string) int {
 		return 4
 	}
 
-	controlConstructor, err := StartControlServer(logger, manager, filterGate, metricsRegistry, v)
+	controlConstructor, err := StartControlServer(logger, manager, filterGate, metricsRegistry, v, tracing)
 	if err != nil {
 		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to create control server", logging.ErrorKey(), err)
 		return 3
@@ -149,7 +186,14 @@ func talaria(arguments []string) int {
 		a = new(service.UpdatableAccessor)
 	}
 
-	primaryHandler, err := NewPrimaryHandler(logger, manager, v, a, e, controlConstructor, metricsRegistry)
+	rootRouter := mux.NewRouter()
+	otelMuxOptions := []otelmux.Option{
+		otelmux.WithPropagators(tracing.Propagator),
+		otelmux.WithTracerProvider(tracing.TracerProvider),
+	}
+	rootRouter.Use(otelmux.Middleware("primary", otelMuxOptions...), candlelight.EchoFirstTraceNodeInfo(tracing.Propagator))
+
+	primaryHandler, err := NewPrimaryHandler(logger, manager, v, a, e, controlConstructor, metricsRegistry, rootRouter)
 	if err != nil {
 		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to start device management", logging.ErrorKey(), err)
 		return 4
