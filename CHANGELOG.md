@@ -5,8 +5,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+
+## [v0.5.11]
 - Migrate to github actions, normalize analysis tools, Dockerfiles and Makefiles. [#166](https://github.com/xmidt-org/talaria/pull/166)
 - Clarify comments of options in config file. [#176](https://github.com/xmidt-org/talaria/pull/176)
+- Add OpenTelemetry tracing feature. [#178](https://github.com/xmidt-org/talaria/pull/178) thanks to @utsavbatra5
 
 ### Added
 - Added RawAttributes interface. [#162](https://github.com/xmidt-org/talaria/pull/162)
@@ -105,7 +109,8 @@ Switching to new build process
 ## [v0.1.1] Tue Mar 28 2017 Weston Schmidt - 0.1.1
 - initial creation
 
-[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.5.10...HEAD
+[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.5.11...HEAD
+[v0.5.11]: https://github.com/xmidt-org/talaria/compare/v0.5.10...v0.5.11
 [v0.5.10]: https://github.com/xmidt-org/talaria/compare/v0.5.9...v0.5.10
 [v0.5.9]: https://github.com/xmidt-org/talaria/compare/v0.5.8...v0.5.9
 [v0.5.8]: https://github.com/xmidt-org/talaria/compare/v0.5.7...v0.5.8
