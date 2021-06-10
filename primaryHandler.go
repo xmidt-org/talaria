@@ -18,11 +18,9 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/xmidt-org/candlelight"
 	"net/http"
 	"time"
 
@@ -111,23 +109,6 @@ func getInboundTimeout(v *viper.Viper) time.Duration {
 	return DefaultInboundTimeout
 }
 
-func SetLogger(logger log.Logger) func(delegate http.Handler) http.Handler {
-	return func(delegate http.Handler) http.Handler {
-		return http.HandlerFunc(
-			func(w http.ResponseWriter, r *http.Request) {
-				kvs := []interface{}{"requestHeaders", r.Header, "requestURL", r.URL.EscapedPath(), "method", r.Method}
-				kvs, _ = candlelight.AppendTraceInfo(r.Context(), kvs)
-				ctx := r.WithContext(logging.WithLogger(r.Context(), log.With(logger, kvs...)))
-				delegate.ServeHTTP(w, ctx)
-			})
-	}
-}
-
-func GetLogger(ctx context.Context) bascule.Logger {
-	logger := log.With(logging.GetLogger(ctx), "ts", log.DefaultTimestampUTC, "caller", log.DefaultCaller)
-	return logger
-}
-
 //buildUserPassMap decodes base64-encoded strings of the form user:pass and write them to a map from user -> pass
 func buildUserPassMap(logger log.Logger, encodedBasicAuthKeys []string) (userPass map[string]string) {
 	userPass = make(map[string]string)
@@ -167,7 +148,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 	)
 
 	authConstructorOptions := []basculehttp.COption{
-		basculehttp.WithCLogger(GetLogger),
+		basculehttp.WithCLogger(getLogger),
 		basculehttp.WithCErrorResponseFunc(listener.OnErrorResponse),
 	}
 
@@ -210,7 +191,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		}
 	}
 
-	wrpRouterHandler := wrpRouterHandler(logger, manager, GetLogger)
+	wrpRouterHandler := wrpRouterHandler(logger, manager, getLogger)
 
 	if v.IsSet(DeviceAccessCheckConfigKey) {
 		config := new(deviceAccessCheckConfig)
@@ -232,13 +213,13 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 	authConstructor = basculehttp.NewConstructor(authConstructorOptions...)
 
 	authEnforcer = basculehttp.NewEnforcer(
-		basculehttp.WithELogger(GetLogger),
+		basculehttp.WithELogger(getLogger),
 		basculehttp.WithRules("Basic", serviceAuthRules),
 		basculehttp.WithRules("Bearer", deviceAuthRules),
 		basculehttp.WithEErrorResponseFunc(listener.OnErrorResponse),
 	)
 
-	authChain := alice.New(SetLogger(logger), authConstructor, authEnforcer, basculehttp.NewListenerDecorator(listener))
+	authChain := alice.New(setLogger(logger), authConstructor, authEnforcer, basculehttp.NewListenerDecorator(listener))
 
 	apiHandler.Handle("/device/send",
 		alice.New(
