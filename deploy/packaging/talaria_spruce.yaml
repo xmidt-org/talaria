@@ -13,7 +13,7 @@ server: (( grab $HOSTNAME || "talaria" ))
 # showing machine version information.  The build number SHOULD
 # match the scheme `version-build` but there is not a strict requirement.
 # (Optional)
-build: (( grab $BUILD || "unkown" ))
+build: (( grab $BUILD || "unknown" ))
 
 # Provides the region information to the X-Talaria-Region header
 # for showing what region this machine is located in.  The region
@@ -316,7 +316,7 @@ jwtValidator:
     updateInterval: 24h
 
 deviceAccessCheck:
-  type: enforce
+  type: (( grab $DEVICE_ACCESS_CHECK_TYPE ||  "enforce" ))
   checks:
     -
       name: PartnerID
