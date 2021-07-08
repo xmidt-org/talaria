@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 - Prevent Authorization header from getting logged. [#181](https://github.com/xmidt-org/talaria/pull/181)
-- Add way to modify deviceAccessCheck type through docker-compose env var.
+- Add way to modify deviceAccessCheck type through docker-compose env var. [#184](https://github.com/xmidt-org/talaria/pull/184)
 
 ## [v0.5.11]
 - Migrate to github actions, normalize analysis tools, Dockerfiles and Makefiles. [#166](https://github.com/xmidt-org/talaria/pull/166)
