@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+
+## [v0.5.12]
 - Prevent Authorization header from getting logged. [#181](https://github.com/xmidt-org/talaria/pull/181)
 - Add way to modify deviceAccessCheck type through docker-compose env var. [#184](https://github.com/xmidt-org/talaria/pull/184)
 
@@ -110,7 +113,8 @@ Switching to new build process
 ## [v0.1.1] Tue Mar 28 2017 Weston Schmidt - 0.1.1
 - initial creation
 
-[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.5.11...HEAD
+[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.5.12...HEAD
+[v0.5.12]: https://github.com/xmidt-org/talaria/compare/v0.5.11...v0.5.12
 [v0.5.11]: https://github.com/xmidt-org/talaria/compare/v0.5.10...v0.5.11
 [v0.5.10]: https://github.com/xmidt-org/talaria/compare/v0.5.9...v0.5.10
 [v0.5.9]: https://github.com/xmidt-org/talaria/compare/v0.5.8...v0.5.9
