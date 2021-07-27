@@ -304,7 +304,7 @@ inbound:
 
   # requestTimeout is the timeout for all inbound HTTP requests.
   # (Optional) defaults to 30s
-  requestTimeout: (( grab $INBOUND_REQUEST_TIMEOUT || "15s" )) 
+  requestTimeout: (( grab $INBOUND_REQUEST_TIMEOUT || "30s" )) 
 
 eventMap:
   default: (( grab $CADUCEUS_ENDPOINT || "http://caduceus:6000/api/v3/notify" ))
