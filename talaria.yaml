@@ -219,9 +219,6 @@ device:
     # (Optional) defaults to 45s
     idlePeriod: "2m"
 
-    # requestTimeout is the timeout for all inbound HTTP requests.
-    # (Optional) defaults to 30s
-    requestTimeout: "15s"
 
   # # rehasher defines the services for which a monitor listener will rehash 
   # # and disconnect devices in response to service discovery events.
@@ -316,6 +313,10 @@ inbound:
   # (Optional) defaults to no auth token
   # WARNING: This is an example auth token. DO NOT use this in production.
   authKey: YXV0aEhlYWRlcg==
+
+  # requestTimeout is the timeout for all inbound HTTP requests.
+  # (Optional) defaults to 30s
+  requestTimeout: "15s"
 
 ########################################
 #   Authorization Related Configuration
