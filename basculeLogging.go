@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/go-kit/kit/log"
-	"github.com/xmidt-org/bascule"
 	"github.com/xmidt-org/candlelight"
 	"github.com/xmidt-org/webpa-common/logging"
 )
@@ -35,7 +34,7 @@ func setLogger(logger log.Logger) func(delegate http.Handler) http.Handler {
 	}
 }
 
-func getLogger(ctx context.Context) bascule.Logger {
+func getLogger(ctx context.Context) log.Logger {
 	logger := log.With(logging.GetLogger(ctx), "ts", log.DefaultTimestampUTC, "caller", log.DefaultCaller)
 	return logger
 }

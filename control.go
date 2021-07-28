@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/xmidt-org/candlelight"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
-	"net/http"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -62,11 +63,11 @@ func StartControlServer(logger log.Logger, manager device.Manager, deviceGate de
 	)
 
 	otelMuxOptions := []otelmux.Option{
-		otelmux.WithPropagators(tracing.Propagator),
-		otelmux.WithTracerProvider(tracing.TracerProvider),
+		otelmux.WithPropagators(tracing.Propagator()),
+		otelmux.WithTracerProvider(tracing.TracerProvider()),
 	}
 
-	r.Use(otelmux.Middleware("control", otelMuxOptions...), candlelight.EchoFirstTraceNodeInfo(tracing.Propagator))
+	r.Use(otelmux.Middleware("control", otelMuxOptions...), candlelight.EchoFirstTraceNodeInfo(tracing.Propagator()))
 
 	apiHandler.Handle(gatePath, &gate.Lever{Gate: g, Parameter: "open"}).Methods("POST", "PUT", "PATCH")
 

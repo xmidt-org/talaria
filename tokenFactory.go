@@ -59,13 +59,13 @@ func (r RawAttributesBearerTokenFactory) ParseAndValidate(ctx context.Context, _
 		return nil, emperror.Wrap(err, "failed to parse JWT")
 	}
 	if !jwtToken.Valid {
-		return nil, basculehttp.ErrorInvalidToken
+		return nil, basculehttp.ErrInvalidToken
 	}
 
 	claims, ok := jwtToken.Claims.(*bascule.ClaimsWithLeeway)
 
 	if !ok {
-		return nil, emperror.Wrap(basculehttp.ErrorUnexpectedClaims, "failed to parse JWT")
+		return nil, emperror.Wrap(basculehttp.ErrUnexpectedClaims, "failed to parse JWT")
 	}
 
 	claimsMap, err := claims.GetMap()
@@ -77,11 +77,11 @@ func (r RawAttributesBearerTokenFactory) ParseAndValidate(ctx context.Context, _
 
 	principalVal, ok := jwtClaims.Get(jwtPrincipalKey)
 	if !ok {
-		return nil, emperror.WrapWith(basculehttp.ErrorInvalidPrincipal, "principal value not found", "principal key", jwtPrincipalKey, "jwtClaims", claimsMap)
+		return nil, emperror.WrapWith(basculehttp.ErrInvalidPrincipal, "principal value not found", "principal key", jwtPrincipalKey, "jwtClaims", claimsMap)
 	}
 	principal, ok := principalVal.(string)
 	if !ok {
-		return nil, emperror.WrapWith(basculehttp.ErrorInvalidPrincipal, "principal value not a string", "principal", principalVal)
+		return nil, emperror.WrapWith(basculehttp.ErrInvalidPrincipal, "principal value not a string", "principal", principalVal)
 	}
 
 	return bascule.NewToken("jwt", principal, jwtClaims), nil

@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
-	"github.com/go-kit/kit/log/level"
-	"github.com/xmidt-org/bascule"
 	"net/http"
+
+	"github.com/go-kit/kit/log/level"
 
 	gokithttp "github.com/go-kit/kit/transport/http"
 
@@ -28,7 +28,7 @@ func withDeviceAccessCheck(errorLogger log.Logger, wrpRouterHandler wrphttp.Hand
 	}
 }
 
-func wrpRouterHandler(logger log.Logger, router device.Router, ctxlogger func(ctx context.Context) bascule.Logger) wrphttp.HandlerFunc {
+func wrpRouterHandler(logger log.Logger, router device.Router, ctxlogger func(ctx context.Context) log.Logger) wrphttp.HandlerFunc {
 	if logger == nil {
 		logger = logging.DefaultLogger()
 	}

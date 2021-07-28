@@ -18,12 +18,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/gorilla/mux"
 	"io"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
+
+	"github.com/gorilla/mux"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -44,8 +45,6 @@ import (
 	"github.com/xmidt-org/webpa-common/xmetrics"
 	"github.com/xmidt-org/webpa-common/xresolver/consul"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
-	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -98,25 +97,18 @@ func newDeviceManager(logger log.Logger, r xmetrics.Registry, v *viper.Viper) (d
 }
 
 func loadTracing(v *viper.Viper, appName string) (candlelight.Tracing, error) {
-	var tracing = candlelight.Tracing{
-		Enabled:        false,
-		Propagator:     propagation.TraceContext{},
-		TracerProvider: trace.NewNoopTracerProvider(),
-	}
 	var traceConfig candlelight.Config
 	err := v.UnmarshalKey(tracingConfigKey, &traceConfig)
 	if err != nil {
 		return candlelight.Tracing{}, err
 	}
 	traceConfig.ApplicationName = appName
-	tracerProvider, err := candlelight.ConfigureTracerProvider(traceConfig)
+
+	tracing, err := candlelight.New(traceConfig)
 	if err != nil {
 		return candlelight.Tracing{}, err
 	}
-	if len(traceConfig.Provider) != 0 && traceConfig.Provider != candlelight.DefaultTracerProvider {
-		tracing.Enabled = true
-	}
-	tracing.TracerProvider = tracerProvider
+
 	return tracing, nil
 }
 
@@ -159,7 +151,7 @@ func talaria(arguments []string) int {
 		fmt.Fprintf(os.Stderr, "Unable to build tracing component: %v \n", err)
 		return 1
 	}
-	infoLogger.Log(logging.MessageKey(), "tracing status", "enabled", tracing.Enabled)
+	infoLogger.Log(logging.MessageKey(), "tracing status", "enabled", !tracing.IsNoop())
 
 	manager, filterGate, watcher, err := newDeviceManager(logger, metricsRegistry, v)
 	if err != nil {
@@ -188,10 +180,10 @@ func talaria(arguments []string) int {
 
 	rootRouter := mux.NewRouter()
 	otelMuxOptions := []otelmux.Option{
-		otelmux.WithPropagators(tracing.Propagator),
-		otelmux.WithTracerProvider(tracing.TracerProvider),
+		otelmux.WithPropagators(tracing.Propagator()),
+		otelmux.WithTracerProvider(tracing.TracerProvider()),
 	}
-	rootRouter.Use(otelmux.Middleware("primary", otelMuxOptions...), candlelight.EchoFirstTraceNodeInfo(tracing.Propagator))
+	rootRouter.Use(otelmux.Middleware("primary", otelMuxOptions...), candlelight.EchoFirstTraceNodeInfo(tracing.Propagator()))
 
 	primaryHandler, err := NewPrimaryHandler(logger, manager, v, a, e, controlConstructor, metricsRegistry, rootRouter)
 	if err != nil {
