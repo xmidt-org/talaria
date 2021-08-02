@@ -315,8 +315,8 @@ inbound:
   authKey: YXV0aEhlYWRlcg==
 
   # requestTimeout is the timeout for all inbound HTTP requests.
-  # (Optional) defaults to 30s
-  requestTimeout: "15s"
+  # (Optional) defaults to 120s
+  requestTimeout: "120s"
 
 ########################################
 #   Authorization Related Configuration
