@@ -218,6 +218,7 @@ github.com/gogo/googleapis v1.1.0/go.mod h1:gf4bu3Q80BeJ6H1S1vYPm8/ELATdvryBaNFG
 github.com/gogo/protobuf v1.1.1/go.mod h1:r8qH/GZQm5c6nD/R0oafs1akxWv10x8SbQlK7atdtwQ=
 github.com/gogo/protobuf v1.2.0/go.mod h1:r8qH/GZQm5c6nD/R0oafs1akxWv10x8SbQlK7atdtwQ=
 github.com/gogo/protobuf v1.2.1/go.mod h1:hp+jE20tsWTFYpLwKvXlhS1hjn+gTNwPg2I6zVXpSg4=
+github.com/golang-jwt/jwt v3.2.1+incompatible/go.mod h1:8pz2t5EyA70fFQQSrl6XZXzqecmYZeUEB8OUGHkxJ+I=
 github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b/go.mod h1:SBH7ygxi8pfUlaOkMMuAQtPIUF8ecWP5IEl/CR7VP2Q=
 github.com/golang/groupcache v0.0.0-20160516000752-02826c3e7903/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
 github.com/golang/groupcache v0.0.0-20190129154638-5b532d6fd5ef/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
@@ -769,6 +770,8 @@ github.com/xmidt-org/argus v0.3.10-0.20210120221042-bffa41d6f5c9/go.mod h1:8hg7z
 github.com/xmidt-org/argus v0.3.12/go.mod h1:T0oHbqQ1SAjE616Q9f1p+7nsmuvmHNoC0zAIUpUiFuE=
 github.com/xmidt-org/argus v0.5.0 h1:Dyh5bLHLTbyPqNdFV7roP5DlUOCWjKS/qKxHYCRGkrw=
 github.com/xmidt-org/argus v0.5.0/go.mod h1:8nMg4ywpWCNPgUzwtWhiPAxklrmVsoxwciGJ/OD4FHE=
+github.com/xmidt-org/argus v0.5.1-0.20210729205147-b7d27343b116/go.mod h1:cnx+z2O5mwhS/mCtvbVatZhZ8npBQSaXlzDk5RT3SkM=
+github.com/xmidt-org/argus v0.5.1/go.mod h1:cnx+z2O5mwhS/mCtvbVatZhZ8npBQSaXlzDk5RT3SkM=
 github.com/xmidt-org/arrange v0.1.9 h1:MgMCRH7uMg+LZWvuo3c+63UmEV73LRMyrYmm267E8oM=
 github.com/xmidt-org/arrange v0.1.9/go.mod h1:PRA8iEZ11L93NsEkDP56x1mZyfDcWxzDULgHj56TaEk=
 github.com/xmidt-org/arrange v0.3.0 h1:YNO+1lufCx3EeN17xuSRMC1sci9y9rzZVZ+TkWwq9QE=
@@ -780,6 +783,7 @@ github.com/xmidt-org/bascule v0.9.0 h1:CsMtwiDO4jjoOIh4pWe2U9tXA9A73CfohDsSvwzXm
 github.com/xmidt-org/bascule v0.9.0/go.mod h1:C64nSBtUTTK/f2/mCvvp/qJhav5raD0T+by68DCp/gU=
 github.com/xmidt-org/bascule v0.10.1 h1:WfsZG+7g/AO/Z9D7CS01p0JOtBxn6AuGnx0g9/A9U9s=
 github.com/xmidt-org/bascule v0.10.1/go.mod h1:unqyDUxjulfGFnx4kYWbonTGkVHGWPUjUrBkUi1sjWw=
+github.com/xmidt-org/bascule v0.10.2/go.mod h1:8Mx4EW1AXTWnvh2rDl+/GYPLH4QSJIuPB6r94IWoKxg=
 github.com/xmidt-org/candlelight v0.0.4 h1:ANyWzFA6ixldopLW+LIWoh9gZZRdUcKbfWjm3CqJWTg=
 github.com/xmidt-org/candlelight v0.0.4/go.mod h1:f5aC01FCH/KTT9j4zGrrzaV9vRmtTSDwdS4jrREZAW4=
 github.com/xmidt-org/candlelight v0.0.5 h1:2qsfD7Uubz08LQZSaBIYXaQe9qXijr/U8lIDgkU7UFM=
@@ -807,6 +811,10 @@ github.com/xmidt-org/webpa-common v1.11.5-0.20210120235745-b98c7113262c/go.mod h
 github.com/xmidt-org/webpa-common v1.11.5/go.mod h1:jMyROPQmgvNS+P0csPodDMikqesqPFzlb3v/JVw2SmY=
 github.com/xmidt-org/webpa-common v1.11.10-0.20210727235342-703aa9450c56 h1:2GD6CrfTE/rqtrtrsvi8IXuztaKTh184e7xdUzryt8w=
 github.com/xmidt-org/webpa-common v1.11.10-0.20210727235342-703aa9450c56/go.mod h1:lSfUaPF/LA6PCHviTQk1XuTtqvdFcHzyACwdtH94ZfU=
+github.com/xmidt-org/webpa-common v1.11.10-0.20210730005218-efebe41526bd h1:2t/YZ1Mn4BpajYBdRMhy19KT86WZdm0QWGpTaVYTEB8=
+github.com/xmidt-org/webpa-common v1.11.10-0.20210730005218-efebe41526bd/go.mod h1:jvsZPR+6qQy0yLMocIlbrZCWUFwGnS5kG1Ua7sKLDd0=
+github.com/xmidt-org/webpa-common v1.11.10-0.20210731003421-626d6bb4dae4 h1:l/Bh/qjDamrkR4okruSvFQHzAiEWVbeTYS5rafUxAmI=
+github.com/xmidt-org/webpa-common v1.11.10-0.20210731003421-626d6bb4dae4/go.mod h1:n8McWX3KM4vz1RBUzCJc3IU3oHi74jdZtr9lhuImDac=
 github.com/xmidt-org/wrp-go v1.3.4 h1:7kj+1VXRNNEI7G0Z3z7C58QpIXrWzTw/eI79FdAhyPA=
 github.com/xmidt-org/wrp-go v1.3.4/go.mod h1:EWC9BgcYYO1hKgLzz6VFPpg3LU6ZWSDV/uNiWC7zP+o=
 github.com/xmidt-org/wrp-go/v2 v2.0.1/go.mod h1:v0HK0go/7OSVDvKbnXsUn6c+M987p0yyxWEs8/Fmf60=
