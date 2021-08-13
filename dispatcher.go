@@ -56,16 +56,16 @@ type Dispatcher interface {
 
 // dispatcher is the internal Dispatcher implementation
 type dispatcher struct {
-	errorLog          log.Logger
-	urlFilter         URLFilter
-	method            string
-	timeout           time.Duration
-	authorizationKeys []string
-	source            string
-	eventMap          event.MultiMap
-	queueSize         metrics.Gauge
-	droppedMessages   metrics.Counter
-	outbounds         chan<- outboundEnvelope
+	errorLog         log.Logger
+	urlFilter        URLFilter
+	method           string
+	timeout          time.Duration
+	authorizationKey string
+	source           string
+	eventMap         event.MultiMap
+	queueSize        metrics.Gauge
+	droppedMessages  metrics.Counter
+	outbounds        chan<- outboundEnvelope
 }
 
 // NewDispatcher constructs a Dispatcher which sends envelopes via the returned channel.
@@ -89,16 +89,16 @@ func NewDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFilter) (Dis
 	logger.Log(level.Key(), level.InfoValue(), "eventMap", eventMap)
 
 	return &dispatcher{
-		errorLog:          logging.Error(logger),
-		urlFilter:         urlFilter,
-		method:            o.method(),
-		timeout:           o.requestTimeout(),
-		authorizationKeys: o.authKey(),
-		eventMap:          eventMap,
-		queueSize:         om.QueueSize,
-		source:            o.source(),
-		droppedMessages:   om.DroppedMessages,
-		outbounds:         outbounds,
+		errorLog:         logging.Error(logger),
+		urlFilter:        urlFilter,
+		method:           o.method(),
+		timeout:          o.requestTimeout(),
+		authorizationKey: o.authKey(),
+		eventMap:         eventMap,
+		queueSize:        om.QueueSize,
+		source:           o.source(),
+		droppedMessages:  om.DroppedMessages,
+		outbounds:        outbounds,
 	}, outbounds, nil
 }
 
@@ -130,8 +130,8 @@ func (d *dispatcher) newRequest(url, contentType string, body io.Reader) (*http.
 		request.Header.Set("Content-Type", contentType)
 
 		// TODO: Need to work out how to handle authorization better, without basic auth
-		if len(d.authorizationKeys) > 0 {
-			request.Header.Set("Authorization", "Basic "+d.authorizationKeys[0])
+		if len(d.authorizationKey) > 0 {
+			request.Header.Set("Authorization", "Basic "+d.authorizationKey)
 		}
 	}
 

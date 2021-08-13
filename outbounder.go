@@ -71,7 +71,7 @@ type Outbounder struct {
 	Source                 string                 `json:"source"`
 	Transport              http.Transport         `json:"transport"`
 	ClientTimeout          time.Duration          `json:"clientTimeout"`
-	AuthKey                []string               `json:"authKey"`
+	AuthKey                string                 `json:"authKey"`
 	Logger                 log.Logger             `json:"-"`
 }
 
@@ -237,12 +237,12 @@ func (o *Outbounder) transport() *http.Transport {
 	}
 }
 
-func (o *Outbounder) authKey() []string {
+func (o *Outbounder) authKey() string {
 	if o != nil {
 		return o.AuthKey
 	}
 
-	return nil
+	return ""
 }
 
 func (o *Outbounder) clientTimeout() time.Duration {
