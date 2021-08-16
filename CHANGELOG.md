@@ -5,7 +5,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+<<<<<<< HEAD
 - Changed Authkey from string splice to string [#188](https://github.com/xmidt-org/talaria/pull/188)
+=======
+- Changed Content-type from "json" to "application/json"[#189](https://github.com/xmidt-org/talaria/pull/189)
+>>>>>>> e050da4 (updated changelog)
 
 ## [v0.5.12]
 - Prevent Authorization header from getting logged. [#181](https://github.com/xmidt-org/talaria/pull/181)
