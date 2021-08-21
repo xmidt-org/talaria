@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/xmidt-org/bascule"
@@ -69,7 +69,7 @@ func TestRawAttributesBearerTokenFactory(t *testing.T) {
 				),
 			}),
 			parseCalled: true,
-			expectedErr: basculehttp.ErrorInvalidToken,
+			expectedErr: basculehttp.ErrInvalidToken,
 		},
 		{
 			description: "Unexpected Claims",
@@ -81,7 +81,7 @@ func TestRawAttributesBearerTokenFactory(t *testing.T) {
 			)),
 			parseCalled: true,
 			isValid:     true,
-			expectedErr: basculehttp.ErrorUnexpectedClaims,
+			expectedErr: basculehttp.ErrUnexpectedClaims,
 		},
 		{
 			description: "Principal Value not Found",
@@ -95,7 +95,7 @@ func TestRawAttributesBearerTokenFactory(t *testing.T) {
 			}),
 			parseCalled: true,
 			isValid:     true,
-			expectedErr: basculehttp.ErrorInvalidPrincipal,
+			expectedErr: basculehttp.ErrInvalidPrincipal,
 		},
 		{
 			description: "Principal Value not a String",
@@ -109,7 +109,7 @@ func TestRawAttributesBearerTokenFactory(t *testing.T) {
 			}),
 			parseCalled: true,
 			isValid:     true,
-			expectedErr: basculehttp.ErrorInvalidPrincipal,
+			expectedErr: basculehttp.ErrInvalidPrincipal,
 		},
 	}
 

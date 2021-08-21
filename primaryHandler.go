@@ -31,20 +31,21 @@ import (
 	"github.com/justinas/alice"
 	"github.com/spf13/viper"
 	"github.com/xmidt-org/bascule"
-	"github.com/xmidt-org/webpa-common/xmetrics"
+	"github.com/xmidt-org/webpa-common/v2/xmetrics"
 
+	"github.com/xmidt-org/bascule/basculechecks"
 	"github.com/xmidt-org/bascule/basculehttp"
 	"github.com/xmidt-org/bascule/key"
-	"github.com/xmidt-org/webpa-common/basculemetrics"
-	"github.com/xmidt-org/webpa-common/device"
-	"github.com/xmidt-org/webpa-common/logging"
-	"github.com/xmidt-org/webpa-common/logging/logginghttp"
-	"github.com/xmidt-org/webpa-common/service"
-	"github.com/xmidt-org/webpa-common/service/servicehttp"
-	"github.com/xmidt-org/webpa-common/xhttp"
-	"github.com/xmidt-org/webpa-common/xhttp/xcontext"
-	"github.com/xmidt-org/webpa-common/xhttp/xfilter"
-	"github.com/xmidt-org/webpa-common/xhttp/xtimeout"
+	"github.com/xmidt-org/webpa-common/v2/basculemetrics"
+	"github.com/xmidt-org/webpa-common/v2/device"
+	"github.com/xmidt-org/webpa-common/v2/logging"
+	"github.com/xmidt-org/webpa-common/v2/logging/logginghttp"
+	"github.com/xmidt-org/webpa-common/v2/service"
+	"github.com/xmidt-org/webpa-common/v2/service/servicehttp"
+	"github.com/xmidt-org/webpa-common/v2/xhttp"
+	"github.com/xmidt-org/webpa-common/v2/xhttp/xcontext"
+	"github.com/xmidt-org/webpa-common/v2/xhttp/xfilter"
+	"github.com/xmidt-org/webpa-common/v2/xhttp/xtimeout"
 	"github.com/xmidt-org/wrp-go/v3/wrphttp"
 )
 
@@ -173,9 +174,9 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 
 			deviceAuthRules = append(deviceAuthRules,
 				bascule.Validators{
-					bascule.CreateNonEmptyPrincipalCheck(),
-					bascule.CreateNonEmptyTypeCheck(),
-					bascule.CreateValidTypeCheck([]string{"jwt"}),
+					basculechecks.NonEmptyPrincipal(),
+					basculechecks.NonEmptyType(),
+					basculechecks.ValidType([]string{"jwt"}),
 				})
 		}
 	}
@@ -187,7 +188,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 			authConstructorOptions = append(authConstructorOptions,
 				basculehttp.WithTokenFactory("Basic", basculehttp.BasicTokenFactory(userPassMap)))
 
-			serviceAuthRules = append(serviceAuthRules, bascule.CreateAllowAllCheck())
+			serviceAuthRules = append(serviceAuthRules, basculechecks.AllowAll())
 		}
 	}
 

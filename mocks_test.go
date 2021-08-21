@@ -19,9 +19,9 @@ package main
 import (
 	"context"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	"github.com/stretchr/testify/mock"
-	"github.com/xmidt-org/webpa-common/device"
+	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/wrp-go/v3"
 )
 

@@ -2,24 +2,25 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/xmidt-org/candlelight"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
-	"net/http"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
 	"github.com/spf13/viper"
-	"github.com/xmidt-org/webpa-common/device"
-	"github.com/xmidt-org/webpa-common/device/devicegate"
-	"github.com/xmidt-org/webpa-common/device/drain"
-	"github.com/xmidt-org/webpa-common/logging"
-	"github.com/xmidt-org/webpa-common/logging/logginghttp"
-	"github.com/xmidt-org/webpa-common/xhttp"
-	"github.com/xmidt-org/webpa-common/xhttp/gate"
-	"github.com/xmidt-org/webpa-common/xhttp/xcontext"
-	"github.com/xmidt-org/webpa-common/xmetrics"
+	"github.com/xmidt-org/webpa-common/v2/device"
+	"github.com/xmidt-org/webpa-common/v2/device/devicegate"
+	"github.com/xmidt-org/webpa-common/v2/device/drain"
+	"github.com/xmidt-org/webpa-common/v2/logging"
+	"github.com/xmidt-org/webpa-common/v2/logging/logginghttp"
+	"github.com/xmidt-org/webpa-common/v2/xhttp"
+	"github.com/xmidt-org/webpa-common/v2/xhttp/gate"
+	"github.com/xmidt-org/webpa-common/v2/xhttp/xcontext"
+	"github.com/xmidt-org/webpa-common/v2/xmetrics"
 )
 
 const (
@@ -62,11 +63,11 @@ func StartControlServer(logger log.Logger, manager device.Manager, deviceGate de
 	)
 
 	otelMuxOptions := []otelmux.Option{
-		otelmux.WithPropagators(tracing.Propagator),
-		otelmux.WithTracerProvider(tracing.TracerProvider),
+		otelmux.WithPropagators(tracing.Propagator()),
+		otelmux.WithTracerProvider(tracing.TracerProvider()),
 	}
 
-	r.Use(otelmux.Middleware("control", otelMuxOptions...), candlelight.EchoFirstTraceNodeInfo(tracing.Propagator))
+	r.Use(otelmux.Middleware("control", otelMuxOptions...), candlelight.EchoFirstTraceNodeInfo(tracing.Propagator()))
 
 	apiHandler.Handle(gatePath, &gate.Lever{Gate: g, Parameter: "open"}).Methods("POST", "PUT", "PATCH")
 

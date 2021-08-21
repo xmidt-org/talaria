@@ -8,8 +8,8 @@ import (
 	"github.com/go-kit/kit/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/xmidt-org/webpa-common/xhttp"
-	"github.com/xmidt-org/webpa-common/xmetrics"
+	"github.com/xmidt-org/webpa-common/v2/xhttp"
+	"github.com/xmidt-org/webpa-common/v2/xmetrics"
 )
 
 // Metric names

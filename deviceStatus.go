@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/xmidt-org/webpa-common/convey"
-	"github.com/xmidt-org/webpa-common/device"
+	"github.com/xmidt-org/webpa-common/v2/convey"
+	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/wrp-go/v3"
 	"github.com/xmidt-org/wrp-go/v3/wrpmeta"
 )

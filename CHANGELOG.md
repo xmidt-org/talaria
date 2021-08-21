@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 - Changed Authkey from string splice to string [#188](https://github.com/xmidt-org/talaria/pull/188)
 - Changed Content-type from "json" to "application/json"[#189](https://github.com/xmidt-org/talaria/pull/189)
+- Removed jwt lib that's no longer maintained. [#187](https://github.com/xmidt-org/talaria/pull/187)
+- Fixed reading of 'requestTimeout' config variable. [#187](https://github.com/xmidt-org/talaria/pull/187)
+
 
 ## [v0.5.12]
 - Prevent Authorization header from getting logged. [#181](https://github.com/xmidt-org/talaria/pull/181)

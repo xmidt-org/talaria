@@ -23,11 +23,11 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/spf13/viper"
-	"github.com/xmidt-org/webpa-common/device"
-	"github.com/xmidt-org/webpa-common/event"
-	"github.com/xmidt-org/webpa-common/logging"
-	"github.com/xmidt-org/webpa-common/xresolver"
-	"github.com/xmidt-org/webpa-common/xresolver/consul"
+	"github.com/xmidt-org/webpa-common/v2/device"
+	"github.com/xmidt-org/webpa-common/v2/event"
+	"github.com/xmidt-org/webpa-common/v2/logging"
+	"github.com/xmidt-org/webpa-common/v2/xresolver"
+	"github.com/xmidt-org/webpa-common/v2/xresolver/consul"
 )
 
 const (
