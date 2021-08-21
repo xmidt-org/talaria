@@ -4,9 +4,9 @@ go 1.14
 
 require (
 	github.com/c9s/goprocinfo v0.0.0-20190309065803-0b2ad9ac246b // indirect
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/fatih/structs v1.1.0
 	github.com/go-kit/kit v0.10.0
+	github.com/golang-jwt/jwt v3.2.1+incompatible
 	github.com/goph/emperror v0.17.3-0.20190703203600-60a8d9faa17b
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/schema v1.1.0 // indirect
