@@ -9,9 +9,9 @@ import (
 	gokithttp "github.com/go-kit/kit/transport/http"
 
 	"github.com/go-kit/kit/log"
-	"github.com/xmidt-org/webpa-common/device"
-	"github.com/xmidt-org/webpa-common/logging"
-	"github.com/xmidt-org/webpa-common/xhttp"
+	"github.com/xmidt-org/webpa-common/v2/device"
+	"github.com/xmidt-org/webpa-common/v2/logging"
+	"github.com/xmidt-org/webpa-common/v2/xhttp"
 	"github.com/xmidt-org/wrp-go/v3/wrphttp"
 )
 

@@ -13,9 +13,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"github.com/xmidt-org/webpa-common/device"
-	"github.com/xmidt-org/webpa-common/logging"
-	"github.com/xmidt-org/webpa-common/xhttp"
+	"github.com/xmidt-org/webpa-common/v2/device"
+	"github.com/xmidt-org/webpa-common/v2/logging"
+	"github.com/xmidt-org/webpa-common/v2/xhttp"
 	"github.com/xmidt-org/wrp-go/v3"
 	"github.com/xmidt-org/wrp-go/v3/wrphttp"
 )

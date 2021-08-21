@@ -5,7 +5,7 @@ import (
 
 	"github.com/segmentio/ksuid"
 	"github.com/xmidt-org/bascule"
-	"github.com/xmidt-org/webpa-common/device"
+	"github.com/xmidt-org/webpa-common/v2/device"
 )
 
 func init() {
