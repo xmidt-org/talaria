@@ -399,7 +399,7 @@ service:
           - (( concat "flavor=" flavor))
 
         # address tells consul where to contact the service.
-        address: (( concat "http://" server domain ))
+        address: (( grab $HOSTNAME || "talaria" ))
 
         # port tells consul what port to use to contact the service.  This is
         # used with the address for calls to this server.
