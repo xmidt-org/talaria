@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Changed Content-type from "json" to "application/json"[#189](https://github.com/xmidt-org/talaria/pull/189)
 - Removed jwt lib that's no longer maintained. [#187](https://github.com/xmidt-org/talaria/pull/187)
 - Fixed reading of 'requestTimeout' config variable. [#187](https://github.com/xmidt-org/talaria/pull/187)
+- Modify consul registration address value in spruce config file so rehasher would work as expected. [#190](https://github.com/xmidt-org/talaria/pull/190) thanks to @Sachin4403 
+
 
 
 ## [v0.5.12]
