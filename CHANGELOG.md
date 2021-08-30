@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+
+## [v0.5.13]
 - Changed Authkey from string splice to string [#188](https://github.com/xmidt-org/talaria/pull/188)
 - Changed Content-type from "json" to "application/json"[#189](https://github.com/xmidt-org/talaria/pull/189)
 - Removed jwt lib that's no longer maintained. [#187](https://github.com/xmidt-org/talaria/pull/187)
@@ -119,7 +122,8 @@ Switching to new build process
 ## [v0.1.1] Tue Mar 28 2017 Weston Schmidt - 0.1.1
 - initial creation
 
-[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.5.12...HEAD
+[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.5.13...HEAD
+[v0.5.13]: https://github.com/xmidt-org/talaria/compare/v0.5.12...v0.5.13
 [v0.5.12]: https://github.com/xmidt-org/talaria/compare/v0.5.11...v0.5.12
 [v0.5.11]: https://github.com/xmidt-org/talaria/compare/v0.5.10...v0.5.11
 [v0.5.10]: https://github.com/xmidt-org/talaria/compare/v0.5.9...v0.5.10
