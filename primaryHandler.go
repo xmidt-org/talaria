@@ -53,7 +53,7 @@ const (
 	baseURI = "/api"
 
 	// TODO: Should this change for talaria 2.0?
-	version = "v2"
+	version = "v3"
 
 	// TODO: This should be configurable at some point
 	poolSize = 1000
