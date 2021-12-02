@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [v0.6.0]
+- Updated api version in url to v3 to indicate breaking changes in response codes when an invalid auth is sent.  This change was made in an earlier release (v0.5.13). [#194](https://github.com/xmidt-org/talaria/pull/194)
 
 ## [v0.5.13]
 - Changed Authkey from string splice to string [#188](https://github.com/xmidt-org/talaria/pull/188)
@@ -13,8 +15,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Removed jwt lib that's no longer maintained. [#187](https://github.com/xmidt-org/talaria/pull/187)
 - Fixed reading of 'requestTimeout' config variable. [#187](https://github.com/xmidt-org/talaria/pull/187)
 - Modify consul registration address value in spruce config file so rehasher would work as expected. [#190](https://github.com/xmidt-org/talaria/pull/190) thanks to @Sachin4403 
-
-
 
 ## [v0.5.12]
 - Prevent Authorization header from getting logged. [#181](https://github.com/xmidt-org/talaria/pull/181)
@@ -122,7 +122,8 @@ Switching to new build process
 ## [v0.1.1] Tue Mar 28 2017 Weston Schmidt - 0.1.1
 - initial creation
 
-[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.5.13...HEAD
+[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.6.0...HEAD
+[v0.6.0]: https://github.com/xmidt-org/talaria/compare/v0.5.13...v0.6.0
 [v0.5.13]: https://github.com/xmidt-org/talaria/compare/v0.5.12...v0.5.13
 [v0.5.12]: https://github.com/xmidt-org/talaria/compare/v0.5.11...v0.5.12
 [v0.5.11]: https://github.com/xmidt-org/talaria/compare/v0.5.10...v0.5.11

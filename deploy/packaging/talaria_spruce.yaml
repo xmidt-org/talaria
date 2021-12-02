@@ -157,7 +157,7 @@ log:
 
   # level is the logging level to use - INFO, DEBUG, WARN, ERROR
   # (Optional) defaults to ERROR
-  level: (( grab $LOG_LEVEL || "INFO" ))
+  level: (( grab $LOG_LEVEL || "DEBUG" ))
 
   # maxsize is the maximum file size in MB
   # (Optional) defaults to max 100MB
@@ -232,7 +232,7 @@ device:
     # where the key is the device event type (https://godoc.org/github.com/xmidt-org/webpa-common/device#EventType)
     # and the value is the url.
     eventEndpoints:
-      default: (( grab $CADUCEUS_ENDPOINT || "http://caduceus:6000/api/v3/notify" ))
+      default: (( grab $CADUCEUS_ENDPOINT || "http://caduceus:6000/api/v4/notify" ))
 
     # enableConsulRoundRobin will overwrite the eventEndpoints with using consul to discover the caduceus in the datacenter.
     # NOTE: eventEndpoints still must be set, and in the service section of this config caduceus must be added to the list
