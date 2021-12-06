@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [v0.6.1]
+- Added v2 compatible device endpoint for older devices connecting. [#195](https://github.com/xmidt-org/talaria/pull/195)
+
 ## [v0.6.0]
 - Updated api version in url to v3 to indicate breaking changes in response codes when an invalid auth is sent.  This change was made in an earlier release (v0.5.13). [#194](https://github.com/xmidt-org/talaria/pull/194)
 
@@ -122,7 +125,8 @@ Switching to new build process
 ## [v0.1.1] Tue Mar 28 2017 Weston Schmidt - 0.1.1
 - initial creation
 
-[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.6.1...HEAD
+[v0.6.1]: https://github.com/xmidt-org/talaria/compare/v0.6.0...v0.6.1
 [v0.6.0]: https://github.com/xmidt-org/talaria/compare/v0.5.13...v0.6.0
 [v0.5.13]: https://github.com/xmidt-org/talaria/compare/v0.5.12...v0.5.13
 [v0.5.12]: https://github.com/xmidt-org/talaria/compare/v0.5.11...v0.5.12
