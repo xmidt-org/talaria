@@ -54,9 +54,7 @@ const (
 
 	// TODO: Should this change for talaria 2.0?
 	version = "v3"
-
-	// TODO: This should be configurable at some point
-	poolSize = 1000
+	v2      = "v2"
 
 	DefaultKeyID = "current"
 
@@ -212,6 +210,9 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 	}
 
 	authConstructor = basculehttp.NewConstructor(authConstructorOptions...)
+	authConstructorLegacy := basculehttp.NewConstructor(append([]basculehttp.COption{
+		basculehttp.WithCErrorHTTPResponseFunc(basculehttp.LegacyOnErrorHTTPResponse),
+	}, authConstructorOptions...)...)
 
 	authEnforcer = basculehttp.NewEnforcer(
 		basculehttp.WithELogger(getLogger),
@@ -221,6 +222,20 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 	)
 
 	authChain := alice.New(setLogger(logger), authConstructor, authEnforcer, basculehttp.NewListenerDecorator(listener))
+	authChainV2 := alice.New(setLogger(logger), authConstructorLegacy, authEnforcer, basculehttp.NewListenerDecorator(listener))
+
+	versionCompatibleAuth := alice.New(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(r http.ResponseWriter, req *http.Request) {
+			vars := mux.Vars(req)
+			if vars != nil {
+				if vars["version"] == v2 {
+					authChainV2.Then(next).ServeHTTP(r, req)
+					return
+				}
+			}
+			authChain.Then(next).ServeHTTP(r, req)
+		})
+	})
 
 	apiHandler.Handle("/device/send",
 		alice.New(
@@ -269,17 +284,17 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		)
 	}
 
-	// the secured variant of the device connect handler
+	// the secured variant of the device connect handler - compatible with v2 and v3
 	apiHandler.Handle(
-		"/device",
+		fmt.Sprintf("%s/{version:%s|%s}/device", baseURI, v2, version),
 		deviceConnectChain.
-			Extend(authChain).
+			Extend(versionCompatibleAuth).
 			Append(DeviceMetadataMiddleware).
 			Then(connectHandler),
 	).HeadersRegexp("Authorization", ".*")
 
-	apiHandler.Handle(
-		"/device",
+	r.Handle(
+		fmt.Sprintf("%s/{version:%s|%s}/device", baseURI, v2, version),
 		deviceConnectChain.
 			Append(DeviceMetadataMiddleware).
 			Then(connectHandler),
