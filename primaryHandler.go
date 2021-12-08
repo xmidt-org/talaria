@@ -285,18 +285,18 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 	}
 
 	// the secured variant of the device connect handler - compatible with v2 and v3
-	apiHandler.Handle(
+	r.Handle(
 		fmt.Sprintf("%s/{version:%s|%s}/device", baseURI, v2, version),
 		deviceConnectChain.
 			Extend(versionCompatibleAuth).
-			Append(DeviceMetadataMiddleware).
+			Append(DeviceMetadataMiddleware(getLogger)).
 			Then(connectHandler),
 	).HeadersRegexp("Authorization", ".*")
 
 	r.Handle(
 		fmt.Sprintf("%s/{version:%s|%s}/device", baseURI, v2, version),
 		deviceConnectChain.
-			Append(DeviceMetadataMiddleware).
+			Append(DeviceMetadataMiddleware(getLogger)).
 			Then(connectHandler),
 	)
 

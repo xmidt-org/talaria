@@ -1,10 +1,15 @@
 package main
 
 import (
+	"context"
 	"net/http"
 
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
+	"github.com/justinas/alice"
 	"github.com/segmentio/ksuid"
 	"github.com/xmidt-org/bascule"
+	"github.com/xmidt-org/webpa-common/logging"
 	"github.com/xmidt-org/webpa-common/v2/device"
 )
 
@@ -15,10 +20,11 @@ func init() {
 // DeviceMetadataMiddleware is a device registration endpoint middleware
 // which initializes the metadata a device carries throughout its
 // connectivity lifecycle with the XMiDT cluster.
-func DeviceMetadataMiddleware(delegate http.Handler) http.Handler {
-	return http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
+func DeviceMetadataMiddleware(getLogger func(ctx context.Context) log.Logger) alice.Constructor {
+	return func(delegate http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
+			logger := getLogger(ctx)
 			metadata := new(device.Metadata)
 			metadata.SetSessionID(ksuid.New().String())
 
@@ -38,8 +44,15 @@ func DeviceMetadataMiddleware(delegate http.Handler) http.Handler {
 					metadata.SetClaims(claimsMap)
 
 				}
+				if logger != nil {
+					level.Info(logger).Log(logging.MessageKey(), "got claims from auth token",
+						"partner-id", metadata.Claims()[device.PartnerIDClaimKey],
+						"trust", metadata.Claims()[device.TrustClaimKey],
+					)
+				}
 			}
 
 			delegate.ServeHTTP(w, r.WithContext(device.WithDeviceMetadata(ctx, metadata)))
 		})
+	}
 }
