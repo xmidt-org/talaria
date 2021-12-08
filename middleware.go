@@ -9,8 +9,8 @@ import (
 	"github.com/justinas/alice"
 	"github.com/segmentio/ksuid"
 	"github.com/xmidt-org/bascule"
-	"github.com/xmidt-org/webpa-common/logging"
 	"github.com/xmidt-org/webpa-common/v2/device"
+	"github.com/xmidt-org/webpa-common/v2/logging"
 )
 
 func init() {
