@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- Updated spec file and rpkg version macro to be able to choose when the 'v' is included in the version. [#199](https://github.com/xmidt-org/talaria/pull/199)
 
 ## [v0.6.3]
 - Removed v1 webpa-common dependency that was accidentally added in v0.6.2. [#197](https://github.com/xmidt-org/talaria/pull/197)
