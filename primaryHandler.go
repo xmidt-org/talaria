@@ -310,7 +310,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 				Registry: manager,
 				Variable: "deviceID",
 			}),
-	)
+	).Methods("GET")
 
 	return r, nil
 }
