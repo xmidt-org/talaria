@@ -131,7 +131,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 	controlConstructor alice.Constructor, metricsRegistry xmetrics.Registry, r *mux.Router) (http.Handler, error) {
 	var (
 		inboundTimeout = getInboundTimeout(v)
-		apiHandler     = r.PathPrefix(fmt.Sprintf("%s/%s", baseURI, version)).Subrouter()
+		apiHandler     = r.PathPrefix(fmt.Sprintf("%s/{version:%s|%s}", baseURI, v2, version)).Subrouter()
 
 		authConstructor = NoOpConstructor
 		authEnforcer    = NoOpConstructor
@@ -242,12 +242,12 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 			xtimeout.NewConstructor(xtimeout.Options{
 				Timeout: inboundTimeout,
 			})).
-			Extend(authChain).
+			Extend(versionCompatibleAuth).
 			Then(wrphttp.NewHTTPHandler(wrpRouterHandler)),
 	).Methods("POST", "PATCH")
 
 	apiHandler.Handle("/devices",
-		authChain.Then(&device.ListHandler{
+		versionCompatibleAuth.Then(&device.ListHandler{
 			Logger:   logger,
 			Registry: manager,
 		})).Methods("GET")
@@ -304,7 +304,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		"/device/{deviceID}/stat",
 		alice.New(
 			device.UseID.FromPath("deviceID")).
-			Extend(authChain).
+			Extend(versionCompatibleAuth).
 			Then(&device.StatHandler{
 				Logger:   logger,
 				Registry: manager,
