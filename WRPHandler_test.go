@@ -62,30 +62,6 @@ func testWithDeviceAccessCheck(t *testing.T, authorized bool) {
 	}
 }
 
-func TestMessageHandlerServeHTTPDecodeError(t *testing.T) {
-	var (
-		assert  = assert.New(t)
-		require = require.New(t)
-
-		invalidContents    = []byte("Not valid data")
-		response           = httptest.NewRecorder()
-		request            = httptest.NewRequest("GET", "/foo", bytes.NewReader(invalidContents))
-		actualResponseBody map[string]interface{}
-
-		router  = new(mockRouter)
-		handler = wrphttp.NewHTTPHandler(wrpRouterHandler(nil, router, nil), wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())))
-	)
-
-	handler.ServeHTTP(response, request)
-	assert.Equal(http.StatusBadRequest, response.Code)
-	assert.Equal("application/json; charset=utf-8", response.Header().Get("Content-Type"))
-	responseContents, err := ioutil.ReadAll(response.Body)
-	require.NoError(err)
-	assert.NoError(json.Unmarshal(responseContents, &actualResponseBody))
-
-	router.AssertExpectations(t)
-}
-
 func testMessageHandlerServeHTTPEncodeError(t *testing.T) {
 	const transactionKey = "transaction-key"
 
