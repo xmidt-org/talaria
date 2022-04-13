@@ -22,6 +22,6 @@ require (
 	github.com/xmidt-org/bascule v0.10.2
 	github.com/xmidt-org/candlelight v0.0.5
 	github.com/xmidt-org/webpa-common/v2 v2.0.1
-	github.com/xmidt-org/wrp-go/v3 v3.0.2
+	github.com/xmidt-org/wrp-go/v3 v3.1.1
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.19.0
 )
