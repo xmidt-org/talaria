@@ -5,8 +5,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v0.6.4]
 - Updated spec file and rpkg version macro to be able to choose when the 'v' is included in the version. [#199](https://github.com/xmidt-org/talaria/pull/199)
 - Updated WRPHandler_Test to correspond with a bug fix in WRP-Go. [#206](https://github.com/xmidt-org/talaria/pull/206)
+- Added /v2 support for service endpoints. [#225](https://github.com/xmidt-org/talaria/pull/225)
 
 ## [v0.6.3]
 - Removed v1 webpa-common dependency that was accidentally added in v0.6.2. [#197](https://github.com/xmidt-org/talaria/pull/197)
@@ -133,7 +136,8 @@ Switching to new build process
 ## [v0.1.1] Tue Mar 28 2017 Weston Schmidt - 0.1.1
 - initial creation
 
-[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.6.3...HEAD
+[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.6.4...HEAD
+[v0.6.4]: https://github.com/xmidt-org/talaria/compare/v0.6.3...v0.6.4
 [v0.6.3]: https://github.com/xmidt-org/talaria/compare/v0.6.2...v0.6.3
 [v0.6.2]: https://github.com/xmidt-org/talaria/compare/v0.6.1...v0.6.2
 [v0.6.1]: https://github.com/xmidt-org/talaria/compare/v0.6.0...v0.6.1
