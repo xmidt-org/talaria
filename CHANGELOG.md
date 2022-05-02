@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ## [v0.6.5]
-- Bumped webpa-common to v2.0.6, fixing panic on send endpoint. []()
+- Bumped webpa-common to v2.0.6, fixing panic on send endpoint. [#229](https://github.com/xmidt-org/talaria/pull/229)
 
 ## [v0.6.4]
 - Updated spec file and rpkg version macro to be able to choose when the 'v' is included in the version. [#199](https://github.com/xmidt-org/talaria/pull/199)
