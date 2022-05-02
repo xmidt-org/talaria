@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [v0.6.5]
+- Bumped webpa-common to v2.0.6, fixing panic on send endpoint. []()
+
 ## [v0.6.4]
 - Updated spec file and rpkg version macro to be able to choose when the 'v' is included in the version. [#199](https://github.com/xmidt-org/talaria/pull/199)
 - Updated WRPHandler_Test to correspond with a bug fix in WRP-Go. [#206](https://github.com/xmidt-org/talaria/pull/206)
@@ -136,7 +139,8 @@ Switching to new build process
 ## [v0.1.1] Tue Mar 28 2017 Weston Schmidt - 0.1.1
 - initial creation
 
-[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.6.4...HEAD
+[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.6.5...HEAD
+[v0.6.5]: https://github.com/xmidt-org/talaria/compare/v0.6.4...v0.6.5
 [v0.6.4]: https://github.com/xmidt-org/talaria/compare/v0.6.3...v0.6.4
 [v0.6.3]: https://github.com/xmidt-org/talaria/compare/v0.6.2...v0.6.3
 [v0.6.2]: https://github.com/xmidt-org/talaria/compare/v0.6.1...v0.6.2
