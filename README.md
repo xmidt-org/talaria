@@ -1,12 +1,13 @@
 # talaria
 (pronounced "tuh-laa-ree-uh")
 
-[![Build Status](https://github.com/xmidt-org/talaria/workflows/CI/badge.svg)](https://github.com/xmidt-org/talaria/actions)
+[![Build Status](https://github.com/xmidt-org/talaria/actions/workflows/ci.yml/badge.svg)](https://github.com/xmidt-org/talaria/actions/workflows/ci.yml)
+[![Dependency Updateer](https://github.com/xmidt-org/talaria/actions/workflows/updater.yml/badge.svg)](https://github.com/xmidt-org/talaria/actions/workflows/updater.yml)
 [![codecov.io](http://codecov.io/github/xmidt-org/talaria/coverage.svg?branch=main)](http://codecov.io/github/xmidt-org/talaria?branch=main)
 [![Go Report Card](https://goreportcard.com/badge/github.com/xmidt-org/talaria)](https://goreportcard.com/report/github.com/xmidt-org/talaria)
-[![Apache V2 License](http://img.shields.io/badge/license-Apache%20V2-blue.svg)](https://github.com/xmidt-org/talaria/blob/main/LICENSE)
-[![GitHub release](https://img.shields.io/github/release/xmidt-org/talaria.svg)](CHANGELOG.md)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=xmidt-org_talaria&metric=alert_status)](https://sonarcloud.io/dashboard?id=xmidt-org_talaria)
+[![Apache V2 License](http://img.shields.io/badge/license-Apache%20V2-blue.svg)](https://github.com/xmidt-org/talaria/blob/main/LICENSE)
+[![GitHub Release](https://img.shields.io/github/release/xmidt-org/talaria.svg)](CHANGELOG.md)
 
 ## Summary
 Talaria's primary function is to interact with the devices:
