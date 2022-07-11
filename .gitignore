@@ -60,6 +60,10 @@ coverage.txt
 #Goland
 .idea/
 
+# VSCode
+*.code-workspace
+.vscode/*
+
 # helm 
 deploy/k8s/talaria/rendered.*
 
