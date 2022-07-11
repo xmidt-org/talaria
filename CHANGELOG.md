@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
     - Introduces new vuln https://www.mend.io/vulnerability-database/CVE-2022-29526
 
 
+## [v0.6.6-dev.1]
+- QOS implementation [#228](https://github.com/xmidt-org/talaria/pull/228) [#235](https://github.com/xmidt-org/talaria/pull/235)
+
 ## [v0.6.5]
 - Bumped webpa-common to v2.0.6, fixing panic on send endpoint. [#229](https://github.com/xmidt-org/talaria/pull/229)
 
@@ -148,7 +151,8 @@ Switching to new build process
 ## [v0.1.1] Tue Mar 28 2017 Weston Schmidt - 0.1.1
 - initial creation
 
-[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.6.5...HEAD
+[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.6.6-dev.1...HEAD
+[v0.6.6-dev.1]: https://github.com/xmidt-org/talaria/compare/v0.6.5...v0.6.6-dev.1
 [v0.6.5]: https://github.com/xmidt-org/talaria/compare/v0.6.4...v0.6.5
 [v0.6.4]: https://github.com/xmidt-org/talaria/compare/v0.6.3...v0.6.4
 [v0.6.3]: https://github.com/xmidt-org/talaria/compare/v0.6.2...v0.6.3

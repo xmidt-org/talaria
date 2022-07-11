@@ -3,9 +3,6 @@ module github.com/xmidt-org/talaria
 go 1.14
 
 require (
-	emperror.dev/errors v0.8.1 // indirect
-	github.com/armon/go-metrics v0.4.0 // indirect
-	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8 // indirect
 	github.com/fatih/structs v1.1.0
 	github.com/go-kit/kit v0.12.0
 	github.com/go-zookeeper/zk v1.0.3 // indirect
@@ -29,18 +26,11 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.12.0
 	github.com/stretchr/testify v1.8.0
-	github.com/subosito/gotenv v1.4.0 // indirect
 	github.com/thedevsaddam/gojsonq/v2 v2.5.2
-	github.com/ugorji/go v1.2.7 // indirect
 	github.com/xmidt-org/bascule v0.10.2
 	github.com/xmidt-org/candlelight v0.0.10
-	github.com/xmidt-org/httpaux v0.3.2 // indirect
-	github.com/xmidt-org/sallust v0.1.6 // indirect
-	github.com/xmidt-org/themis v0.4.8 // indirect
-	github.com/xmidt-org/touchstone v0.1.1 // indirect
-	github.com/xmidt-org/webpa-common v1.11.9 // indirect
-	github.com/xmidt-org/webpa-common/v2 v2.0.6
-	github.com/xmidt-org/wrp-go/v3 v3.1.3
+	github.com/xmidt-org/webpa-common/v2 v2.0.7-dev.1
+	github.com/xmidt-org/wrp-go/v3 v3.1.4-dev.1
 	go.opentelemetry.io/contrib v1.7.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.34.0
 	go.opentelemetry.io/otel/exporters/jaeger v1.9.0 // indirect
