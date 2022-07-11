@@ -3,9 +3,6 @@ module github.com/xmidt-org/talaria
 go 1.14
 
 require (
-	emperror.dev/errors v0.8.1 // indirect
-	github.com/armon/go-metrics v0.4.0 // indirect
-	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8 // indirect
 	github.com/fatih/structs v1.1.0
 	github.com/go-kit/kit v0.12.0
 	github.com/go-zookeeper/zk v1.0.3 // indirect
@@ -19,7 +16,6 @@ require (
 	github.com/hashicorp/serf v0.9.8 // indirect
 	github.com/influxdata/influxdb1-client v0.0.0-20220302092344-a9ab5670611c // indirect
 	github.com/justinas/alice v1.2.0
-	github.com/pelletier/go-toml/v2 v2.0.2 // indirect
 	github.com/prometheus/client_golang v1.12.2
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/samuel/go-zookeeper v0.0.0-20201211165307-7117e9ea2414 // indirect
@@ -30,21 +26,13 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.12.0
 	github.com/stretchr/testify v1.8.0
-	github.com/subosito/gotenv v1.4.0 // indirect
 	github.com/thedevsaddam/gojsonq/v2 v2.5.2
-	github.com/ugorji/go v1.2.7 // indirect
 	github.com/xmidt-org/bascule v0.10.2
 	github.com/xmidt-org/candlelight v0.0.10
-	github.com/xmidt-org/httpaux v0.3.2 // indirect
-	github.com/xmidt-org/sallust v0.1.6 // indirect
-	github.com/xmidt-org/themis v0.4.8 // indirect
-	github.com/xmidt-org/touchstone v0.1.1 // indirect
-	github.com/xmidt-org/webpa-common v1.11.9 // indirect
-	github.com/xmidt-org/webpa-common/v2 v2.0.6
-	github.com/xmidt-org/wrp-go/v3 v3.1.3
+	github.com/xmidt-org/webpa-common/v2 v2.0.7-dev.1
+	github.com/xmidt-org/wrp-go/v3 v3.1.4-dev.1
 	go.opentelemetry.io/contrib v1.7.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.33.0
-	go.opentelemetry.io/otel/exporters/jaeger v1.8.0 // indirect
 	go.opentelemetry.io/otel/exporters/stdout v0.20.0 // indirect
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.8.0 // indirect
 	go.opentelemetry.io/otel/exporters/zipkin v1.8.0 // indirect
