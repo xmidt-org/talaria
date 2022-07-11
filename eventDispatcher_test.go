@@ -25,6 +25,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/xmidt-org/webpa-common/v2/convey"
 	"github.com/xmidt-org/webpa-common/v2/device"
@@ -67,6 +68,58 @@ func testEventDispatcherOnDeviceEventConnectEvent(t *testing.T) {
 }
 
 func testEventDispatcherOnDeviceEventDisconnectEvent(t *testing.T) {
+	var (
+		assert                     = assert.New(t)
+		require                    = require.New(t)
+		d                          = new(device.MockDevice)
+		dispatcher, outbounds, err = NewEventDispatcher(NewTestOutboundMeasures(), nil, nil)
+	)
+
+	require.NotNil(dispatcher)
+	require.NotNil(outbounds)
+	require.NoError(err)
+
+	deviceMetadata := genTestMetadata()
+
+	d.On("ID").Return(device.ID("mac:123412341234"))
+	d.On("Metadata").Return(deviceMetadata)
+	d.On("Convey").Return(convey.C(nil))
+	d.On("Statistics").Return(device.NewStatistics(nil, time.Now()))
+	d.On("Statistics").Return(device.NewStatistics(nil, time.Now()))
+	d.On("CloseReason").Return(device.CloseReason{})
+
+	dispatcher.OnDeviceEvent(&device.Event{Type: device.Disconnect, Device: d})
+	assert.Equal(0, len(outbounds))
+	d.AssertExpectations(t)
+}
+
+func testEventDispatcherOnDeviceEventUnroutable(t *testing.T) {
+	var (
+		assert                     = assert.New(t)
+		require                    = require.New(t)
+		dispatcher, outbounds, err = NewEventDispatcher(NewTestOutboundMeasures(), nil, nil)
+	)
+
+	require.NotNil(dispatcher)
+	require.NotNil(outbounds)
+	require.NoError(err)
+
+	deviceMetadata := genTestMetadata()
+
+	d.On("ID").Return(device.ID("mac:123412341234"))
+	d.On("Metadata").Return(deviceMetadata)
+	d.On("Convey").Return(convey.C(nil))
+	d.On("Statistics").Return(device.NewStatistics(nil, time.Now()))
+	d.On("Statistics").Return(device.NewStatistics(nil, time.Now()))
+	d.On("CloseReason").Return(device.CloseReason{})
+
+	dispatcher.OnDeviceEvent(&device.Event{Type: device.Disconnect, Device: d})
+	assert.Equal(0, len(outbounds))
+	d.AssertExpectations(t)
+}
+
+func testDispatcherUnroutable(t *testing.T) {
+>>>>>>> 22ee8b7 (First pass of QOS implementation):dispatcher_test.go
 	var (
 		assert                     = assert.New(t)
 		require                    = require.New(t)
