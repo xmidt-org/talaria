@@ -5,13 +5,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-- Dependency update
-    - Note vulnerabilities, github.com/hashicorp/consul/api v1.13.1 // indirect
+- Dependency update, note vulnerabilities
+    - github.com/hashicorp/consul/api v1.13.1 // indirect
         Wasn't able to find much info about this one besides the following dep vulns
         - golang.org/x/net
             - https://nvd.nist.gov/vuln/detail/CVE-2021-33194
             - https://nvd.nist.gov/vuln/detail/CVE-2021-31525
             - https://nvd.nist.gov/vuln/detail/CVE-2021-44716
+    - Introduces new vuln https://www.mend.io/vulnerability-database/CVE-2022-29526
+
 
 ## [v0.6.5]
 - Bumped webpa-common to v2.0.6, fixing panic on send endpoint. [#229](https://github.com/xmidt-org/talaria/pull/229)

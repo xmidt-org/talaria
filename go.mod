@@ -8,6 +8,7 @@ require (
 	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8 // indirect
 	github.com/fatih/structs v1.1.0
 	github.com/go-kit/kit v0.12.0
+	github.com/go-zookeeper/zk v1.0.3 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/goph/emperror v0.17.3-0.20190703203600-60a8d9faa17b
 	github.com/gorilla/mux v1.8.0
@@ -49,7 +50,7 @@ require (
 	go.opentelemetry.io/otel/exporters/zipkin v1.8.0 // indirect
 	golang.org/x/net v0.0.0-20220617184016-355a448f1bc9 // indirect
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
-	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
+	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
 	gopkg.in/ini.v1 v1.66.6 // indirect
 )
