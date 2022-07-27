@@ -319,6 +319,14 @@ func testEventDispatcherOnDeviceEventDispatchTo(t *testing.T) {
 				expectedEndpoint:      "http://foobar.com",
 				expectsEnvelope:       true,
 			},
+			// TODO sync with john on how we want to handle authorization in eventDispatcher.newRequest(...)
+			{
+				outbounder:            &Outbounder{Method: "PATCH", AuthKey: "foobar"},
+				destination:           "dns:foobar.com",
+				expectedUnfilteredURL: "foobar.com",
+				expectedEndpoint:      "http://foobar.com",
+				expectsEnvelope:       true,
+			},
 			{
 				outbounder:            &Outbounder{Method: "BADMETHOD$(*@#)*%"},
 				destination:           "dns:foobar.com",
@@ -389,7 +397,7 @@ func testEventDispatcherOnDeviceEventDispatchTo(t *testing.T) {
 	}
 }
 
-func testEventDispatcherOnDeviceEventNilEventFailure(t *testing.T) {
+func testEventDispatcherOnDeviceEventNilEventError(t *testing.T) {
 	var (
 		b bytes.Buffer
 		e *device.Event
@@ -411,6 +419,14 @@ func testEventDispatcherOnDeviceEventNilEventFailure(t *testing.T) {
 	assert.Greater(b.Len(), 0)
 }
 
+func testEventDispatcherOnDeviceEventEventMapError(t *testing.T) {
+	assert := assert.New(t)
+	o := &Outbounder{EventEndpoints: map[string]interface{}{"bad": -17.6}}
+	dp, _, err := NewEventDispatcher(NewTestOutboundMeasures(), o, nil)
+	assert.Nil(dp)
+	assert.Error(err)
+}
+
 func TestEventDispatcherOnDeviceEvent(t *testing.T) {
 	tests := []struct {
 		description string
@@ -424,7 +440,8 @@ func TestEventDispatcherOnDeviceEvent(t *testing.T) {
 		{"EventTimeout", testEventDispatcherOnDeviceEventEventTimeout},
 		{"FilterError", testEventDispatcherOnDeviceEventFilterError},
 		{"DispatchTo", testEventDispatcherOnDeviceEventDispatchTo},
-		{"NilEventError", testEventDispatcherOnDeviceEventNilEventFailure},
+		{"NilEventError", testEventDispatcherOnDeviceEventNilEventError},
+		{"EventMapError", testEventDispatcherOnDeviceEventEventMapError},
 	}
 
 	for _, tc := range tests {
