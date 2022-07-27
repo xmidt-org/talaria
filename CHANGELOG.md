@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [v0.6.6-dev.1]
 - QOS implementation [#228](https://github.com/xmidt-org/talaria/pull/228) [#235](https://github.com/xmidt-org/talaria/pull/235)
 
+## [v0.6.6-dev.1]
+- QOS implementation [#228](https://github.com/xmidt-org/talaria/pull/228) [#235](https://github.com/xmidt-org/talaria/pull/235)
+
 ## [v0.6.5]
 - Bumped webpa-common to v2.0.6, fixing panic on send endpoint. [#229](https://github.com/xmidt-org/talaria/pull/229)
 
