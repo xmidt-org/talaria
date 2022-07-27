@@ -14,16 +14,16 @@ import (
 
 // Metric names
 const (
-	OutboundInFlightGauge                 = "outbound_inflight"
-	OutboundRequestDuration               = "outbound_request_duration_seconds"
-	OutboundRequestCounter                = "outbound_requests"
-	OutboundQueueSize                     = "outbound_queue_size"
-	OutboundDroppedMessageCounter         = "outbound_dropped_messages"
-	OutboundRetries                       = "outbound_retries"
-	OutboundQOSAckSuccessCounter          = "outbound_qos_ack_success"
-	OutboundQOSAckFailureCounter          = "outbound_qos_ack_failure"
-	OutboundQOSAckSuccessLatencyHistogram = "outbound_qos_ack_success_latency_seconds"
-	OutboundQOSAckFailureLatencyHistogram = "outbound_qos_ack_failure_latency_seconds"
+	OutboundInFlightGauge              = "outbound_inflight"
+	OutboundRequestDuration            = "outbound_request_duration_seconds"
+	OutboundRequestCounter             = "outbound_requests"
+	OutboundQueueSize                  = "outbound_queue_size"
+	OutboundDroppedMessageCounter      = "outbound_dropped_messages"
+	OutboundRetries                    = "outbound_retries"
+	OutboundAckSuccessCounter          = "outbound_ack_success"
+	OutboundAckFailureCounter          = "outbound_ack_failure"
+	OutboundAckSuccessLatencyHistogram = "outbound_ack_success_latency_seconds"
+	OutboundAckFailureLatencyHistogram = "outbound_ack_failure_latency_seconds"
 
 	GateStatus   = "gate_status"
 	DrainStatus  = "drain_status"
@@ -91,28 +91,28 @@ func Metrics() []xmetrics.Metric {
 			Help: "The total count of outbound HTTP retries",
 		},
 		{
-			Name:       OutboundQOSAckSuccessCounter,
+			Name:       OutboundAckSuccessCounter,
 			Type:       xmetrics.CounterType,
-			Help:       "Number of outbound WRP QOS acks",
+			Help:       "Number of outbound WRP acks",
 			LabelNames: []string{qosLevelLabel, partnerIDLabel, messageType},
 		},
 		{
-			Name:       OutboundQOSAckFailureCounter,
+			Name:       OutboundAckFailureCounter,
 			Type:       xmetrics.CounterType,
-			Help:       "Number of outbound WRP QOS ack failures",
+			Help:       "Number of outbound WRP ack failures",
 			LabelNames: []string{qosLevelLabel, partnerIDLabel, messageType},
 		},
 		{
-			Name:       OutboundQOSAckSuccessLatencyHistogram,
+			Name:       OutboundAckSuccessLatencyHistogram,
 			Type:       xmetrics.HistogramType,
-			Help:       "A histogram of latencies for successful outbound WRP QOS acks",
+			Help:       "A histogram of latencies for successful outbound WRP acks",
 			LabelNames: []string{qosLevelLabel, partnerIDLabel, messageType},
 			Buckets:    []float64{0.0625, 0.125, .25, .5, 1, 5, 10, 20, 40, 80, 160},
 		},
 		{
-			Name:       OutboundQOSAckFailureLatencyHistogram,
+			Name:       OutboundAckFailureLatencyHistogram,
 			Type:       xmetrics.HistogramType,
-			Help:       "A histogram of latencies for failed outbound WRP QOS acks",
+			Help:       "A histogram of latencies for failed outbound WRP acks",
 			LabelNames: []string{qosLevelLabel, partnerIDLabel, messageType},
 			Buckets:    []float64{0.0625, 0.125, .25, .5, 1, 5, 10, 20, 40, 80, 160},
 		},
@@ -141,16 +141,16 @@ func Metrics() []xmetrics.Metric {
 }
 
 type OutboundMeasures struct {
-	InFlight             prometheus.Gauge
-	RequestDuration      prometheus.Observer
-	RequestCounter       *prometheus.CounterVec
-	QueueSize            metrics.Gauge
-	Retries              metrics.Counter
-	DroppedMessages      metrics.Counter
-	QOSAckSuccess        metrics.Counter
-	QOSAckFailure        metrics.Counter
-	QOSAckSuccessLatency metrics.Histogram
-	QOSAckFailureLatency metrics.Histogram
+	InFlight          prometheus.Gauge
+	RequestDuration   prometheus.Observer
+	RequestCounter    *prometheus.CounterVec
+	QueueSize         metrics.Gauge
+	Retries           metrics.Counter
+	DroppedMessages   metrics.Counter
+	AckSuccess        metrics.Counter
+	AckFailure        metrics.Counter
+	AckSuccessLatency metrics.Histogram
+	AckFailureLatency metrics.Histogram
 }
 
 func NewOutboundMeasures(r xmetrics.Registry) OutboundMeasures {
@@ -161,12 +161,12 @@ func NewOutboundMeasures(r xmetrics.Registry) OutboundMeasures {
 		QueueSize:       r.NewGauge(OutboundQueueSize),
 		Retries:         r.NewCounter(OutboundRetries),
 		DroppedMessages: r.NewCounter(OutboundDroppedMessageCounter),
-		QOSAckSuccess:   r.NewCounter(OutboundQOSAckSuccessCounter),
-		QOSAckFailure:   r.NewCounter(OutboundQOSAckFailureCounter),
+		AckSuccess:      r.NewCounter(OutboundAckSuccessCounter),
+		AckFailure:      r.NewCounter(OutboundAckFailureCounter),
 		// 0 is for the unused `buckets` argument in xmetrics.Registry.NewHistogram
-		QOSAckSuccessLatency: r.NewHistogram(OutboundQOSAckSuccessLatencyHistogram, 0),
+		AckSuccessLatency: r.NewHistogram(OutboundAckSuccessLatencyHistogram, 0),
 		// 0 is for the unused `buckets` argument in xmetrics.Registry.NewHistogram
-		QOSAckFailureLatency: r.NewHistogram(OutboundQOSAckFailureLatencyHistogram, 0),
+		AckFailureLatency: r.NewHistogram(OutboundAckFailureLatencyHistogram, 0),
 	}
 }
 
