@@ -86,6 +86,7 @@ func NewEventDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFilter)
 
 // OnDeviceEvent is the device.Listener function that processes outbound events.
 func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
+	// TODO improve how we test dispatchEvent & dispatchTo
 	if event == nil {
 		d.errorLog.Log(logging.MessageKey(), "Error nil event")
 		return
