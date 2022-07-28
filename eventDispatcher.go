@@ -50,8 +50,9 @@ type eventDispatcher struct {
 	outbounds        chan<- outboundEnvelope
 }
 
-// EventDispatcher constructs a Dispatcher which sends envelopes via the returned channel.
-// The channel may be used to spawn one or more workers to process the envelopes.
+// NewEventDispatcher is an eventDispatcher factory which sends envelopes via
+// the returned channel. The channel may be used to spawn one or more workers
+// to process the envelopes.
 func NewEventDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFilter) (Dispatcher, <-chan outboundEnvelope, error) {
 	if urlFilter == nil {
 		var err error

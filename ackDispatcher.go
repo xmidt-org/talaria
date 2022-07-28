@@ -38,7 +38,7 @@ type ackDispatcher struct {
 	AckFailureLatency metrics.Histogram
 }
 
-// NewAckDispatcher an ackDispatcher factory which processes outbound events
+// NewAckDispatcher is an ackDispatcher factory which processes outbound events
 // and determines whether or not an ack to the source device is required.
 func NewAckDispatcher(om OutboundMeasures, o *Outbounder) (Dispatcher, error) {
 	return &ackDispatcher{
@@ -67,21 +67,16 @@ func (d *ackDispatcher) OnDeviceEvent(event *device.Event) {
 	m, ok := event.Message.(*wrp.Message)
 	if !ok {
 		return
-	} else if len(m.PartnerIDs) != 1 {
-		// TODO remove this once wrp validation is integrated
-		d.errorLog.Log(logging.MessageKey(), "Error invalid number of partnerIDs", "partnerIDLen", len(m.PartnerIDs))
-		return
 	}
 
 	// Verify ack conditions are met for a given event
 	switch event.Type {
 	// Atm, we're only supporting acks for MessageReceived events
 	case device.MessageReceived:
-		// Verify ack conditions are met for a given message
+		// Verify ack conditions are met for a given message and their type
 		switch m.Type {
 		// Atm, we're only supporting acks for SimpleEventMessageTypes QOS
 		case wrp.SimpleEventMessageType:
-			// Verify ack conditions are met for a given message type
 			// Atm, we're only supporting acks for QOS
 			if !m.IsQOSAckPart() {
 				return
@@ -126,14 +121,14 @@ func (d *ackDispatcher) OnDeviceEvent(event *device.Event) {
 	}
 
 	l := m.QualityOfService.Level()
-	p := m.PartnerIDs[0]
+	p := event.Device.Metadata().PartnerIDClaim()
 	t := m.Type.FriendlyName()
 	// Metric labels
 	ls := []string{qosLevelLabel, l.String(), partnerIDLabel, p, messageType, t}
 	ctx, cancel := context.WithTimeout(context.Background(), d.timeout)
 	defer cancel()
 
-	// Observe the latency of sending a qos ack to the source device
+	// Observe the latency of sending an ack to the source device
 	ackFailure := false
 	defer func(s time.Time) {
 		d.recordAckLatency(s, ackFailure, ls...)

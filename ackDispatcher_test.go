@@ -605,6 +605,19 @@ func testAckDispatcherOnDeviceEventQOSSuccess(t *testing.T) {
 }
 
 func testAckDispatcherOnDeviceEventQOS(t *testing.T) {
+	/*
+		Ack conditions (WRP):
+		- Implements [basic wrp spec](https://github.com/xmidt-org/wrp-go/blob/main/spec_validator.go) https://xmidt.io/docs/wrp/basics
+		- Message type is 4 (SimpleEventMessageType)
+		- Any qos above [QOSLowValue [QOSLowValue < 25]](https://github.com/xmidt-org/wrp-go/blob/main/qos.go)
+
+		Prometheus metrics:
+		- outbound_ack_success
+		- outbound_ack_failure
+		- outbound_ack_success_latency_seconds
+		- outbound_ack_failure_latency_seconds
+	*/
+
 	tests := []struct {
 		description string
 		test        func(*testing.T)
