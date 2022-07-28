@@ -36,38 +36,6 @@ func testAckDispatcherOnDeviceEventQOSEventFailure(t *testing.T) {
 	}{
 		// Failure case
 		{
-			description: "Invaild partnerIDs error, empty list",
-			event: &device.Event{
-				Device: new(device.MockDevice),
-				Message: &wrp.Message{
-					Type:             wrp.SimpleEventMessageType,
-					PartnerIDs:       []string{},
-					QualityOfService: wrp.QOSMediumValue,
-				},
-				Type: device.MessageReceived,
-			},
-		},
-		{
-			description: "Invaild partnerIDs error, more than 1",
-			event: &device.Event{
-				Device: new(device.MockDevice),
-				Message: &wrp.Message{
-					Type:             wrp.SimpleEventMessageType,
-					PartnerIDs:       []string{"foo", "bar"},
-					QualityOfService: wrp.QOSMediumValue,
-				},
-				Type: device.MessageReceived,
-			},
-		},
-		{
-			description: "Invaild empty message error",
-			event: &device.Event{
-				Device:  new(device.MockDevice),
-				Message: &wrp.Message{},
-				Type:    device.MessageReceived,
-			},
-		},
-		{
 			description: "Invaild empty event error",
 			event:       &device.Event{},
 		},
@@ -88,19 +56,6 @@ func testAckDispatcherOnDeviceEventQOSEventFailure(t *testing.T) {
 			mAckSuccessLatency := new(mockHistogram)
 			mAckFailureLatency := new(mockHistogram)
 			p, mt, qosl := "failure case", "failure case", "failure case"
-			// Some tests have nil events
-			if tc.event != nil {
-				// Some tests have nil Messages
-				if m, ok := tc.event.Message.(*wrp.Message); ok {
-					qosl = m.QualityOfService.Level().String()
-					mt = m.Type.FriendlyName()
-					// Some messages will have invalid PartnerIDs
-					if len(m.PartnerIDs) == 1 {
-						p = m.PartnerIDs[0]
-					}
-				}
-			}
-
 			// Setup labels for metrics
 			l := []string{qosLevelLabel, qosl, partnerIDLabel, p, messageType, mt}
 			om := OutboundMeasures{
@@ -117,14 +72,6 @@ func testAckDispatcherOnDeviceEventQOSEventFailure(t *testing.T) {
 			require.NoError(err)
 			// Purge init logs
 			b.Reset()
-			// Some tests have nil events
-			if tc.event != nil {
-				// Some tests have nil devices
-				if d, ok := tc.event.Device.(*device.MockDevice); ok {
-					// All tests should fail and never reach Device.Send
-					d.On("Send", mock.AnythingOfType("*device.Request")).Panic("Func Device.Send should have not been called")
-				}
-			}
 
 			// Setup mock panics
 			mAckSuccess.On("With", l).Panic("Func Ack.With should have not been called")
@@ -227,7 +174,8 @@ func testAckDispatcherOnDeviceEventQOSDeviceFailure(t *testing.T) {
 			m, ok := tc.event.Message.(*wrp.Message)
 			require.True(ok)
 			// Setup labels for metrics
-			l := []string{qosLevelLabel, m.QualityOfService.Level().String(), partnerIDLabel, m.PartnerIDs[0], messageType, m.Type.FriendlyName()}
+			dm := genTestMetadata()
+			l := []string{qosLevelLabel, m.QualityOfService.Level().String(), partnerIDLabel, dm.PartnerIDClaim(), messageType, m.Type.FriendlyName()}
 			// Setup metrics for the dispatcher
 			om := OutboundMeasures{
 				AckSuccess:        mAckSuccess,
@@ -254,6 +202,7 @@ func testAckDispatcherOnDeviceEventQOSDeviceFailure(t *testing.T) {
 			case ok:
 				// Setup mock calls
 				d.On("Send", mock.AnythingOfType("*device.Request")).Return(nil, errors.New(""))
+				d.On("Metadata").Return(dm)
 				mAckFailure.On("With", l).Return().Once()
 				mAckFailure.On("Add", 1.).Return().Once()
 				mAckFailureLatency.On("With", l).Return().Once()
@@ -536,15 +485,12 @@ func testAckDispatcherOnDeviceEventQOSSuccess(t *testing.T) {
 			mAckFailure := new(mockCounter)
 			mAckSuccessLatency := new(mockHistogram)
 			mAckFailureLatency := new(mockHistogram)
-			p, mt, qosl := "failure case", "failure case", "failure case"
+			dm := genTestMetadata()
+			p, mt, qosl := dm.PartnerIDClaim(), "failure case", "failure case"
 			// Some tests have invalid or nil messages
 			if m, ok := tc.event.Message.(*wrp.Message); ok {
 				qosl = m.QualityOfService.Level().String()
 				mt = m.Type.FriendlyName()
-				// Some messages will have invalid PartnerIDs
-				if len(m.PartnerIDs) == 1 {
-					p = m.PartnerIDs[0]
-				}
 			}
 
 			// Setup labels for metrics
@@ -572,6 +518,7 @@ func testAckDispatcherOnDeviceEventQOSSuccess(t *testing.T) {
 			mAckFailureLatency.On("Observe", mock.AnythingOfType("float64")).Panic("Func AckFailureLatency.Observe should have not been called")
 			d, ok := tc.event.Device.(*device.MockDevice)
 			require.True(ok)
+			d.On("Metadata").Return(dm)
 			switch {
 			case tc.ack:
 				// Setup mock calls
