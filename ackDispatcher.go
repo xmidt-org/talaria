@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -27,9 +28,15 @@ import (
 	"github.com/xmidt-org/wrp-go/v3"
 )
 
+// Default values
+const (
+	unknownHostname = "unknown"
+)
+
 // ackDispatcher is an internal Dispatcher implementation that processes outbound events
 // and determines whether or not an ack to the source device is required.
 type ackDispatcher struct {
+	hostname          string
 	errorLog          log.Logger
 	timeout           time.Duration
 	AckSuccess        metrics.Counter
@@ -41,8 +48,16 @@ type ackDispatcher struct {
 // NewAckDispatcher is an ackDispatcher factory which processes outbound events
 // and determines whether or not an ack to the source device is required.
 func NewAckDispatcher(om OutboundMeasures, o *Outbounder) (Dispatcher, error) {
+	l := logging.Error(o.logger())
+	n, err := os.Hostname()
+	if err != nil {
+		l.Log(logging.MessageKey(), "Error fetching hostname", logging.ErrorKey(), err)
+		n = unknownHostname
+	}
+
 	return &ackDispatcher{
-		errorLog:          logging.Error(o.logger()),
+		hostname:          n,
+		errorLog:          l,
 		timeout:           o.requestTimeout(),
 		AckSuccess:        om.AckSuccess,
 		AckFailure:        om.AckFailure,
@@ -64,11 +79,15 @@ func (d *ackDispatcher) OnDeviceEvent(event *device.Event) {
 		return
 	}
 
+	dm := event.Device.Metadata()
 	m, ok := event.Message.(*wrp.Message)
 	if !ok {
 		return
 	}
 
+	// rdr of 0 is success https://xmidt.io/docs/wrp/basics/#request-delivery-response-rdr-codes
+	// Atm, there doesn't exist any conditions that'll cause a request delivery response to be a nonzero
+	var rdr int64 = 0
 	// Verify ack conditions are met for a given event
 	switch event.Type {
 	// Atm, we're only supporting acks for MessageReceived events
@@ -88,7 +107,7 @@ func (d *ackDispatcher) OnDeviceEvent(event *device.Event) {
 					// When a qos field is specified that requires an ack, the response ack message SHALL be a msg_type=4.
 					Type: wrp.SimpleEventMessageType,
 					// The `source` SHALL be the component that cannot process the event further.
-					Source: "",
+					Source: d.hostname,
 					// The `dest` SHALL be the original requesting `source` address.
 					Destination: m.Source,
 					// The `content_type` and `payload` SHALL be omitted & set to empty, or may set to `application/text` and text to help describe the result.  **DO NOT** process this text beyond for logging/debugging.
@@ -101,13 +120,13 @@ func (d *ackDispatcher) OnDeviceEvent(event *device.Event) {
 					// The `metadata` map SHALL be populated with the original data or set to empty.
 					Metadata: m.Metadata,
 					// The `session_id` MAY be added by the cloud.
-					SessionID: m.SessionID,
+					SessionID: dm.SessionID(),
 					// The `qos` SHALL be the same as the original message.
 					QualityOfService: m.QualityOfService,
 					// The `transaction_uuid` SHALL be the same as the original message.
 					TransactionUUID: m.TransactionUUID,
 					// The `rdr` SHALL be present and represent the outcome of the handling of the message.
-					RequestDeliveryResponse: m.RequestDeliveryResponse,
+					RequestDeliveryResponse: &rdr,
 				},
 				Format: event.Format,
 			}
@@ -121,7 +140,7 @@ func (d *ackDispatcher) OnDeviceEvent(event *device.Event) {
 	}
 
 	l := m.QualityOfService.Level()
-	p := event.Device.Metadata().PartnerIDClaim()
+	p := dm.PartnerIDClaim()
 	t := m.Type.FriendlyName()
 	// Metric labels
 	ls := []string{qosLevelLabel, l.String(), partnerIDLabel, p, messageType, t}
