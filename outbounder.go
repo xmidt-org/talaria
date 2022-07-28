@@ -265,6 +265,8 @@ func (o *Outbounder) Start(om OutboundMeasures) ([]device.Listener, error) {
 	workerPool.Run()
 
 	ackDispatcher, err := NewAckDispatcher(om, o)
+	// Atm, NewAckDispatcher only returns nil err since there are no
+	// error triggering conditions in NewAckDispatcher
 	if err != nil {
 		return nil, err
 	}
