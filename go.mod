@@ -31,16 +31,13 @@ require (
 	github.com/stretchr/testify v1.8.0
 	github.com/subosito/gotenv v1.4.0 // indirect
 	github.com/thedevsaddam/gojsonq/v2 v2.5.2
-	github.com/ugorji/go v1.2.7 // indirect
 	github.com/xmidt-org/bascule v0.10.2
 	github.com/xmidt-org/candlelight v0.0.10
-	github.com/xmidt-org/httpaux v0.3.2 // indirect
 	github.com/xmidt-org/sallust v0.1.6 // indirect
 	github.com/xmidt-org/themis v0.4.8 // indirect
 	github.com/xmidt-org/touchstone v0.1.1 // indirect
-	github.com/xmidt-org/webpa-common v1.11.9 // indirect
 	github.com/xmidt-org/webpa-common/v2 v2.0.6
-	github.com/xmidt-org/wrp-go/v3 v3.1.3
+	github.com/xmidt-org/wrp-go/v3 v3.1.4
 	go.opentelemetry.io/contrib v1.7.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.34.0
 	go.opentelemetry.io/otel/exporters/jaeger v1.9.0 // indirect
