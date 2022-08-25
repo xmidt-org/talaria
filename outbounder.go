@@ -254,9 +254,9 @@ func (o *Outbounder) clientTimeout() time.Duration {
 }
 
 // Start spawns all necessary goroutines and returns a device.Listener
-func (o *Outbounder) Start(om OutboundMeasures) (device.Listener, error) {
+func (o *Outbounder) Start(om OutboundMeasures) ([]device.Listener, error) {
 	logging.Info(o.logger()).Log(logging.MessageKey(), "Starting outbounder")
-	dispatcher, outbounds, err := NewDispatcher(om, o, nil)
+	eventDispatcher, outbounds, err := NewEventDispatcher(om, o, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -264,5 +264,12 @@ func (o *Outbounder) Start(om OutboundMeasures) (device.Listener, error) {
 	workerPool := NewWorkerPool(om, o, outbounds)
 	workerPool.Run()
 
-	return dispatcher.OnDeviceEvent, nil
+	ackDispatcher, err := NewAckDispatcher(om, o)
+	// Atm, NewAckDispatcher only returns nil err since there are no
+	// error triggering conditions in NewAckDispatcher
+	if err != nil {
+		return nil, err
+	}
+
+	return []device.Listener{eventDispatcher.OnDeviceEvent, ackDispatcher.OnDeviceEvent}, nil
 }

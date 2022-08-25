@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
             - https://nvd.nist.gov/vuln/detail/CVE-2021-31525
             - https://nvd.nist.gov/vuln/detail/CVE-2021-44716
     - Introduces new vuln https://www.mend.io/vulnerability-database/CVE-2022-29526
-
+- QOS Ack implementation [#228](https://github.com/xmidt-org/talaria/pull/228) [#236](https://github.com/xmidt-org/talaria/pull/236)
 
 ## [v0.6.5]
 - Bumped webpa-common to v2.0.6, fixing panic on send endpoint. [#229](https://github.com/xmidt-org/talaria/pull/229)

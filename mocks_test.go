@@ -18,7 +18,9 @@ package main
 
 import (
 	"context"
+	"unicode/utf8"
 
+	"github.com/go-kit/kit/metrics"
 	"github.com/golang-jwt/jwt"
 	"github.com/stretchr/testify/mock"
 	"github.com/xmidt-org/webpa-common/v2/device"
@@ -75,4 +77,42 @@ func (parser *mockJWTParser) ParseJWT(token string, claims jwt.Claims, parseFunc
 	arguments := parser.Called(token, claims, parseFunc)
 	jwtToken, _ := arguments.Get(0).(*jwt.Token)
 	return jwtToken, arguments.Error(1)
+}
+
+// mockHistogram provides the mock implementation of the metrics.Histogram object
+type mockHistogram struct {
+	mock.Mock
+}
+
+func (m *mockHistogram) Observe(value float64) {
+	m.Called(value)
+}
+
+func (m *mockHistogram) With(labelValues ...string) metrics.Histogram {
+	for _, v := range labelValues {
+		if !utf8.ValidString(v) {
+			panic("not UTF-8")
+		}
+	}
+	m.Called(labelValues)
+	return m
+}
+
+// mockCounter provides the mock implementation of the metrics.Counter object
+type mockCounter struct {
+	mock.Mock
+}
+
+func (m *mockCounter) Add(delta float64) {
+	m.Called(delta)
+}
+
+func (m *mockCounter) With(labelValues ...string) metrics.Counter {
+	for _, v := range labelValues {
+		if !utf8.ValidString(v) {
+			panic("not UTF-8")
+		}
+	}
+	m.Called(labelValues)
+	return m
 }
