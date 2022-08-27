@@ -175,7 +175,7 @@ log:
 # device configures the generic talaria configuration.
 # It has four parts: manager, rehasher, outbound, and inbound.
 # The manager section handles the actual device connection configuration.
-# The rehasher section configures the services for whose events the 
+# The rehasher section configures the services for whose events the
 # rehasher (a service discovery listener) should respond to.
 # The outbound section configures the outbound requests to caduceus or some other receiver of messages.
 # The inbound section configures the api inbound requests.
@@ -183,8 +183,8 @@ device:
   # manager handles the device manager related configuration.
   # defined by https://godoc.org/github.com/xmidt-org/webpa-common/device#Options
   manager:
-    # wrpSourceCheck configures behavior around source validation of WRP messages 
-    # originating from the device. It's intended to prevent connected devices from 
+    # wrpSourceCheck configures behavior around source validation of WRP messages
+    # originating from the device. It's intended to prevent connected devices from
     # spoofing the source of the messages they send.
     wrpSourceCheck:
       # When type=enforce, all messages with a source which doesn't match the device
@@ -214,13 +214,20 @@ device:
     # (Optional) defaults to 45s
     pingPeriod: "1m"
 
+    # writeTimeout is the length of time a device connection is allowed to be idle,
+    # with no traffic coming from talaria. Must be longer than pingPeriod to maintain
+    # a persistent connection when idle.
+    # (Optional) defaults to 60s
+    writeTimeout: "2m"
+
     # idlePeriod is the length of time a device connection is allowed to be idle,
-    # with no traffic coming from the device.
-    # (Optional) defaults to 45s
+    # with no traffic coming from the device. Must be longer than pingPeriod to
+    # maintain a persistent connection when idle.
+    # (Optional) defaults to 135s
     idlePeriod: "2m"
 
 
-  # # rehasher defines the services for which a monitor listener will rehash 
+  # # rehasher defines the services for which a monitor listener will rehash
   # # and disconnect devices in response to service discovery events.
   # # https://pkg.go.dev/github.com/xmidt-org/webpa-common@v1.9.0/device/rehasher
   # # (Optional) rehasher.services defaults to ["talaria"]
@@ -340,7 +347,7 @@ inbound:
 
 # # deviceAccessCheck configures the strategy to ensure WRP messages only reach those devices they
 # # are authorized to (essential to secure multi-tenant clouds). The type can be "monitor" or "enforce".
-# # If restrictions must be applied, select the "enforce" type, otherwise use "monitor" to view the  
+# # If restrictions must be applied, select the "enforce" type, otherwise use "monitor" to view the
 # # unauthorized events without explicit rejections. For either type, transaction
 # # metrics are collected. If no valid type is provided, no checks are provided.
 # # (Optional)
@@ -351,7 +358,7 @@ inbound:
 #   sep: ","
 
 #   checks:
-#     - 
+#     -
 #       # name should be a concise, helpful description of the check
 #       name: "PartnerID"
 
@@ -360,18 +367,18 @@ inbound:
 
 #       # wrpCredentialPath is the path to the credential within the WRP Message map representation.
 #       # (Optional if inputValue is provided. If both provided, inputValue will be used during check).
-#       wrpCredentialPath: PartnerIDs 
+#       wrpCredentialPath: PartnerIDs
 
-#       # operation is the name of the operation that's is meant to be performed. 
+#       # operation is the name of the operation that's is meant to be performed.
 #       # Supported operations include: "intersects", "contains", "eq" (equal) and "gt" (greater than).
 #       # Note: By default operation is applied from deviceCredential to wrpCredential
 #       operation: intersect
 
-#       # inversed should be set to true if operation must be applied from wrpCredential to deviceCredential 
+#       # inversed should be set to true if operation must be applied from wrpCredential to deviceCredential
 #       # (Optional)
 #       inversed: true
 
-#     - 
+#     -
 #       name: "Devices with trust level > 999"
 #       # For this check to succeed, the device should have connected with a JWT with the claims:
 #       # {
@@ -381,9 +388,9 @@ inbound:
 #       #   }
 #       # ...
 #       # }
-#       #    
 #       #
-#       deviceCredentialPath: "security,trust" 
+#       #
+#       deviceCredentialPath: "security,trust"
 #       inputValue: 999
 #       operation: gt
 
