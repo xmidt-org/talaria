@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v0.6.7]
 - Dependency update, note vulnerabilities
     - github.com/hashicorp/consul/api v1.13.1 // indirect
         Wasn't able to find much info about this one besides the following dep vulns
@@ -13,7 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
             - https://nvd.nist.gov/vuln/detail/CVE-2021-31525
             - https://nvd.nist.gov/vuln/detail/CVE-2021-44716
     - Introduces new vuln https://www.mend.io/vulnerability-database/CVE-2022-29526
-
+- QOS Ack implementation [#228](https://github.com/xmidt-org/talaria/issues/228) [#236](https://github.com/xmidt-org/talaria/pull/236)
 
 ## [v0.6.5]
 - Bumped webpa-common to v2.0.6, fixing panic on send endpoint. [#229](https://github.com/xmidt-org/talaria/pull/229)
@@ -148,7 +150,8 @@ Switching to new build process
 ## [v0.1.1] Tue Mar 28 2017 Weston Schmidt - 0.1.1
 - initial creation
 
-[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.6.5...HEAD
+[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.6.7...HEAD
+[v0.6.7]: https://github.com/xmidt-org/talaria/compare/v0.6.5...v0.6.7
 [v0.6.5]: https://github.com/xmidt-org/talaria/compare/v0.6.4...v0.6.5
 [v0.6.4]: https://github.com/xmidt-org/talaria/compare/v0.6.3...v0.6.4
 [v0.6.3]: https://github.com/xmidt-org/talaria/compare/v0.6.2...v0.6.3

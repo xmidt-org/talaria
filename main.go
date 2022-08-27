@@ -76,24 +76,20 @@ func newDeviceManager(logger log.Logger, r xmetrics.Registry, v *viper.Viper) (d
 		return nil, nil, nil, err
 	}
 
-	outboundListener, err := outbounder.Start(NewOutboundMeasures(r))
+	outboundListeners, err := outbounder.Start(NewOutboundMeasures(r))
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
 	deviceOptions.MetricsProvider = r
-	deviceOptions.Listeners = []device.Listener{
-		outboundListener,
-	}
+	deviceOptions.Listeners = append(deviceOptions.Listeners, outboundListeners...)
 
 	g := &devicegate.FilterGate{
 		FilterStore: make(devicegate.FilterStore),
 	}
 
 	deviceOptions.Filter = g
-
 	return device.NewManager(deviceOptions), g, watcher, nil
-
 }
 
 func loadTracing(v *viper.Viper, appName string) (candlelight.Tracing, error) {

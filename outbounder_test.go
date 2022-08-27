@@ -84,7 +84,7 @@ func ExampleOutbounder() {
 		return
 	}
 
-	listener, err := o.Start(NewOutboundMeasures(metricsRegistry))
+	listeners, err := o.Start(NewOutboundMeasures(metricsRegistry))
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -92,19 +92,21 @@ func ExampleOutbounder() {
 
 	finish.Add(2)
 
-	listener(&device.Event{
-		Type:     device.MessageReceived,
-		Message:  &wrp.Message{Destination: "event:iot"},
-		Format:   wrp.Msgpack,
-		Contents: []byte("iot event"),
-	})
+	for _, l := range listeners {
+		l(&device.Event{
+			Type:     device.MessageReceived,
+			Message:  &wrp.Message{Destination: "event:iot"},
+			Format:   wrp.Msgpack,
+			Contents: []byte("iot event"),
+		})
 
-	listener(&device.Event{
-		Type:     device.MessageReceived,
-		Message:  &wrp.Message{Destination: "dns:" + server.URL},
-		Format:   wrp.JSON,
-		Contents: []byte("dns message"),
-	})
+		l(&device.Event{
+			Type:     device.MessageReceived,
+			Message:  &wrp.Message{Destination: "dns:" + server.URL},
+			Format:   wrp.JSON,
+			Contents: []byte("dns message"),
+		})
+	}
 
 	finish.Wait()
 
