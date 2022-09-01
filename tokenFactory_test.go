@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/xmidt-org/bascule"
 	"github.com/xmidt-org/bascule/basculehttp"
-	"github.com/xmidt-org/bascule/key"
 )
 
 func TestRawAttributesBearerTokenFactory(t *testing.T) {
@@ -116,7 +115,7 @@ func TestRawAttributesBearerTokenFactory(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			r := new(key.MockResolver)
+			r := new(MockResolver)
 			p := new(mockJWTParser)
 
 			if tc.parseCalled {
@@ -177,18 +176,18 @@ func TestDefaultKeyFunc(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
 			assert := assert.New(t)
-			r := new(key.MockResolver)
-			pair := new(key.MockPair)
+			r := new(MockResolver)
+			pair := new(mockKey)
 
 			pair.On("Public").Return(tc.expectedPublicKey).Once()
 
 			if tc.useDefaultKey {
-				r.On("ResolveKey", mock.Anything, defaultKeyID).Return(pair, tc.resolveErr).Once()
+				r.On("Resolve", mock.Anything, defaultKeyID).Return(pair, tc.resolveErr).Once()
 			} else {
 				tc.token.Header = map[string]interface{}{
 					"kid": "some-value",
 				}
-				r.On("ResolveKey", mock.Anything, "some-value").Return(pair, tc.resolveErr).Once()
+				r.On("Resolve", mock.Anything, "some-value").Return(pair, tc.resolveErr).Once()
 			}
 
 			publicKey, err := defaultKeyFunc(context.Background(), defaultKeyID, r)(tc.token)

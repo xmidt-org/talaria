@@ -9,7 +9,7 @@ import (
 	"github.com/goph/emperror"
 	"github.com/xmidt-org/bascule"
 	"github.com/xmidt-org/bascule/basculehttp"
-	"github.com/xmidt-org/bascule/key"
+	"github.com/xmidt-org/clortho"
 )
 
 const (
@@ -20,19 +20,19 @@ const (
 // instead of bascule processed attributes
 type RawAttributesBearerTokenFactory struct {
 	DefaultKeyID string
-	Resolver     key.Resolver
+	Resolver     clortho.Resolver
 	Parser       bascule.JWTParser
 	Leeway       bascule.Leeway
 }
 
-func defaultKeyFunc(ctx context.Context, defaultKeyID string, keyResolver key.Resolver) jwt.Keyfunc {
+func defaultKeyFunc(ctx context.Context, defaultKeyID string, resolver clortho.Resolver) jwt.Keyfunc {
 	return func(token *jwt.Token) (interface{}, error) {
 		keyID, ok := token.Header["kid"].(string)
 		if !ok {
 			keyID = defaultKeyID
 		}
 
-		pair, err := keyResolver.ResolveKey(ctx, keyID)
+		pair, err := resolver.Resolve(ctx, keyID)
 		if err != nil {
 			return nil, emperror.Wrap(err, "failed to resolve key")
 		}
