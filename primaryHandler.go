@@ -26,16 +26,21 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/metrics"
-	"github.com/goph/emperror"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/viper"
 	"github.com/xmidt-org/bascule"
+	"github.com/xmidt-org/clortho/clorthometrics"
+	"github.com/xmidt-org/clortho/clorthozap"
+	"github.com/xmidt-org/sallust"
+	"github.com/xmidt-org/touchstone"
 	"github.com/xmidt-org/webpa-common/v2/xmetrics"
+	"go.uber.org/zap"
 
 	"github.com/xmidt-org/bascule/basculechecks"
 	"github.com/xmidt-org/bascule/basculehttp"
-	"github.com/xmidt-org/bascule/key"
+	"github.com/xmidt-org/clortho"
 	"github.com/xmidt-org/webpa-common/v2/basculemetrics"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/webpa-common/v2/logging"
@@ -92,8 +97,8 @@ var NoOpConstructor = func(h http.Handler) http.Handler { return h }
 
 // JWTValidator provides a convenient way to define jwt validator through config files
 type JWTValidator struct {
-	// JWTKeys is used to create the key.Resolver for JWT verification keys
-	Keys key.ResolverFactory `json:"keys"`
+	// Config is used to create the clortho Resolver for JWT verification keys
+	Config clortho.Config `json:"config"`
 
 	// Leeway is used to set the amount of time buffer should be given to JWT
 	// time values, such as nbf
@@ -155,28 +160,70 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		var jwtVal JWTValidator
 		v.UnmarshalKey(JWTValidatorConfigKey, &jwtVal)
 
-		if jwtVal.Keys.URI != "" {
-			resolver, err := jwtVal.Keys.NewResolver()
-			if err != nil {
-				return nil, emperror.With(err, "Failed to create JWT token key resolver")
-			}
+		kr := clortho.NewKeyRing()
 
-			authConstructorOptions = append(authConstructorOptions,
-				basculehttp.WithTokenFactory("Bearer",
-					RawAttributesBearerTokenFactory{
-						DefaultKeyID: DefaultKeyID,
-						Resolver:     resolver,
-						Parser:       bascule.DefaultJWTParser,
-						Leeway:       jwtVal.Leeway,
-					}))
-
-			deviceAuthRules = append(deviceAuthRules,
-				bascule.Validators{
-					basculechecks.NonEmptyPrincipal(),
-					basculechecks.NonEmptyType(),
-					basculechecks.ValidType([]string{"jwt"}),
-				})
+		// Instantiate a fetcher for the resolver
+		f, err := clortho.NewFetcher()
+		if err != nil {
+			return nil, errors.New("Failed to create clortho fetcher")
 		}
+
+		resolver, err := clortho.NewResolver(
+			clortho.WithConfig(jwtVal.Config),
+			clortho.WithKeyRing(kr),
+			clortho.WithFetcher(f),
+		)
+		if err != nil {
+			return nil, errors.New("Failed to create clortho reolver")
+		}
+
+		promReg, ok := metricsRegistry.(prometheus.Registerer)
+		if !ok {
+			return nil, errors.New("Failed to get prometheus registerer")
+
+		}
+
+		var (
+			tsConfig touchstone.Config
+			zConfig  sallust.Config
+		)
+		// Get touchstone & zap configurations
+		v.UnmarshalKey("touchstone", &tsConfig)
+		v.UnmarshalKey("zap", &zConfig)
+		zlogger := zap.Must(zConfig.Build())
+		tf := touchstone.NewFactory(tsConfig, zlogger, promReg)
+		// Instantiate a metric listener for the resolver
+		cml, err := clorthometrics.NewListener(clorthometrics.WithFactory(tf))
+		if err != nil {
+			return nil, errors.New("Failed to create clortho metrics listener")
+
+		}
+
+		// Instantiate a logging listener for the resolver
+		czl, err := clorthozap.NewListener(
+			clorthozap.WithLogger(zlogger),
+		)
+		if err != nil {
+			return nil, errors.New("Failed to create clortho zap logger listener")
+
+		}
+
+		resolver.AddListener(cml)
+		resolver.AddListener(czl)
+
+		authConstructorOptions = append(authConstructorOptions, basculehttp.WithTokenFactory("Bearer", basculehttp.BearerTokenFactory{
+			DefaultKeyID: DefaultKeyID,
+			Resolver:     resolver,
+			Parser:       bascule.DefaultJWTParser,
+			Leeway:       jwtVal.Leeway,
+		}))
+
+		deviceAuthRules = append(deviceAuthRules,
+			bascule.Validators{
+				basculechecks.NonEmptyPrincipal(),
+				basculechecks.NonEmptyType(),
+				basculechecks.ValidType([]string{"jwt"}),
+			})
 	}
 
 	if v.IsSet(ServiceBasicAuthConfigKey) {

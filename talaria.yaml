@@ -329,6 +329,14 @@ inbound:
 #   Authorization Related Configuration
 ########################################
 
+jwtValidator:
+  Config:
+    Resolve:
+      # Template is a URI template used to fetch keys.  This template may
+	    # use a single parameter named keyID, e.g. http://keys.com/{keyID}.
+      # This field is required and has no default.
+      Template: "http://localhost/{key_name}"
+
 # Any combination of these configurations may be used for authorization.
 # If ANY match, the request goes onwards.  If none are provided, no requests
 # will be accepted.
@@ -575,3 +583,33 @@ tracing:
 
   # endpoint is where trace information should be routed. Applies to zipkin and jaegar.
   # endpoint: "http://localhost:9411/api/v2/spans"
+
+
+zap:
+  # OutputPaths is a list of URLs or file paths to write logging output to.
+  outputPaths:
+    - stdout
+    # - /var/log/caduceus/caduceus.log
+
+  # Level is the minimum enabled logging level. Note that this is a dynamic
+  # level, so calling Config.Level.SetLevel will atomically change the log
+  # level of all loggers descended from this config.
+  level: debug
+
+  # EncoderConfig sets options for the chosen encoder. See
+  # zapcore.EncoderConfig for details.
+  errorOutputPaths:
+    - stderr
+    # - /var/log/caduceus/caduceus.log
+
+  # EncoderConfig sets options for the chosen encoder. See
+  # zapcore.EncoderConfig for details.
+  encoderConfig:
+    messageKey: message
+    levelKey: key
+    levelEncoder: lowercase
+
+  # Encoding sets the logger's encoding. Valid values are "json" and
+  # "console", as well as any third-party encodings registered via
+  # RegisterEncoder.
+  encoding: json

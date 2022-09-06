@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- JWT Migration [250](https://github.com/xmidt-org/talaria/issues/250)
+  - updated to use clortho `Resolver`
+  - updated to use clortho `metrics` & `logging`
+- Update Config
+  - Use [uber/zap](https://github.com/uber-go/zap) for clortho logging
+  - Use [xmidt-org/sallust](https://github.com/xmidt-org/sallust) for the zap config unmarshalling 
+  - Update auth config for clortho
 
 ## [v0.6.7]
 - Dependency update, note vulnerabilities
