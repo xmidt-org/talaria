@@ -5,11 +5,14 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/go-kit/kit/log"
+	// nolint:staticcheck
+
 	"github.com/go-kit/kit/metrics"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/xmidt-org/webpa-common/v2/device"
+
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/logging"
 	"github.com/xmidt-org/wrp-go/v3"
 )
@@ -160,16 +163,6 @@ func TestAuthorizeWRP(t *testing.T) {
 	t.Run("lenient", func(t *testing.T) {
 		testAuthorizeWRP(t, testCases, false)
 	})
-}
-
-func getDeviceAccessAuthority(logger log.Logger, counter metrics.Counter, deviceRegistry device.Registry, strict bool) deviceAccess {
-	return &talariaDeviceAccess{
-		strict:             strict,
-		wrpMessagesCounter: counter,
-		deviceRegistry:     deviceRegistry,
-		sep:                ">",
-		debugLogger:        logging.Debug(logger),
-	}
 }
 
 func getLabelMaps(err error, isFatal, strict bool, baseLabelPairs map[string]string) map[string]string {

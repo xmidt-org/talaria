@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"time"
 
+	// nolint:staticcheck
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/metrics"
 	"github.com/gorilla/mux"
@@ -35,6 +36,8 @@ import (
 	"github.com/xmidt-org/clortho/clorthozap"
 	"github.com/xmidt-org/sallust"
 	"github.com/xmidt-org/touchstone"
+
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/xmetrics"
 	"go.uber.org/zap"
 
@@ -43,8 +46,12 @@ import (
 	"github.com/xmidt-org/clortho"
 	"github.com/xmidt-org/webpa-common/v2/basculemetrics"
 	"github.com/xmidt-org/webpa-common/v2/device"
+
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/logging"
 	"github.com/xmidt-org/webpa-common/v2/logging/logginghttp"
+
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/service"
 	"github.com/xmidt-org/webpa-common/v2/service/servicehttp"
 	"github.com/xmidt-org/webpa-common/v2/xhttp"
@@ -113,7 +120,7 @@ func getInboundTimeout(v *viper.Viper) time.Duration {
 	return DefaultInboundTimeout
 }
 
-//buildUserPassMap decodes base64-encoded strings of the form user:pass and write them to a map from user -> pass
+// buildUserPassMap decodes base64-encoded strings of the form user:pass and write them to a map from user -> pass
 func buildUserPassMap(logger log.Logger, encodedBasicAuthKeys []string) (userPass map[string]string) {
 	userPass = make(map[string]string)
 
@@ -375,6 +382,7 @@ func buildDeviceAccessCheck(config *deviceAccessCheckConfig, logger log.Logger, 
 		return nil, errors.New("Failed verifying DeviceAccessCheck type")
 	}
 
+	// nolint:prealloc
 	var parsedChecks []*parsedCheck
 	for _, check := range config.Checks {
 		parsedCheck, err := parseDeviceAccessCheck(check)

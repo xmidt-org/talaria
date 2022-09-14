@@ -25,11 +25,15 @@ import (
 	"strings"
 	"time"
 
+	// nolint:staticcheck
 	"github.com/go-kit/kit/log"
+	// nolint:staticcheck
 	"github.com/go-kit/kit/log/level"
 	"github.com/go-kit/kit/metrics"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/webpa-common/v2/event"
+
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/logging"
 	"github.com/xmidt-org/wrp-go/v3"
 )
@@ -129,8 +133,8 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 
 // send wraps the given request in an outboundEnvelope together with a cancellable context,
 // then asynchronously sends that request to the outbounds channel.  This method will
-// block on the outbound channel only as long as the context is not cancelled, i.e. does not time out.
-// If the context is cancelled before the envelope can be queued, this method drops the message
+// block on the outbound channel only as long as the context is not canceled, i.e. does not time out.
+// If the context is canceled before the envelope can be queued, this method drops the message
 // and returns an error.
 func (d *eventDispatcher) send(parent context.Context, request *http.Request) error {
 	// increment the queue size first, so that we always keep a positive queue size

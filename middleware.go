@@ -4,12 +4,16 @@ import (
 	"context"
 	"net/http"
 
+	// nolint:staticcheck
 	"github.com/go-kit/kit/log"
+	// nolint:staticcheck
 	"github.com/go-kit/kit/log/level"
 	"github.com/justinas/alice"
 	"github.com/segmentio/ksuid"
 	"github.com/xmidt-org/bascule"
 	"github.com/xmidt-org/webpa-common/v2/device"
+
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/logging"
 )
 

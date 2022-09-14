@@ -19,39 +19,51 @@ package main
 import (
 	"fmt"
 	"io"
+
+	// nolint:gosec
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
+	"syscall"
 
 	"github.com/gorilla/mux"
 
+	// nolint:staticcheck
 	"github.com/go-kit/kit/log"
+	// nolint:staticcheck
 	"github.com/go-kit/kit/log/level"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/xmidt-org/candlelight"
 	"github.com/xmidt-org/webpa-common/v2/basculemetrics"
+
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/concurrent"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/webpa-common/v2/device/devicegate"
 	"github.com/xmidt-org/webpa-common/v2/device/devicehealth"
 	"github.com/xmidt-org/webpa-common/v2/device/rehasher"
+
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/logging"
+
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/server"
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/service"
 	"github.com/xmidt-org/webpa-common/v2/service/monitor"
 	"github.com/xmidt-org/webpa-common/v2/service/servicecfg"
+
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/xmetrics"
 	"github.com/xmidt-org/webpa-common/v2/xresolver/consul"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 )
 
 const (
-	applicationName       = "talaria"
-	release               = "Developer"
-	defaultVnodeCount int = 211
-	tracingConfigKey      = "tracing"
+	applicationName  = "talaria"
+	tracingConfigKey = "tracing"
 )
 
 var (
@@ -232,7 +244,7 @@ func talaria(arguments []string) int {
 	}
 
 	signals := make(chan os.Signal, 10)
-	signal.Notify(signals, os.Kill, os.Interrupt)
+	signal.Notify(signals, syscall.SIGTERM, os.Interrupt)
 	for exit := false; !exit; {
 		select {
 		case s := <-signals:

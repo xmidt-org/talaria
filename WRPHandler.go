@@ -4,12 +4,16 @@ import (
 	"context"
 	"net/http"
 
+	// nolint:staticcheck
 	"github.com/go-kit/kit/log/level"
 
 	gokithttp "github.com/go-kit/kit/transport/http"
 
+	// nolint:staticcheck
 	"github.com/go-kit/kit/log"
 	"github.com/xmidt-org/webpa-common/v2/device"
+
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/logging"
 	"github.com/xmidt-org/webpa-common/v2/xhttp"
 	"github.com/xmidt-org/wrp-go/v3/wrphttp"
@@ -55,6 +59,7 @@ func wrpRouterHandler(logger log.Logger, router device.Router, ctxlogger func(ct
 
 		if err != nil {
 			code := http.StatusGatewayTimeout
+			// nolint:errorlint
 			switch err {
 			case device.ErrorInvalidDeviceName:
 				code = http.StatusBadRequest
@@ -128,6 +133,7 @@ func decorateRequestDecoder(decode wrphttp.Decoder) wrphttp.Decoder {
 func talariaWRPErrorEncoder(errorLogger log.Logger) gokithttp.ErrorEncoder {
 	return func(_ context.Context, err error, w http.ResponseWriter) {
 		code := http.StatusInternalServerError
+		// nolint errorlint
 		if sc, ok := err.(gokithttp.StatusCoder); ok {
 			code = sc.StatusCode()
 		}
