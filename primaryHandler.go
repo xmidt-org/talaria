@@ -172,7 +172,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		// Instantiate a fetcher for the resolver
 		f, err := clortho.NewFetcher()
 		if err != nil {
-			return nil, errors.New("Failed to create clortho fetcher")
+			return nil, errors.New("failed to create clortho fetcher")
 		}
 
 		resolver, err := clortho.NewResolver(
@@ -181,12 +181,12 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 			clortho.WithFetcher(f),
 		)
 		if err != nil {
-			return nil, errors.New("Failed to create clortho reolver")
+			return nil, errors.New("failed to create clortho reolver")
 		}
 
 		promReg, ok := metricsRegistry.(prometheus.Registerer)
 		if !ok {
-			return nil, errors.New("Failed to get prometheus registerer")
+			return nil, errors.New("failed to get prometheus registerer")
 
 		}
 
@@ -202,7 +202,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		// Instantiate a metric listener for the resolver
 		cml, err := clorthometrics.NewListener(clorthometrics.WithFactory(tf))
 		if err != nil {
-			return nil, errors.New("Failed to create clortho metrics listener")
+			return nil, errors.New("failed to create clortho metrics listener")
 
 		}
 
@@ -211,7 +211,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 			clorthozap.WithLogger(zlogger),
 		)
 		if err != nil {
-			return nil, errors.New("Failed to create clortho zap logger listener")
+			return nil, errors.New("failed to create clortho zap logger listener")
 
 		}
 
@@ -374,12 +374,12 @@ func buildDeviceAccessCheck(config *deviceAccessCheckConfig, logger log.Logger, 
 
 	if len(config.Checks) < 1 {
 		errorLogger.Log(logging.MessageKey(), "Potential security misconfig. Include checks for deviceAccessCheck or disable it")
-		return nil, errors.New("Failed enabling DeviceAccessCheck")
+		return nil, errors.New("failed enabling DeviceAccessCheck")
 	}
 
 	if config.Type != "enforce" && config.Type != "monitor" {
 		errorLogger.Log(logging.MessageKey(), "Unexpected type for deviceAccessCheck. Supported types are 'monitor' and 'enforce'")
-		return nil, errors.New("Failed verifying DeviceAccessCheck type")
+		return nil, errors.New("failed verifying DeviceAccessCheck type")
 	}
 
 	// nolint:prealloc
@@ -388,7 +388,7 @@ func buildDeviceAccessCheck(config *deviceAccessCheckConfig, logger log.Logger, 
 		parsedCheck, err := parseDeviceAccessCheck(check)
 		if err != nil {
 			errorLogger.Log(logging.ErrorKey(), err, logging.MessageKey(), "deviceAccesscheck parse failure")
-			return nil, errors.New("Failed parsing DeviceAccessCheck checks")
+			return nil, errors.New("failed parsing DeviceAccessCheck checks")
 		}
 		parsedChecks = append(parsedChecks, parsedCheck)
 	}
