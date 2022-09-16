@@ -24,9 +24,8 @@ import (
 	"net/http"
 	"time"
 
-	// nolint:staticcheck
-	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/metrics"
+	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
 	"github.com/prometheus/client_golang/prometheus"
@@ -41,18 +40,23 @@ import (
 	"github.com/xmidt-org/webpa-common/v2/xmetrics"
 	"go.uber.org/zap"
 
+	// nolint:staticcheck
 	"github.com/xmidt-org/bascule/basculechecks"
+	// nolint:staticcheck
 	"github.com/xmidt-org/bascule/basculehttp"
 	"github.com/xmidt-org/clortho"
+
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/basculemetrics"
 	"github.com/xmidt-org/webpa-common/v2/device"
 
 	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/logging"
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/logging/logginghttp"
-
 	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/service"
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/service/servicehttp"
 	"github.com/xmidt-org/webpa-common/v2/xhttp"
 	"github.com/xmidt-org/webpa-common/v2/xhttp/xcontext"

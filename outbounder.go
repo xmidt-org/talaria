@@ -21,8 +21,7 @@ import (
 	"net/http"
 	"time"
 
-	// nolint:staticcheck
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 	"github.com/spf13/viper"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/webpa-common/v2/event"

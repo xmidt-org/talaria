@@ -7,10 +7,9 @@ import (
 	"github.com/xmidt-org/candlelight"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 
-	// nolint:staticcheck
-	"github.com/go-kit/kit/log"
-	// nolint:staticcheck
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
 	"github.com/spf13/viper"
@@ -20,6 +19,7 @@ import (
 
 	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/logging"
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/logging/logginghttp"
 	"github.com/xmidt-org/webpa-common/v2/xhttp"
 	"github.com/xmidt-org/webpa-common/v2/xhttp/gate"

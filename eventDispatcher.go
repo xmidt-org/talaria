@@ -25,10 +25,9 @@ import (
 	"strings"
 	"time"
 
-	// nolint:staticcheck
-	"github.com/go-kit/kit/log"
-	// nolint:staticcheck
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+
 	"github.com/go-kit/kit/metrics"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/webpa-common/v2/event"

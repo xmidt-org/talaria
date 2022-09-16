@@ -5,9 +5,8 @@ import (
 	"net/http"
 
 	"github.com/fatih/structs"
-	// nolint:staticcheck
-	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/metrics"
+	"github.com/go-kit/log"
 	"github.com/thedevsaddam/gojsonq/v2"
 	"github.com/xmidt-org/webpa-common/v2/device"
 

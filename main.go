@@ -29,10 +29,9 @@ import (
 
 	"github.com/gorilla/mux"
 
-	// nolint:staticcheck
-	"github.com/go-kit/kit/log"
-	// nolint:staticcheck
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/xmidt-org/candlelight"
@@ -52,9 +51,10 @@ import (
 	"github.com/xmidt-org/webpa-common/v2/server"
 	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/service"
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/service/monitor"
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/service/servicecfg"
-
 	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/xmetrics"
 	"github.com/xmidt-org/webpa-common/v2/xresolver/consul"
