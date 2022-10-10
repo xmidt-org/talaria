@@ -18,7 +18,7 @@ require (
 	github.com/stretchr/testify v1.8.0
 	github.com/thedevsaddam/gojsonq/v2 v2.5.2
 	github.com/xmidt-org/bascule v0.11.0
-	github.com/xmidt-org/candlelight v0.0.10
+	github.com/xmidt-org/candlelight v0.0.11
 	github.com/xmidt-org/clortho v0.0.4
 	github.com/xmidt-org/sallust v0.1.6
 	github.com/xmidt-org/touchstone v0.1.2
