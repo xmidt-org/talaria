@@ -20,8 +20,10 @@ func statusMetadata(d device.Interface) map[string]string {
 		wrpmeta.Field{From: "hw-serial-number", To: "/hw-serial-number"},
 		wrpmeta.Field{From: "hw-last-reboot-reason", To: "/hw-last-reboot-reason"},
 		wrpmeta.Field{From: "fw-name", To: "/fw-name"},
-		wrpmeta.Field{From: "last-reconnect-reason", To: "/last-reconnect-reason"},
-		wrpmeta.Field{From: "protocol", To: "/protocol"}).
+		wrpmeta.Field{From: "webpa-last-reconnect-reason", To: "/last-reconnect-reason"},
+		wrpmeta.Field{From: "webpa-protocol", To: "/protocol"},
+		wrpmeta.Field{From: "webpa-interface-used", To: "/interface-used"},
+		wrpmeta.Field{From: "boot-time-retry-wait", To: "/boot-time-retry-wait"}).
 		Set("/trust", strconv.Itoa(d.Metadata().TrustClaim())).
 		Build()
 
