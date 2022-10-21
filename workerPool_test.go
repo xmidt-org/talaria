@@ -19,12 +19,13 @@ package main
 import (
 	"bytes"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/logging"
 )
 
@@ -63,7 +64,7 @@ func testWorkerPoolTransactHTTPSuccess(t *testing.T) {
 				return &http.Response{
 					Status:     "200 OK",
 					StatusCode: 200,
-					Body:       ioutil.NopCloser(new(bytes.Buffer)),
+					Body:       io.NopCloser(new(bytes.Buffer)),
 				}, nil
 			},
 		}
@@ -87,7 +88,7 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 				return &http.Response{
 					Status:     "500 It Burns!",
 					StatusCode: 500,
-					Body:       ioutil.NopCloser(new(bytes.Buffer)),
+					Body:       io.NopCloser(new(bytes.Buffer)),
 				}, nil
 			},
 		}

@@ -21,10 +21,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 	"github.com/spf13/viper"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/webpa-common/v2/event"
+
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/logging"
 	"github.com/xmidt-org/webpa-common/v2/xresolver"
 	"github.com/xmidt-org/webpa-common/v2/xresolver/consul"
@@ -116,6 +118,7 @@ func NewOutbounder(logger log.Logger, v *viper.Viper) (o *Outbounder, watcher *c
 
 // String emits a JSON string representing this outbounder, primarily useful for debugging.
 func (o *Outbounder) String() string {
+	// nolint: staticcheck
 	if data, err := json.Marshal(o); err != nil {
 		return err.Error()
 	} else {
@@ -213,6 +216,7 @@ func (o *Outbounder) workerPoolSize() uint {
 func (o *Outbounder) transport() *http.Transport {
 	if o != nil {
 		copyOf := new(http.Transport)
+		// nolint:govet
 		*copyOf = o.Transport
 
 		if copyOf.MaxIdleConns <= 0 {

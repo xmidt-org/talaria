@@ -18,12 +18,13 @@ package main
 
 import (
 	"io"
-	"io/ioutil"
 	"net/http"
 	"sync"
 
-	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/metrics"
+	"github.com/go-kit/log"
+
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/logging"
 )
 
@@ -66,7 +67,7 @@ func (wp *WorkerPool) Run() {
 }
 
 // transact performs all the logic necessary to fulfill an outbound request.
-// This method ensures that the Context associated with the request is properly cancelled.
+// This method ensures that the Context associated with the request is properly canceled.
 func (wp *WorkerPool) transact(e outboundEnvelope) {
 	defer e.cancel()
 
@@ -88,7 +89,7 @@ func (wp *WorkerPool) transact(e outboundEnvelope) {
 		wp.errorLog.Log(logging.MessageKey(), "HTTP response", "status", response.Status, "url", e.request.URL)
 	}
 
-	io.Copy(ioutil.Discard, response.Body)
+	io.Copy(io.Discard, response.Body)
 	response.Body.Close()
 }
 

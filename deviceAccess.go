@@ -5,10 +5,12 @@ import (
 	"net/http"
 
 	"github.com/fatih/structs"
-	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/metrics"
+	"github.com/go-kit/log"
 	"github.com/thedevsaddam/gojsonq/v2"
 	"github.com/xmidt-org/webpa-common/v2/device"
+
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/logging"
 	"github.com/xmidt-org/webpa-common/v2/xhttp"
 	"github.com/xmidt-org/wrp-go/v3"
@@ -104,7 +106,7 @@ func getRight(check *parsedCheck, wrpCredentials *gojsonq.JSONQ) interface{} {
 }
 
 // authorizeWRP returns true if the talaria partners access policy checks succeed. Otherwise, false
-// alongside an appropiate error that's friendly to go-kit's HTTP error response encoder.
+// alongside an appropriate error that's friendly to go-kit's HTTP error response encoder.
 func (t *talariaDeviceAccess) authorizeWRP(_ context.Context, message *wrp.Message) error {
 	ID, err := device.ParseID(message.Destination)
 	if err != nil {

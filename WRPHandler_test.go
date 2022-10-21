@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,6 +14,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/xmidt-org/webpa-common/v2/device"
+
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/logging"
 	"github.com/xmidt-org/webpa-common/v2/xhttp"
 	"github.com/xmidt-org/wrp-go/v3"
@@ -120,7 +122,7 @@ func testMessageHandlerServeHTTPEncodeError(t *testing.T) {
 	handler.ServeHTTP(response, request)
 	assert.Equal(http.StatusInternalServerError, response.Code)
 	assert.Equal("application/json", response.Header().Get("Content-Type"))
-	responseContents, err := ioutil.ReadAll(response.Body)
+	responseContents, err := io.ReadAll(response.Body)
 	require.NoError(err)
 	assert.NoError(json.Unmarshal(responseContents, &actualResponseBody))
 
@@ -168,7 +170,7 @@ func testMessageHandlerServeHTTPRouteError(t *testing.T, routeError error, expec
 	handler.ServeHTTP(response, request)
 	assert.Equal(expectedCode, response.Code)
 	assert.Equal("application/json", response.Header().Get("Content-Type"))
-	responseContents, err := ioutil.ReadAll(response.Body)
+	responseContents, err := io.ReadAll(response.Body)
 	require.NoError(err)
 	assert.NoError(json.Unmarshal(responseContents, &actualResponseBody))
 
@@ -180,7 +182,7 @@ func testMessageHandlerServeHTTPEvent(t *testing.T, requestFormat wrp.Format) {
 		assert  = assert.New(t)
 		require = require.New(t)
 
-		event = &wrp.SimpleEvent{
+		event = &wrp.Message{
 			Source:      "test.com",
 			Destination: "mac:123412341234",
 			ContentType: "text/plain",
@@ -300,8 +302,7 @@ func TestMessageHandler(t *testing.T) {
 	t.Run("NilRouter", testWRPHandlerNilRouter)
 
 	t.Run("ServeHTTP", func(t *testing.T) {
-		// t.Run("DecodeError", testMessageHandlerServeHTTPDecodeError)
-		// t.Run("EncodeError", testMessageHandlerServeHTTPEncodeError)
+		t.Run("EncodeError", testMessageHandlerServeHTTPEncodeError)
 
 		t.Run("RouteError", func(t *testing.T) {
 			testMessageHandlerServeHTTPRouteError(t, device.ErrorInvalidDeviceName, http.StatusBadRequest)
