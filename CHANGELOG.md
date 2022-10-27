@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [v0.6.9]
+- Fix the docker container so it has configuration in the right place.
+- Fix the linter issues.
+- Dependency update.
+
+
 ## [v0.6.8]
 - JWT Migration [250](https://github.com/xmidt-org/talaria/issues/250)
   - updated to use clortho `Resolver`

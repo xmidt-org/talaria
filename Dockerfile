@@ -27,8 +27,7 @@ FROM alpine:3.12.1
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /src/talaria /src/talaria.yaml /src/deploy/packaging/entrypoint.sh /go/bin/spruce /src/Dockerfile /src/NOTICE /src/LICENSE /src/CHANGELOG.md /
 COPY --from=builder /src/deploy/packaging/talaria_spruce.yaml /tmp/talaria_spruce.yaml
-
-RUN mkdir /etc/talaria/ && touch /etc/talaria/talaria.yaml && chmod 666 /etc/talaria/talaria.yaml
+COPY --from=builder /src/talaria.yaml /etc/talaria/talaria.yaml
 
 USER nobody
 
