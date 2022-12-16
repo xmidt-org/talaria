@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- Update configs and documentation for the introduction of OTLP in Candlelight [#282](https://github.com/xmidt-org/talaria/pull/282)
 
 ## [v0.6.10]
 - Remove several unused build files and update the docker images to work. [#272](https://github.com/xmidt-org/talaria/pull/272)
