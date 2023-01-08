@@ -19,7 +19,7 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -31,7 +31,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/webpa-common/v2/event"
+
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/logging"
+
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/xmetrics"
 	"github.com/xmidt-org/wrp-go/v3"
 )
@@ -41,7 +45,7 @@ func ExampleOutbounder() {
 		finish = new(sync.WaitGroup)
 		server = httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 			defer finish.Done()
-			if body, err := ioutil.ReadAll(request.Body); err != nil {
+			if body, err := io.ReadAll(request.Body); err != nil {
 				fmt.Println(err)
 			} else {
 				fmt.Printf("%s:%s:%s\n", request.Method, request.Header.Get("Content-Type"), body)

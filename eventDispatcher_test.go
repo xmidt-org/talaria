@@ -19,7 +19,7 @@ package main
 import (
 	"bytes"
 	"errors"
-	"io/ioutil"
+	"io"
 	"testing"
 	"time"
 
@@ -230,7 +230,7 @@ func testEventDispatcherOnDeviceEventDispatchEvent(t *testing.T) {
 					assert.False(actualEndpoints[urlString])
 					actualEndpoints[urlString] = true
 
-					actualContents, err := ioutil.ReadAll(e.request.Body)
+					actualContents, err := io.ReadAll(e.request.Body)
 					assert.NoError(err)
 					assert.Equal(expectedContents, actualContents)
 
@@ -388,7 +388,7 @@ func testEventDispatcherOnDeviceEventDispatchTo(t *testing.T) {
 			assert.Equal(format.ContentType(), e.request.Header.Get("Content-Type"))
 			assert.Equal(record.expectedEndpoint, e.request.URL.String())
 
-			actualContents, err := ioutil.ReadAll(e.request.Body)
+			actualContents, err := io.ReadAll(e.request.Body)
 			assert.NoError(err)
 			assert.Equal(expectedContents, actualContents)
 

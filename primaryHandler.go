@@ -24,8 +24,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/metrics"
+	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
 	"github.com/prometheus/client_golang/prometheus"
@@ -35,17 +35,28 @@ import (
 	"github.com/xmidt-org/clortho/clorthozap"
 	"github.com/xmidt-org/sallust"
 	"github.com/xmidt-org/touchstone"
+
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/xmetrics"
 	"go.uber.org/zap"
 
+	// nolint:staticcheck
 	"github.com/xmidt-org/bascule/basculechecks"
+	// nolint:staticcheck
 	"github.com/xmidt-org/bascule/basculehttp"
 	"github.com/xmidt-org/clortho"
+
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/basculemetrics"
 	"github.com/xmidt-org/webpa-common/v2/device"
+
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/logging"
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/logging/logginghttp"
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/service"
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/service/servicehttp"
 	"github.com/xmidt-org/webpa-common/v2/xhttp"
 	"github.com/xmidt-org/webpa-common/v2/xhttp/xcontext"
@@ -113,7 +124,7 @@ func getInboundTimeout(v *viper.Viper) time.Duration {
 	return DefaultInboundTimeout
 }
 
-//buildUserPassMap decodes base64-encoded strings of the form user:pass and write them to a map from user -> pass
+// buildUserPassMap decodes base64-encoded strings of the form user:pass and write them to a map from user -> pass
 func buildUserPassMap(logger log.Logger, encodedBasicAuthKeys []string) (userPass map[string]string) {
 	userPass = make(map[string]string)
 
@@ -165,7 +176,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		// Instantiate a fetcher for the resolver
 		f, err := clortho.NewFetcher()
 		if err != nil {
-			return nil, errors.New("Failed to create clortho fetcher")
+			return nil, errors.New("failed to create clortho fetcher")
 		}
 
 		resolver, err := clortho.NewResolver(
@@ -174,12 +185,12 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 			clortho.WithFetcher(f),
 		)
 		if err != nil {
-			return nil, errors.New("Failed to create clortho reolver")
+			return nil, errors.New("failed to create clortho reolver")
 		}
 
 		promReg, ok := metricsRegistry.(prometheus.Registerer)
 		if !ok {
-			return nil, errors.New("Failed to get prometheus registerer")
+			return nil, errors.New("failed to get prometheus registerer")
 
 		}
 
@@ -195,7 +206,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		// Instantiate a metric listener for the resolver
 		cml, err := clorthometrics.NewListener(clorthometrics.WithFactory(tf))
 		if err != nil {
-			return nil, errors.New("Failed to create clortho metrics listener")
+			return nil, errors.New("failed to create clortho metrics listener")
 
 		}
 
@@ -204,7 +215,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 			clorthozap.WithLogger(zlogger),
 		)
 		if err != nil {
-			return nil, errors.New("Failed to create clortho zap logger listener")
+			return nil, errors.New("failed to create clortho zap logger listener")
 
 		}
 
@@ -367,20 +378,21 @@ func buildDeviceAccessCheck(config *deviceAccessCheckConfig, logger log.Logger, 
 
 	if len(config.Checks) < 1 {
 		errorLogger.Log(logging.MessageKey(), "Potential security misconfig. Include checks for deviceAccessCheck or disable it")
-		return nil, errors.New("Failed enabling DeviceAccessCheck")
+		return nil, errors.New("failed enabling DeviceAccessCheck")
 	}
 
 	if config.Type != "enforce" && config.Type != "monitor" {
 		errorLogger.Log(logging.MessageKey(), "Unexpected type for deviceAccessCheck. Supported types are 'monitor' and 'enforce'")
-		return nil, errors.New("Failed verifying DeviceAccessCheck type")
+		return nil, errors.New("failed verifying DeviceAccessCheck type")
 	}
 
+	// nolint:prealloc
 	var parsedChecks []*parsedCheck
 	for _, check := range config.Checks {
 		parsedCheck, err := parseDeviceAccessCheck(check)
 		if err != nil {
 			errorLogger.Log(logging.ErrorKey(), err, logging.MessageKey(), "deviceAccesscheck parse failure")
-			return nil, errors.New("Failed parsing DeviceAccessCheck checks")
+			return nil, errors.New("failed parsing DeviceAccessCheck checks")
 		}
 		parsedChecks = append(parsedChecks, parsedCheck)
 	}

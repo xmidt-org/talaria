@@ -9,6 +9,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/xmidt-org/webpa-common/v2/xhttp"
+
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/xmetrics"
 )
 
@@ -50,10 +52,11 @@ const (
 	invalidWRPDest = "invalid_wrp_dest"
 
 	missingDeviceCredential = "missing_device_cred"
-	missingWRPCredential    = "missing_wrp_cred"
-	incompleteCheck         = "incomplete_check"
-	denied                  = "denied"
-	authorized              = "authorized"
+	// nolint:gosec
+	missingWRPCredential = "missing_wrp_cred"
+	incompleteCheck      = "incomplete_check"
+	denied               = "denied"
+	authorized           = "authorized"
 )
 
 func Metrics() []xmetrics.Metric {
@@ -202,6 +205,7 @@ func InstrumentOutboundCounter(counter *prometheus.CounterVec, next http.RoundTr
 // NewOutboundRoundTripper produces an http.RoundTripper from the configured Outbounder
 // that is also decorated with appropriate metrics.
 func NewOutboundRoundTripper(om OutboundMeasures, o *Outbounder) http.RoundTripper {
+	// nolint:bodyclose
 	return promhttp.RoundTripperFunc(xhttp.RetryTransactor(
 		// use the default should retry predicate ...
 		xhttp.RetryOptions{

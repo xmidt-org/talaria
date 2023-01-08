@@ -29,6 +29,8 @@ import (
 	"github.com/xmidt-org/wrp-go/v3"
 )
 
+const failure_case = "failure case"
+
 func testAckDispatcherOnDeviceEventQOSEventFailure(t *testing.T) {
 	tests := []struct {
 		description string
@@ -55,7 +57,7 @@ func testAckDispatcherOnDeviceEventQOSEventFailure(t *testing.T) {
 			mAckFailure := new(mockCounter)
 			mAckSuccessLatency := new(mockHistogram)
 			mAckFailureLatency := new(mockHistogram)
-			p, mt, qosl := "failure case", "failure case", "failure case"
+			p, mt, qosl := failure_case, failure_case, failure_case
 			// Setup labels for metrics
 			l := []string{qosLevelLabel, qosl, partnerIDLabel, p, messageType, mt}
 			om := OutboundMeasures{
@@ -486,7 +488,7 @@ func testAckDispatcherOnDeviceEventQOSSuccess(t *testing.T) {
 			mAckSuccessLatency := new(mockHistogram)
 			mAckFailureLatency := new(mockHistogram)
 			dm := genTestMetadata()
-			p, mt, qosl := dm.PartnerIDClaim(), "failure case", "failure case"
+			p, mt, qosl := dm.PartnerIDClaim(), failure_case, failure_case
 			// Some tests have invalid or nil messages
 			if m, ok := tc.event.Message.(*wrp.Message); ok {
 				qosl = m.QualityOfService.Level().String()

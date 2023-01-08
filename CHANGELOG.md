@@ -5,6 +5,16 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- Update configs and documentation for the introduction of OTLP in Candlelight [#282](https://github.com/xmidt-org/talaria/pull/282)
+
+## [v0.6.10]
+- Remove several unused build files and update the docker images to work. [#272](https://github.com/xmidt-org/talaria/pull/272)
+
+## [v0.6.9]
+- Fix the docker container so it has configuration in the right place.
+- Fix the linter issues.
+- Dependency update.
+
 
 ## [v0.6.8]
 - JWT Migration [250](https://github.com/xmidt-org/talaria/issues/250)
@@ -159,7 +169,9 @@ Switching to new build process
 ## [v0.1.1] Tue Mar 28 2017 Weston Schmidt - 0.1.1
 - initial creation
 
-[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.6.8...HEAD
+[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.6.10...HEAD
+[v0.6.10]: https://github.com/xmidt-org/talaria/compare/v0.6.9...v0.6.10
+[v0.6.9]: https://github.com/xmidt-org/talaria/compare/v0.6.8...v0.6.9
 [v0.6.8]: https://github.com/xmidt-org/talaria/compare/v0.6.7...v0.6.8
 [v0.6.7]: https://github.com/xmidt-org/talaria/compare/v0.6.5...v0.6.7
 [v0.6.5]: https://github.com/xmidt-org/talaria/compare/v0.6.4...v0.6.5
