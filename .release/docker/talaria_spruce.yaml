@@ -310,6 +310,9 @@ eventMap:
   default: (( grab $CADUCEUS_ENDPOINT || "http://caduceus:6000/api/v3/notify" ))
 
 jwtValidator:
+  Config:
+    Resolve:
+      Template: (( grab $THEMIS_ENDPOINT || "http://themis:6500/keys/docker" ))
   keys:
     Factory:
       uri: (( grab $THEMIS_ENDPOINT || "http://themis:6500/keys/docker" ))
