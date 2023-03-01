@@ -313,11 +313,10 @@ jwtValidator:
   Config:
     Resolve:
       Template: (( grab $THEMIS_ENDPOINT || "http://themis:6500/keys/docker" ))
-  keys:
-    Factory:
-      uri: (( grab $THEMIS_ENDPOINT || "http://themis:6500/keys/docker" ))
-    purpose: 0
-    updateInterval: 24h
+    Refresh:
+      Sources:
+        - URI: (( grab $THEMIS_ENDPOINT || "http://themis:6500/keys/docker" ))
+    Leeway: 0
 
 deviceAccessCheck:
   type: (( grab $DEVICE_ACCESS_CHECK_TYPE ||  "enforce" ))
