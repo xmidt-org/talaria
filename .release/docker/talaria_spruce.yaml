@@ -313,10 +313,10 @@ jwtValidator:
   Config:
     Resolve:
       Template: (( grab $THEMIS_ENDPOINT || "http://themis:6500/keys/{keyID}" ))
-    Refresh:
-      Sources:
-        - URI: (( grab $THEMIS_ENDPOINT || "http://themis:6500/keys/{keyID}" ))
-    Leeway: 0
+    # Refresh:
+    #   Sources:
+    #     - URI: (( grab $THEMIS_ENDPOINT || "http://themis:6500/keys/{keyID}" ))
+    # Leeway: 0
 
 deviceAccessCheck:
   type: (( grab $DEVICE_ACCESS_CHECK_TYPE ||  "enforce" ))
