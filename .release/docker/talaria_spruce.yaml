@@ -312,10 +312,10 @@ eventMap:
 jwtValidator:
   Config:
     Resolve:
-      Template: (( grab $THEMIS_ENDPOINT || "http://themis:6500/keys/docker" ))
+      Template: (( grab $THEMIS_ENDPOINT || "http://themis:6500/keys/{keyID}" ))
     Refresh:
       Sources:
-        - URI: (( grab $THEMIS_ENDPOINT || "http://themis:6500/keys/docker" ))
+        - URI: (( grab $THEMIS_ENDPOINT || "http://themis:6500/keys/{keyID}" ))
     Leeway: 0
 
 deviceAccessCheck:
