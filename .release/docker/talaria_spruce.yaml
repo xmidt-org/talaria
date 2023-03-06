@@ -318,20 +318,21 @@ jwtValidator:
     #     - URI: (( grab $THEMIS_ENDPOINT || "http://themis:6500/keys/{keyID}" ))
     # Leeway: 0
 
-deviceAccessCheck:
-  type: (( grab $DEVICE_ACCESS_CHECK_TYPE ||  "enforce" ))
-  checks:
-    -
-      name: PartnerID
-      deviceCredentialPath: partner-id
-      op: contains
-      wrpCredentialPath: PartnerIDs
-      inversed: true
-    -
-      name: Trusted Device
-      deviceCredentialPath: trust
-      op: "gt"
-      inputValue: 999
+# disable SAT token checks since we are using basic auth
+# deviceAccessCheck:
+#   type: (( grab $DEVICE_ACCESS_CHECK_TYPE ||  "enforce" ))
+#   checks:
+#     -
+#       name: PartnerID
+#       deviceCredentialPath: partner-id
+#       op: contains
+#       wrpCredentialPath: PartnerIDs
+#       inversed: true
+#     -
+#       name: Trusted Device
+#       deviceCredentialPath: trust
+#       op: "gt"
+#       inputValue: 999
 
 ########################################
 #   Service Discovery Configuration
