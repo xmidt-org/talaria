@@ -9,9 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.6.11]
 - Update configs and documentation for the introduction of OTLP in Candlelight [#282](https://github.com/xmidt-org/talaria/pull/282)
-- update bascule config in docker config [#295]https://github.com/
-xmidt-org/talaria/pull/295
-- remove/disable sat token checks from docker config [#297]https://github.com/xmidt-org/talaria/pull/297
+- update bascule config in docker config [#295](https://github.com/
+xmidt-org/talaria/pull/295)
+- remove/disable sat token checks from docker config [#297](https://github.com/xmidt-org/talaria/pull/297)
 
 ## [v0.6.10]
 - Remove several unused build files and update the docker images to work. [#272](https://github.com/xmidt-org/talaria/pull/272)
