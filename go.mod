@@ -1,6 +1,6 @@
 module github.com/xmidt-org/talaria
 
-go 1.18
+go 1.19
 
 require (
 	github.com/fatih/structs v1.1.0
@@ -18,7 +18,7 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/thedevsaddam/gojsonq/v2 v2.5.2
 	github.com/xmidt-org/bascule v0.11.0
-	github.com/xmidt-org/candlelight v0.0.16
+	github.com/xmidt-org/candlelight v0.0.15
 	github.com/xmidt-org/clortho v0.0.4
 	github.com/xmidt-org/sallust v0.2.0
 	github.com/xmidt-org/touchstone v0.1.2
