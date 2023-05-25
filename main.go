@@ -28,16 +28,16 @@ import (
 	"syscall"
 
 	"github.com/gorilla/mux"
-
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
+	"go.uber.org/zap"
 
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"github.com/xmidt-org/bascule/basculehelper"
 	"github.com/xmidt-org/candlelight"
-	"github.com/xmidt-org/webpa-common/v2/basculemetrics"
 
 	// nolint:staticcheck
+
+	"github.com/xmidt-org/webpa-common/v2/adapter"
 	"github.com/xmidt-org/webpa-common/v2/concurrent"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/webpa-common/v2/device/devicegate"
@@ -45,7 +45,6 @@ import (
 	"github.com/xmidt-org/webpa-common/v2/device/rehasher"
 
 	// nolint:staticcheck
-	"github.com/xmidt-org/webpa-common/v2/logging"
 
 	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/server"
@@ -77,7 +76,7 @@ func setupDefaultConfigValues(v *viper.Viper) {
 	v.SetDefault(RehasherServicesConfigKey, []string{applicationName})
 }
 
-func newDeviceManager(logger log.Logger, r xmetrics.Registry, v *viper.Viper) (device.Manager, devicegate.Interface, *consul.ConsulWatcher, error) {
+func newDeviceManager(logger *zap.Logger, r xmetrics.Registry, v *viper.Viper) (device.Manager, devicegate.Interface, *consul.ConsulWatcher, error) {
 	deviceOptions, err := device.NewOptions(logger, v.Sub(device.DeviceManagerKey))
 	if err != nil {
 		return nil, nil, nil, err
@@ -131,17 +130,15 @@ func talaria(arguments []string) int {
 		f = pflag.NewFlagSet(applicationName, pflag.ContinueOnError)
 		v = viper.New()
 
-		logger, metricsRegistry, webPA, err = server.Initialize(applicationName, arguments, f, v, Metrics, device.Metrics, rehasher.Metrics, service.Metrics, basculemetrics.Metrics)
-		infoLogger                          = level.Info(logger)
+		//TODO: double check which metrics are needed
+		logger, metricsRegistry, webPA, err = server.Initialize(applicationName, arguments, f, v, Metrics, device.Metrics, rehasher.Metrics, service.Metrics, basculehelper.AuthCapabilitiesMetrics)
 	)
 
 	if parseErr, done := printVersion(f, arguments); done {
 		// if we're done, we're exiting no matter what
 		if parseErr != nil {
 			friendlyError := fmt.Sprintf("failed to parse arguments. detailed error: %s", parseErr)
-			logging.Error(logger).Log(
-				logging.ErrorKey(),
-				friendlyError)
+			logger.Error(friendlyError)
 			os.Exit(1)
 		}
 		os.Exit(0)
@@ -150,7 +147,7 @@ func talaria(arguments []string) int {
 	setupDefaultConfigValues(v)
 
 	if err != nil {
-		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to initialize Viper environment", logging.ErrorKey(), err)
+		logger.Error("unable to initialize Viper environment", zap.Error(err))
 		return 1
 	}
 
@@ -159,23 +156,25 @@ func talaria(arguments []string) int {
 		fmt.Fprintf(os.Stderr, "Unable to build tracing component: %v \n", err)
 		return 1
 	}
-	infoLogger.Log(logging.MessageKey(), "tracing status", "enabled", !tracing.IsNoop())
+	logger.Info("tracing status", zap.Bool("enabled", !tracing.IsNoop()))
 
 	manager, filterGate, watcher, err := newDeviceManager(logger, metricsRegistry, v)
 	if err != nil {
-		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to create device manager", logging.ErrorKey(), err)
+		logger.Error("unable to create device manager", zap.Error(err))
 		return 2
 	}
-
-	e, err := servicecfg.NewEnvironment(logger, v.Sub("service"))
+	var log = &adapter.Logger{
+		Logger: logger,
+	}
+	e, err := servicecfg.NewEnvironment(log, v.Sub("service"))
 	if err != nil {
-		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to initialize service discovery environment", logging.ErrorKey(), err)
+		logger.Error("unable to initialize service discovery environment", zap.Error(err))
 		return 4
 	}
 
 	controlConstructor, err := StartControlServer(logger, manager, filterGate, metricsRegistry, v, tracing)
 	if err != nil {
-		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to create control server", logging.ErrorKey(), err)
+		logger.Error("unable to create control server", zap.Error(err))
 		return 3
 	}
 
@@ -195,20 +194,20 @@ func talaria(arguments []string) int {
 
 	primaryHandler, err := NewPrimaryHandler(logger, manager, v, a, e, controlConstructor, metricsRegistry, rootRouter)
 	if err != nil {
-		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to start device management", logging.ErrorKey(), err)
+		logger.Error("unable to start device management", zap.Error(err))
 		return 4
 	}
 
 	_, talariaServer, done := webPA.Prepare(logger, health, metricsRegistry, primaryHandler)
 	waitGroup, shutdown, err := concurrent.Execute(talariaServer)
 	if err != nil {
-		logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to start device manager", logging.ErrorKey(), err)
+		logger.Error("unable to start device manager", zap.Error(err))
 		return 5
 	}
 
 	if e != nil {
 		defer e.Close()
-		logger.Log(level.Key(), level.InfoValue(), "configurationFile", v.ConfigFileUsed())
+		logger.Info("viper successfully retreived confirguation file", zap.String("configurationFile", v.ConfigFileUsed()))
 		e.Register()
 
 		listeners := []monitor.Listener{
@@ -236,11 +235,11 @@ func talaria(arguments []string) int {
 		)
 
 		if err != nil {
-			logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to start service discovery monitor", logging.ErrorKey(), err)
+			logger.Error("Unable to start service discovery monitor", zap.Error(err))
 			return 5
 		}
 	} else {
-		logger.Log(level.Key(), level.InfoValue(), logging.MessageKey(), "no service discovery configured")
+		logger.Info("no service discovery configured")
 	}
 
 	signals := make(chan os.Signal, 10)
@@ -248,10 +247,10 @@ func talaria(arguments []string) int {
 	for exit := false; !exit; {
 		select {
 		case s := <-signals:
-			logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "exiting due to signal", "signal", s)
+			logger.Error("exiting due to signal", zap.Any("signal", s))
 			exit = true
 		case <-done:
-			logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "one or more servers exited")
+			logger.Error("one or more servers exited")
 			exit = true
 		}
 	}
@@ -284,6 +283,7 @@ func printVersionInfo(writer io.Writer) {
 }
 
 func main() {
+
 	os.Exit(
 		func() int {
 			result := talaria(os.Args)

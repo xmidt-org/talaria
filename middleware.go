@@ -4,16 +4,13 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
+	"go.uber.org/zap"
 
 	"github.com/justinas/alice"
 	"github.com/segmentio/ksuid"
 	"github.com/xmidt-org/bascule"
 	"github.com/xmidt-org/webpa-common/v2/device"
-
 	// nolint:staticcheck
-	"github.com/xmidt-org/webpa-common/v2/logging"
 )
 
 func init() {
@@ -23,7 +20,7 @@ func init() {
 // DeviceMetadataMiddleware is a device registration endpoint middleware
 // which initializes the metadata a device carries throughout its
 // connectivity lifecycle with the XMiDT cluster.
-func DeviceMetadataMiddleware(getLogger func(ctx context.Context) log.Logger) alice.Constructor {
+func DeviceMetadataMiddleware(getLogger func(ctx context.Context) *zap.Logger) alice.Constructor {
 	return func(delegate http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
@@ -48,10 +45,7 @@ func DeviceMetadataMiddleware(getLogger func(ctx context.Context) log.Logger) al
 
 				}
 				if logger != nil {
-					level.Info(logger).Log(logging.MessageKey(), "got claims from auth token",
-						"partner-id", metadata.Claims()[device.PartnerIDClaimKey],
-						"trust", metadata.Claims()[device.TrustClaimKey],
-					)
+					logger.Info("got claims from auth token", zap.Any("partner-id", metadata.Claims()[device.PartnerIDClaimKey]), zap.Any("trust", metadata.Claims()[device.TrustClaimKey]))
 				}
 			}
 

@@ -23,9 +23,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/xmidt-org/webpa-common/v2/adapter"
 	"github.com/xmidt-org/webpa-common/v2/convey"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/wrp-go/v3"
@@ -407,7 +407,7 @@ func testEventDispatcherOnDeviceEventNilEventError(t *testing.T) {
 	assert := assert.New(t)
 	o := &Outbounder{}
 	// NewJSONLogger is the default logger for the outbounder
-	o.Logger = log.NewJSONLogger(&b)
+	o.Logger = adapter.DefaultLogger().Logger
 	dp, _, err := NewEventDispatcher(NewTestOutboundMeasures(), o, nil)
 	require.NotNil(dp)
 	require.NoError(err)

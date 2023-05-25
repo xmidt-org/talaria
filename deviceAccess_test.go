@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/xmidt-org/webpa-common/v2/device"
+	"go.uber.org/zap/zaptest"
 
 	// nolint:staticcheck
-	"github.com/xmidt-org/webpa-common/v2/logging"
 	"github.com/xmidt-org/wrp-go/v3"
 )
 
@@ -40,7 +40,7 @@ func testAuthorizeWRP(t *testing.T, testCases []deviceAccessTestCase, strict boo
 				mockDeviceRegistry = new(device.MockRegistry)
 				mockDevice         = new(device.MockDevice)
 				mockBinOp          = new(mockBinOp)
-				testLogger         = logging.NewTestLogger(nil, t)
+				testLogger         = zaptest.NewLogger(t)
 				counter            = newTestCounter()
 				expectedLabels     = getLabelMaps(testCase.ExpectedError, testCase.IsFatal, strict, testCase.BaseLabelPairs)
 
@@ -72,7 +72,7 @@ func testAuthorizeWRP(t *testing.T, testCases []deviceAccessTestCase, strict boo
 				wrpMessagesCounter: counter,
 				deviceRegistry:     mockDeviceRegistry,
 				sep:                ">",
-				debugLogger:        logging.Debug(testLogger),
+				logger:        testLogger,
 				checks:             checks,
 			}
 

@@ -21,10 +21,10 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/xmidt-org/webpa-common/v2/adapter"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/wrp-go/v3"
 )
@@ -68,7 +68,7 @@ func testAckDispatcherOnDeviceEventQOSEventFailure(t *testing.T) {
 			}
 			o := &Outbounder{}
 			// NewJSONLogger is the default logger for the outbounder
-			o.Logger = log.NewJSONLogger(&b)
+			o.Logger = adapter.DefaultLogger().Logger
 			dp, err := NewAckDispatcher(om, o)
 			require.NotNil(dp)
 			require.NoError(err)
@@ -188,7 +188,7 @@ func testAckDispatcherOnDeviceEventQOSDeviceFailure(t *testing.T) {
 			o := &Outbounder{}
 			// Monitor logs for errors
 			// NewJSONLogger is the default logger for the outbounder
-			o.Logger = log.NewJSONLogger(&b)
+			o.Logger = adapter.DefaultLogger().Logger
 			dp, err := NewAckDispatcher(om, o)
 			require.NotNil(dp)
 			require.NoError(err)
@@ -507,7 +507,7 @@ func testAckDispatcherOnDeviceEventQOSSuccess(t *testing.T) {
 			o := &Outbounder{}
 			// Monitor logs for errors
 			// NewJSONLogger is the default logger for the outbounder
-			o.Logger = log.NewJSONLogger(&b)
+			o.Logger = adapter.DefaultLogger().Logger
 			dp, err := NewAckDispatcher(om, o)
 			require.NotNil(dp)
 			require.NoError(err)
