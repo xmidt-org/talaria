@@ -86,8 +86,7 @@ func StartControlServer(logger *zap.Logger, manager device.Manager, deviceGate d
 	apiHandler.Handle(drainPath, &drain.Status{Drainer: d}).Methods("GET")
 
 	server := xhttp.NewServer(options)
-	//TODO: need to create new logger for this
-	// server.Handler = xcontext.Populate(logginghttp.SetLogger(logger))(r)
+	server.Handler = setLogger(logger)(r)
 
 	starter := xhttp.NewStarter(options.StartOptions(), server)
 	go func() {
