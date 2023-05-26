@@ -35,16 +35,13 @@ import (
 	"github.com/xmidt-org/bascule/basculehelper"
 	"github.com/xmidt-org/candlelight"
 
-	// nolint:staticcheck
-
 	"github.com/xmidt-org/webpa-common/v2/adapter"
+	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/concurrent"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/webpa-common/v2/device/devicegate"
 	"github.com/xmidt-org/webpa-common/v2/device/devicehealth"
 	"github.com/xmidt-org/webpa-common/v2/device/rehasher"
-
-	// nolint:staticcheck
 
 	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/server"

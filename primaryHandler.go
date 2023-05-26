@@ -37,7 +37,6 @@ import (
 	"github.com/xmidt-org/touchstone"
 
 	// nolint:staticcheck
-
 	"github.com/xmidt-org/webpa-common/v2/xmetrics"
 	"go.uber.org/zap"
 

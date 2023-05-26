@@ -38,7 +38,7 @@ const (
 // and determines whether or not an ack to the source device is required.
 type ackDispatcher struct {
 	hostname          string
-	errorLog          *zap.Logger
+	logger            *zap.Logger
 	timeout           time.Duration
 	AckSuccess        metrics.Counter
 	AckFailure        metrics.Counter
@@ -58,7 +58,7 @@ func NewAckDispatcher(om OutboundMeasures, o *Outbounder) (Dispatcher, error) {
 
 	return &ackDispatcher{
 		hostname:          n,
-		errorLog:          l,
+		logger:            l,
 		timeout:           o.requestTimeout(),
 		AckSuccess:        om.AckSuccess,
 		AckFailure:        om.AckFailure,
@@ -73,10 +73,10 @@ func (d *ackDispatcher) OnDeviceEvent(event *device.Event) {
 	var r *device.Request
 
 	if event == nil {
-		d.errorLog.Error("Error nil event")
+		d.logger.Error("Error nil event")
 		return
 	} else if event.Device == nil {
-		d.errorLog.Error("Error nil device")
+		d.logger.Error("Error nil device")
 		return
 	}
 
@@ -155,7 +155,7 @@ func (d *ackDispatcher) OnDeviceEvent(event *device.Event) {
 	}(time.Now())
 
 	if _, err := event.Device.Send(r.WithContext(ctx)); err != nil {
-		d.errorLog.Error("Error dispatching QOS ack", zap.Any("qosLevel", l), zap.Any("partnerID", p), zap.Any("messageType", t), zap.Error(err))
+		d.logger.Error("Error dispatching QOS ack", zap.Any("qosLevel", l), zap.Any("partnerID", p), zap.Any("messageType", t), zap.Error(err))
 		d.AckFailure.With(ls...).Add(1)
 		ackFailure = true
 		return

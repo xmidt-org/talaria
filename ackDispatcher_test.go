@@ -24,9 +24,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"github.com/xmidt-org/webpa-common/v2/adapter"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/wrp-go/v3"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 const failure_case = "failure case"
@@ -67,8 +68,13 @@ func testAckDispatcherOnDeviceEventQOSEventFailure(t *testing.T) {
 				AckFailureLatency: mAckFailureLatency,
 			}
 			o := &Outbounder{}
-			// NewJSONLogger is the default logger for the outbounder
-			o.Logger = adapter.DefaultLogger().Logger
+			logger := zap.New(
+				zapcore.NewCore(zapcore.NewJSONEncoder(
+					zapcore.EncoderConfig{
+						MessageKey: "message",
+					}), zapcore.AddSync(&b), zapcore.ErrorLevel),
+			)
+			o.Logger = logger
 			dp, err := NewAckDispatcher(om, o)
 			require.NotNil(dp)
 			require.NoError(err)
@@ -187,8 +193,13 @@ func testAckDispatcherOnDeviceEventQOSDeviceFailure(t *testing.T) {
 			}
 			o := &Outbounder{}
 			// Monitor logs for errors
-			// NewJSONLogger is the default logger for the outbounder
-			o.Logger = adapter.DefaultLogger().Logger
+			logger := zap.New(
+				zapcore.NewCore(zapcore.NewJSONEncoder(
+					zapcore.EncoderConfig{
+						MessageKey: "message",
+					}), zapcore.AddSync(&b), zapcore.ErrorLevel),
+			)
+			o.Logger = logger
 			dp, err := NewAckDispatcher(om, o)
 			require.NotNil(dp)
 			require.NoError(err)
@@ -506,8 +517,13 @@ func testAckDispatcherOnDeviceEventQOSSuccess(t *testing.T) {
 			}
 			o := &Outbounder{}
 			// Monitor logs for errors
-			// NewJSONLogger is the default logger for the outbounder
-			o.Logger = adapter.DefaultLogger().Logger
+			logger := zap.New(
+				zapcore.NewCore(zapcore.NewJSONEncoder(
+					zapcore.EncoderConfig{
+						MessageKey: "message",
+					}), zapcore.AddSync(&b), zapcore.ErrorLevel),
+			)
+			o.Logger = logger
 			dp, err := NewAckDispatcher(om, o)
 			require.NotNil(dp)
 			require.NoError(err)
