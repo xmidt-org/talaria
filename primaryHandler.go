@@ -304,7 +304,7 @@ func NewPrimaryHandler(logger *zap.Logger, manager device.Manager, v *viper.Vipe
 	var (
 		// the basic decorator chain all device connect handlers use
 		deviceConnectChain = alice.New(
-			setLogger(logger),
+			setLogger(logger, header(device.DeviceNameHeader, device.DeviceNameHeader)),
 			controlConstructor,
 			device.UseID.FromHeader,
 		)

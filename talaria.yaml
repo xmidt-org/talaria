@@ -614,11 +614,16 @@ zap:
     - stderr
     # - /var/log/caduceus/caduceus.log
 
+  # DisableCaller stops annotating logs with the calling function's file
+	# name and line number. By default, all logs are annotated.
+  disableCaller: true
+  
   # EncoderConfig sets options for the chosen encoder. See
   # zapcore.EncoderConfig for details.
   encoderConfig:
     messageKey: message
     levelKey: key
+    callerKey: caller
     levelEncoder: lowercase
 
   # Encoding sets the logger's encoding. Valid values are "json" and
