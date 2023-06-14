@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [v0.7.0]
+-Added zap logger and bascule helper package [#315] (https://github.com/xmidt-org/talaria/pull/315)
 
 ## [v0.6.11]
 - Update configs and documentation for the introduction of OTLP in Candlelight [#282](https://github.com/xmidt-org/talaria/pull/282)
