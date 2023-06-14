@@ -14,9 +14,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/xmidt-org/webpa-common/v2/device"
+	"go.uber.org/zap/zaptest"
 
 	// nolint:staticcheck
-	"github.com/xmidt-org/webpa-common/v2/logging"
 	"github.com/xmidt-org/webpa-common/v2/xhttp"
 	"github.com/xmidt-org/wrp-go/v3"
 	"github.com/xmidt-org/wrp-go/v3/wrphttp"
@@ -52,7 +52,7 @@ func testWithDeviceAccessCheck(t *testing.T, authorized bool) {
 		d.On("authorizeWRP", r.Context(), &r.Entity.Message).Return(&xhttp.Error{Code: http.StatusForbidden, Text: "Error body"})
 	}
 
-	wrpRouterHandler = withDeviceAccessCheck(logging.NewTestLogger(nil, t), wrpRouterHandler, d)
+	wrpRouterHandler = withDeviceAccessCheck(zaptest.NewLogger(t), wrpRouterHandler, d)
 	wrpRouterHandler(w, r)
 
 	if authorized {
@@ -201,7 +201,7 @@ func testMessageHandlerServeHTTPEvent(t *testing.T, requestFormat wrp.Format) {
 		request  = httptest.NewRequest("POST", "/foo", bytes.NewReader(requestContents))
 
 		router  = new(mockRouter)
-		handler = wrphttp.NewHTTPHandler(wrpRouterHandler(logging.NewTestLogger(nil, t), router, nil), wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())))
+		handler = wrphttp.NewHTTPHandler(wrpRouterHandler(zaptest.NewLogger(t), router, nil), wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())))
 
 		actualDeviceRequest *device.Request
 	)
@@ -264,7 +264,7 @@ func testMessageHandlerServeHTTPRequestResponse(t *testing.T, responseFormat, re
 
 		router  = new(mockRouter)
 		d       = new(device.MockDevice)
-		handler = wrphttp.NewHTTPHandler(wrpRouterHandler(logging.NewTestLogger(nil, t), router, nil), wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())))
+		handler = wrphttp.NewHTTPHandler(wrpRouterHandler(zaptest.NewLogger(t), router, nil), wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())))
 
 		actualDeviceRequest    *device.Request
 		expectedDeviceResponse = &device.Response{

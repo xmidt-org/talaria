@@ -22,17 +22,13 @@ import (
 	"sync"
 
 	"github.com/go-kit/kit/metrics"
-	"github.com/go-kit/log"
-
-	// nolint:staticcheck
-	"github.com/xmidt-org/webpa-common/v2/logging"
+	"go.uber.org/zap"
 )
 
 // WorkerPool describes a pool of goroutines that dispatch http.Request objects to
 // a transactor function
 type WorkerPool struct {
-	errorLog       log.Logger
-	debugLog       log.Logger
+	logger         *zap.Logger
 	outbounds      <-chan outboundEnvelope
 	workerPoolSize uint
 	queueSize      metrics.Gauge
@@ -44,8 +40,7 @@ type WorkerPool struct {
 func NewWorkerPool(om OutboundMeasures, o *Outbounder, outbounds <-chan outboundEnvelope) *WorkerPool {
 	logger := o.logger()
 	return &WorkerPool{
-		errorLog:       logging.Error(logger),
-		debugLog:       logging.Debug(logger),
+		logger:         logger,
 		outbounds:      outbounds,
 		workerPoolSize: o.workerPoolSize(),
 		queueSize:      om.QueueSize,
@@ -73,20 +68,20 @@ func (wp *WorkerPool) transact(e outboundEnvelope) {
 
 	// bail out early if the request has been on the queue too long
 	if err := e.request.Context().Err(); err != nil {
-		wp.errorLog.Log(logging.MessageKey(), "Outbound message expired while on queue", logging.ErrorKey(), err)
+		wp.logger.Error("Outbound message expired while on queue", zap.Error(err))
 		return
 	}
 
 	response, err := wp.transactor(e.request)
 	if err != nil {
-		wp.errorLog.Log(logging.MessageKey(), "HTTP transaction error", logging.ErrorKey(), err)
+		wp.logger.Error("HTTP transaction error", zap.Error(err))
 		return
 	}
 
 	if response.StatusCode < 400 {
-		wp.debugLog.Log(logging.MessageKey(), "HTTP response", "status", response.Status, "url", e.request.URL)
+		wp.logger.Debug("HTTP response", zap.String("status", response.Status), zap.Any("url", e.request.URL))
 	} else {
-		wp.errorLog.Log(logging.MessageKey(), "HTTP response", "status", response.Status, "url", e.request.URL)
+		wp.logger.Error("HTTP response", zap.String("status", response.Status), zap.Any("url", e.request.URL))
 	}
 
 	io.Copy(io.Discard, response.Body)

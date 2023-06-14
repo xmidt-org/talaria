@@ -21,13 +21,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/spf13/viper"
+	"github.com/xmidt-org/webpa-common/v2/adapter"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/webpa-common/v2/event"
+	"go.uber.org/zap"
 
 	// nolint:staticcheck
-	"github.com/xmidt-org/webpa-common/v2/logging"
 	"github.com/xmidt-org/webpa-common/v2/xresolver"
 	"github.com/xmidt-org/webpa-common/v2/xresolver/consul"
 )
@@ -74,13 +74,13 @@ type Outbounder struct {
 	Transport              http.Transport         `json:"transport"`
 	ClientTimeout          time.Duration          `json:"clientTimeout"`
 	AuthKey                string                 `json:"authKey"`
-	Logger                 log.Logger             `json:"-"`
+	Logger                 *zap.Logger            `json:"-"`
 }
 
 // NewOutbounder returns an Outbounder unmarshalled from a Viper environment.
 // This function allows the Viper instance to be nil, in which case a default
 // Outbounder is returned.
-func NewOutbounder(logger log.Logger, v *viper.Viper) (o *Outbounder, watcher *consul.ConsulWatcher, err error) {
+func NewOutbounder(logger *zap.Logger, v *viper.Viper) (o *Outbounder, watcher *consul.ConsulWatcher, err error) {
 	options := consul.Options{
 		Watch:  make(map[string]string),
 		Logger: logger,
@@ -106,12 +106,12 @@ func NewOutbounder(logger log.Logger, v *viper.Viper) (o *Outbounder, watcher *c
 		err = v.Unmarshal(o)
 	}
 	if o.EnableConsulRoundRobin {
-		logging.Info(o.Logger).Log(logging.MessageKey(), "Using consul round robin on service discover", "service", "caduceus")
+		logger.Info("Using consul round robin on service discover", zap.String("service", "caduceus"))
 		for _, url := range o.EventEndpoints {
 			options.Watch[url.(string)] = "caduceus"
 		}
 		watcher = consul.NewConsulWatcher(options)
-		o.Transport.DialContext = xresolver.NewResolver(xresolver.DefaultDialer, log.WithPrefix(logger, "component", "xresolver"), watcher).DialContext
+		o.Transport.DialContext = xresolver.NewResolver(xresolver.DefaultDialer, logger.With(zap.String("component", "xresolver")), watcher).DialContext
 	}
 	return
 }
@@ -126,12 +126,12 @@ func (o *Outbounder) String() string {
 	}
 }
 
-func (o *Outbounder) logger() log.Logger {
+func (o *Outbounder) logger() *zap.Logger {
 	if o != nil && o.Logger != nil {
 		return o.Logger
 	}
 
-	return logging.DefaultLogger()
+	return adapter.DefaultLogger().Logger
 }
 
 func (o *Outbounder) method() string {
@@ -259,7 +259,8 @@ func (o *Outbounder) clientTimeout() time.Duration {
 
 // Start spawns all necessary goroutines and returns a device.Listener
 func (o *Outbounder) Start(om OutboundMeasures) ([]device.Listener, error) {
-	logging.Info(o.logger()).Log(logging.MessageKey(), "Starting outbounder")
+	logger := o.logger()
+	logger.Info("Starting outbounder")
 	eventDispatcher, outbounds, err := NewEventDispatcher(om, o, nil)
 	if err != nil {
 		return nil, err

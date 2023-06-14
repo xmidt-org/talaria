@@ -25,15 +25,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
+	"go.uber.org/zap"
 
 	"github.com/go-kit/kit/metrics"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/webpa-common/v2/event"
 
 	// nolint:staticcheck
-	"github.com/xmidt-org/webpa-common/v2/logging"
 	"github.com/xmidt-org/wrp-go/v3"
 )
 
@@ -41,7 +39,7 @@ import (
 // via the returned channel. The channel may be used to spawn one or more workers
 // to process the envelopes
 type eventDispatcher struct {
-	errorLog         log.Logger
+	errorLog         *zap.Logger
 	urlFilter        URLFilter
 	method           string
 	timeout          time.Duration
@@ -72,10 +70,10 @@ func NewEventDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFilter)
 		return nil, nil, err
 	}
 
-	logger.Log(level.Key(), level.InfoValue(), "eventMap", eventMap)
+	logger.Info("eventMap created", zap.Any("eventMap", eventMap))
 
 	return &eventDispatcher{
-		errorLog:         logging.Error(logger),
+		errorLog:         logger,
 		urlFilter:        urlFilter,
 		method:           o.method(),
 		timeout:          o.requestTimeout(),
@@ -92,7 +90,7 @@ func NewEventDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFilter)
 func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 	// TODO improve how we test dispatchEvent & dispatchTo
 	if event == nil {
-		d.errorLog.Log(logging.MessageKey(), "Error nil event")
+		d.errorLog.Error("Error nil event")
 		return
 	}
 
@@ -100,13 +98,13 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 	case device.Connect:
 		eventType, message := newOnlineMessage(d.source, event.Device)
 		if err := d.encodeAndDispatchEvent(eventType, wrp.Msgpack, message); err != nil {
-			d.errorLog.Log(logging.MessageKey(), "Error dispatching online event", "eventType", eventType, "destination", message.Destination, logging.ErrorKey(), err)
+			d.errorLog.Error("Error dispatching online event", zap.Any("eventType", eventType), zap.Any("destination", message.Destination), zap.Error(err))
 		}
 
 	case device.Disconnect:
 		eventType, message := newOfflineMessage(d.source, event.Device)
 		if err := d.encodeAndDispatchEvent(eventType, wrp.Msgpack, message); err != nil {
-			d.errorLog.Log(logging.MessageKey(), "Error dispatching offline event", "eventType", eventType, "destination", message.Destination, logging.ErrorKey(), err)
+			d.errorLog.Error("Error dispatching offline event", zap.Any("eventType", eventType), zap.Any("destination", message.Destination), zap.Error(err))
 		}
 
 	case device.MessageReceived:
@@ -116,15 +114,15 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 			if strings.HasPrefix(destination, EventPrefix) {
 				eventType := destination[len(EventPrefix):]
 				if err := d.dispatchEvent(eventType, contentType, event.Contents); err != nil {
-					d.errorLog.Log(logging.MessageKey(), "Error dispatching event", "eventType", eventType, "destination", destination, logging.ErrorKey(), err)
+					d.errorLog.Error("Error dispatching event", zap.Any("eventType", eventType), zap.Any("destination", destination), zap.Error(err))
 				}
 			} else if strings.HasPrefix(destination, DNSPrefix) {
 				unfilteredURL := destination[len(DNSPrefix):]
 				if err := d.dispatchTo(unfilteredURL, contentType, event.Contents); err != nil {
-					d.errorLog.Log(logging.MessageKey(), "Error dispatching to endpoint", "destination", destination, logging.ErrorKey(), err)
+					d.errorLog.Error("Error dispatching to endpoint", zap.Any("destination", destination), zap.Error(err))
 				}
 			} else {
-				d.errorLog.Log(logging.MessageKey(), "Unroutable destination", "destination", destination)
+				d.errorLog.Error("Unroutable destination", zap.Any("destination", destination))
 			}
 		}
 	}

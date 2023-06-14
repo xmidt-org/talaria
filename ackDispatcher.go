@@ -22,11 +22,10 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/metrics"
-	"github.com/go-kit/log"
 	"github.com/xmidt-org/webpa-common/v2/device"
+	"go.uber.org/zap"
 
 	// nolint:staticcheck
-	"github.com/xmidt-org/webpa-common/v2/logging"
 	"github.com/xmidt-org/wrp-go/v3"
 )
 
@@ -39,7 +38,7 @@ const (
 // and determines whether or not an ack to the source device is required.
 type ackDispatcher struct {
 	hostname          string
-	errorLog          log.Logger
+	logger            *zap.Logger
 	timeout           time.Duration
 	AckSuccess        metrics.Counter
 	AckFailure        metrics.Counter
@@ -50,16 +49,16 @@ type ackDispatcher struct {
 // NewAckDispatcher is an ackDispatcher factory which processes outbound events
 // and determines whether or not an ack to the source device is required.
 func NewAckDispatcher(om OutboundMeasures, o *Outbounder) (Dispatcher, error) {
-	l := logging.Error(o.logger())
+	l := o.logger()
 	n, err := os.Hostname()
 	if err != nil {
-		l.Log(logging.MessageKey(), "Error fetching hostname", logging.ErrorKey(), err)
+		l.Error("Error fetching hostname", zap.Error(err))
 		n = unknownHostname
 	}
 
 	return &ackDispatcher{
 		hostname:          n,
-		errorLog:          l,
+		logger:            l,
 		timeout:           o.requestTimeout(),
 		AckSuccess:        om.AckSuccess,
 		AckFailure:        om.AckFailure,
@@ -74,10 +73,10 @@ func (d *ackDispatcher) OnDeviceEvent(event *device.Event) {
 	var r *device.Request
 
 	if event == nil {
-		d.errorLog.Log(logging.MessageKey(), "Error nil event")
+		d.logger.Error("Error nil event")
 		return
 	} else if event.Device == nil {
-		d.errorLog.Log(logging.MessageKey(), "Error nil device")
+		d.logger.Error("Error nil device")
 		return
 	}
 
@@ -156,7 +155,7 @@ func (d *ackDispatcher) OnDeviceEvent(event *device.Event) {
 	}(time.Now())
 
 	if _, err := event.Device.Send(r.WithContext(ctx)); err != nil {
-		d.errorLog.Log(logging.MessageKey(), "Error dispatching QOS ack", "qosLevel", l, "partnerID", p, "messageType", t, logging.ErrorKey(), err)
+		d.logger.Error("Error dispatching QOS ack", zap.Any("qosLevel", l), zap.Any("partnerID", p), zap.Any("messageType", t), zap.Error(err))
 		d.AckFailure.With(ls...).Add(1)
 		ackFailure = true
 		return

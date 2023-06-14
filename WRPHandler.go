@@ -4,20 +4,20 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/go-kit/log/level"
+	"go.uber.org/zap"
 
 	gokithttp "github.com/go-kit/kit/transport/http"
 
-	"github.com/go-kit/log"
+	"github.com/xmidt-org/webpa-common/v2/adapter"
 	"github.com/xmidt-org/webpa-common/v2/device"
 
 	// nolint:staticcheck
-	"github.com/xmidt-org/webpa-common/v2/logging"
+
 	"github.com/xmidt-org/webpa-common/v2/xhttp"
 	"github.com/xmidt-org/wrp-go/v3/wrphttp"
 )
 
-func withDeviceAccessCheck(errorLogger log.Logger, wrpRouterHandler wrphttp.HandlerFunc, d deviceAccess) wrphttp.HandlerFunc {
+func withDeviceAccessCheck(errorLogger *zap.Logger, wrpRouterHandler wrphttp.HandlerFunc, d deviceAccess) wrphttp.HandlerFunc {
 	encodeError := talariaWRPErrorEncoder(errorLogger)
 
 	return func(w wrphttp.ResponseWriter, r *wrphttp.Request) {
@@ -30,9 +30,10 @@ func withDeviceAccessCheck(errorLogger log.Logger, wrpRouterHandler wrphttp.Hand
 	}
 }
 
-func wrpRouterHandler(logger log.Logger, router device.Router, ctxlogger func(ctx context.Context) log.Logger) wrphttp.HandlerFunc {
+func wrpRouterHandler(logger *zap.Logger, router device.Router, ctxlogger func(ctx context.Context) *zap.Logger) wrphttp.HandlerFunc {
 	if logger == nil {
-		logger = logging.DefaultLogger()
+		log := adapter.DefaultLogger()
+		logger = log.Logger
 	}
 
 	if router == nil {
@@ -45,11 +46,11 @@ func wrpRouterHandler(logger log.Logger, router device.Router, ctxlogger func(ct
 			Format:   r.Entity.Format,
 			Contents: r.Entity.Bytes,
 		}
-		var errorLogger log.Logger
+		var errorLogger *zap.Logger
 		if ctxlogger != nil && ctxlogger(r.Context()) != nil {
-			errorLogger = logging.Error(ctxlogger(r.Context()))
+			errorLogger = ctxlogger(r.Context())
 		} else {
-			errorLogger = level.Error(logger)
+			errorLogger = logger
 		}
 
 		// deviceRequest carries the context through the routing infrastructure
@@ -71,7 +72,7 @@ func wrpRouterHandler(logger log.Logger, router device.Router, ctxlogger func(ct
 				code = http.StatusBadRequest
 			}
 
-			errorLogger.Log(logging.MessageKey(), "Could not process device request", logging.ErrorKey(), err, "code", code)
+			errorLogger.Error("Could not process device request", zap.Error(err), zap.Int("code", code))
 			w.Header().Set("X-Xmidt-Message-Error", err.Error())
 			xhttp.WriteErrorf(
 				w,
@@ -96,7 +97,7 @@ func wrpRouterHandler(logger log.Logger, router device.Router, ctxlogger func(ct
 				http.StatusInternalServerError,
 				"Transaction response had no content")
 
-			errorLogger.Log(logging.MessageKey(), "Transaction response was empty", logging.ErrorKey(), err)
+			errorLogger.Error("Transaction response was empty", zap.Error(err))
 
 			return
 		}
@@ -108,7 +109,7 @@ func wrpRouterHandler(logger log.Logger, router device.Router, ctxlogger func(ct
 		})
 
 		if err != nil {
-			errorLogger.Log(logging.MessageKey(), "Error while writing transaction response", logging.ErrorKey(), err)
+			errorLogger.Error("Error while writing transaction response", zap.Error(err))
 		}
 	}
 }
@@ -128,7 +129,7 @@ func decorateRequestDecoder(decode wrphttp.Decoder) wrphttp.Decoder {
 	}
 }
 
-func talariaWRPErrorEncoder(errorLogger log.Logger) gokithttp.ErrorEncoder {
+func talariaWRPErrorEncoder(errorLogger *zap.Logger) gokithttp.ErrorEncoder {
 	return func(_ context.Context, err error, w http.ResponseWriter) {
 		code := http.StatusInternalServerError
 		// nolint errorlint
@@ -136,7 +137,7 @@ func talariaWRPErrorEncoder(errorLogger log.Logger) gokithttp.ErrorEncoder {
 			code = sc.StatusCode()
 		}
 		if code == http.StatusInternalServerError {
-			errorLogger.Log(logging.ErrorKey(), err, logging.MessageKey(), "Possibly false internal server error")
+			errorLogger.Error("Possibly false internal server error", zap.Error(err))
 		}
 		w.WriteHeader(code)
 	}

@@ -6,12 +6,12 @@ import (
 
 	"github.com/fatih/structs"
 	"github.com/go-kit/kit/metrics"
-	"github.com/go-kit/log"
 	"github.com/thedevsaddam/gojsonq/v2"
 	"github.com/xmidt-org/webpa-common/v2/device"
+	"go.uber.org/zap"
 
 	// nolint:staticcheck
-	"github.com/xmidt-org/webpa-common/v2/logging"
+
 	"github.com/xmidt-org/webpa-common/v2/xhttp"
 	"github.com/xmidt-org/wrp-go/v3"
 )
@@ -79,7 +79,7 @@ type talariaDeviceAccess struct {
 	deviceRegistry     device.Registry
 	checks             []*parsedCheck
 	sep                string
-	debugLogger        log.Logger
+	logger             *zap.Logger
 }
 
 func (t *talariaDeviceAccess) withFailure(labelValues ...string) metrics.Counter {
@@ -146,16 +146,11 @@ func (t *talariaDeviceAccess) authorizeWRP(_ context.Context, message *wrp.Messa
 			left, right = right, left
 		}
 
-		t.debugLogger.Log(
-			logging.MessageKey(), "Performing check with operation applied from left to right",
-			"check", c.name,
-			"left", left,
-			"operation", c.assertion.name(),
-			"right", right)
+		t.logger.Debug("Performing check with operation applied from left to right", zap.String("check", c.name), zap.Any("lefts", left), zap.String("operation", c.assertion.name()), zap.Any("right", right))
 
 		ok, err := c.assertion.evaluate(left, right)
 		if err != nil {
-			t.debugLogger.Log(logging.MessageKey(), "Check failed to complete", "check", c.name, logging.ErrorKey(), err)
+			t.logger.Debug("Check failed to complete", zap.String("check", c.name), zap.Error(err))
 			t.withFailure(reasonLabel, incompleteCheck).Add(1)
 
 			if t.strict {
@@ -165,7 +160,7 @@ func (t *talariaDeviceAccess) authorizeWRP(_ context.Context, message *wrp.Messa
 		}
 
 		if !ok {
-			t.debugLogger.Log(logging.MessageKey(), "WRP is unauthorized to reach device", "check", c.name)
+			t.logger.Debug("WRP is unauthorized to reach device", zap.String("check", c.name))
 			t.withFailure(reasonLabel, denied).Add(1)
 
 			if t.strict {
