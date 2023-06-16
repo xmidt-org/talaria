@@ -9,7 +9,7 @@ require (
 	github.com/goph/emperror v0.17.3-0.20190703203600-60a8d9faa17b
 	github.com/gorilla/mux v1.8.0
 	github.com/justinas/alice v1.2.0
-	github.com/prometheus/client_golang v1.15.1
+	github.com/prometheus/client_golang v1.16.0
 	github.com/segmentio/ksuid v1.0.4
 	github.com/spf13/cast v1.5.1
 	github.com/spf13/pflag v1.0.5
@@ -84,7 +84,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.42.0 // indirect
-	github.com/prometheus/procfs v0.9.0 // indirect
+	github.com/prometheus/procfs v0.10.1 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/afero v1.9.5 // indirect
