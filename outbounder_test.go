@@ -29,11 +29,10 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/xmidt-org/webpa-common/v2/adapter"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/webpa-common/v2/event"
-
-	// nolint:staticcheck
-	"github.com/xmidt-org/webpa-common/v2/logging"
+	"go.uber.org/zap/zaptest"
 
 	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/xmetrics"
@@ -82,7 +81,7 @@ func ExampleOutbounder() {
 		return
 	}
 
-	o, _, err := NewOutbounder(logging.DefaultLogger(), v)
+	o, _, err := NewOutbounder(adapter.DefaultLogger().Logger, v)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -131,7 +130,7 @@ func testOutbounderDefaults(t *testing.T) {
 
 	assert := assert.New(t)
 	for _, o := range []*Outbounder{nil, new(Outbounder), nilViper, withViper} {
-		assert.Equal(logging.DefaultLogger(), o.logger())
+		assert.Equal(adapter.DefaultLogger().Logger, o.logger())
 		assert.Equal(DefaultMethod, o.method())
 		assert.Equal(DefaultRequestTimeout, o.requestTimeout())
 		assert.Equal(DefaultDefaultScheme, o.defaultScheme())
@@ -157,7 +156,7 @@ func testOutbounderConfiguration(t *testing.T) {
 	var (
 		assert        = assert.New(t)
 		require       = require.New(t)
-		logger        = logging.NewTestLogger(nil, t)
+		logger        = zaptest.NewLogger(t)
 		configuration = []byte(`{
 			"method": "PATCH",
 			"requestTimeout": "30s",

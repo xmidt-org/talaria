@@ -23,12 +23,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/xmidt-org/webpa-common/v2/convey"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/wrp-go/v3"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 func genTestMetadata() *device.Metadata {
@@ -406,8 +407,13 @@ func testEventDispatcherOnDeviceEventNilEventError(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 	o := &Outbounder{}
-	// NewJSONLogger is the default logger for the outbounder
-	o.Logger = log.NewJSONLogger(&b)
+	logger := zap.New(
+		zapcore.NewCore(zapcore.NewJSONEncoder(
+			zapcore.EncoderConfig{
+				MessageKey: "message",
+			}), zapcore.AddSync(&b), zapcore.ErrorLevel),
+	)
+	o.Logger = logger
 	dp, _, err := NewEventDispatcher(NewTestOutboundMeasures(), o, nil)
 	require.NotNil(dp)
 	require.NoError(err)

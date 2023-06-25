@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [v0.7.0]
+-Added zap logger and bascule helper package [#315] (https://github.com/xmidt-org/talaria/pull/315)
 
 ## [v0.6.11]
 - Update configs and documentation for the introduction of OTLP in Candlelight [#282](https://github.com/xmidt-org/talaria/pull/282)
@@ -175,7 +177,8 @@ Switching to new build process
 ## [v0.1.1] Tue Mar 28 2017 Weston Schmidt - 0.1.1
 - initial creation
 
-[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.6.11...HEAD
+[Unreleased]: https://github.com/xmidt-org/talaria/compare/v0.7.0...HEAD
+[v0.7.0]: https://github.com/xmidt-org/talaria/compare/v0.6.11...v0.7.0
 [v0.6.11]: https://github.com/xmidt-org/talaria/compare/v0.6.10...v0.6.11
 [v0.6.10]: https://github.com/xmidt-org/talaria/compare/v0.6.9...v0.6.10
 [v0.6.9]: https://github.com/xmidt-org/talaria/compare/v0.6.8...v0.6.9

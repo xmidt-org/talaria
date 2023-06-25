@@ -6,9 +6,7 @@ import (
 
 	"github.com/xmidt-org/candlelight"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
-
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
+	"go.uber.org/zap"
 
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
@@ -18,12 +16,8 @@ import (
 	"github.com/xmidt-org/webpa-common/v2/device/drain"
 
 	// nolint:staticcheck
-	"github.com/xmidt-org/webpa-common/v2/logging"
-	// nolint:staticcheck
-	"github.com/xmidt-org/webpa-common/v2/logging/logginghttp"
 	"github.com/xmidt-org/webpa-common/v2/xhttp"
 	"github.com/xmidt-org/webpa-common/v2/xhttp/gate"
-	"github.com/xmidt-org/webpa-common/v2/xhttp/xcontext"
 
 	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/xmetrics"
@@ -36,7 +30,7 @@ const (
 	drainPath  = "/device/drain"
 )
 
-func StartControlServer(logger log.Logger, manager device.Manager, deviceGate devicegate.Interface, registry xmetrics.Registry, v *viper.Viper, tracing candlelight.Tracing) (func(http.Handler) http.Handler, error) {
+func StartControlServer(logger *zap.Logger, manager device.Manager, deviceGate devicegate.Interface, registry xmetrics.Registry, v *viper.Viper, tracing candlelight.Tracing) (func(http.Handler) http.Handler, error) {
 	if !v.IsSet(ControlKey) {
 		return xhttp.NilConstructor, nil
 	}
@@ -92,12 +86,12 @@ func StartControlServer(logger log.Logger, manager device.Manager, deviceGate de
 	apiHandler.Handle(drainPath, &drain.Status{Drainer: d}).Methods("GET")
 
 	server := xhttp.NewServer(options)
-	server.Handler = xcontext.Populate(logginghttp.SetLogger(logger))(r)
+	server.Handler = setLogger(logger)(r)
 
 	starter := xhttp.NewStarter(options.StartOptions(), server)
 	go func() {
 		if err := starter(); err != nil {
-			logger.Log(level.Key(), level.ErrorValue(), logging.MessageKey(), "Unable to start control server", logging.ErrorKey(), err)
+			logger.Error("Unable to start control server", zap.Error(err))
 		}
 	}()
 

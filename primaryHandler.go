@@ -25,12 +25,12 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/metrics"
-	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/viper"
 	"github.com/xmidt-org/bascule"
+	"github.com/xmidt-org/bascule/basculehelper"
 	"github.com/xmidt-org/clortho/clorthometrics"
 	"github.com/xmidt-org/clortho/clorthozap"
 	"github.com/xmidt-org/sallust"
@@ -47,19 +47,13 @@ import (
 	"github.com/xmidt-org/clortho"
 
 	// nolint:staticcheck
-	"github.com/xmidt-org/webpa-common/v2/basculemetrics"
 	"github.com/xmidt-org/webpa-common/v2/device"
 
-	// nolint:staticcheck
-	"github.com/xmidt-org/webpa-common/v2/logging"
-	// nolint:staticcheck
-	"github.com/xmidt-org/webpa-common/v2/logging/logginghttp"
 	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/service"
 	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/service/servicehttp"
 	"github.com/xmidt-org/webpa-common/v2/xhttp"
-	"github.com/xmidt-org/webpa-common/v2/xhttp/xcontext"
 	"github.com/xmidt-org/webpa-common/v2/xhttp/xfilter"
 	"github.com/xmidt-org/webpa-common/v2/xhttp/xtimeout"
 	"github.com/xmidt-org/wrp-go/v3/wrphttp"
@@ -125,17 +119,17 @@ func getInboundTimeout(v *viper.Viper) time.Duration {
 }
 
 // buildUserPassMap decodes base64-encoded strings of the form user:pass and write them to a map from user -> pass
-func buildUserPassMap(logger log.Logger, encodedBasicAuthKeys []string) (userPass map[string]string) {
+func buildUserPassMap(logger *zap.Logger, encodedBasicAuthKeys []string) (userPass map[string]string) {
 	userPass = make(map[string]string)
 
 	for _, encodedKey := range encodedBasicAuthKeys {
 		decoded, err := base64.StdEncoding.DecodeString(encodedKey)
 		if err != nil {
-			logging.Info(logger).Log(logging.MessageKey(), "Failed to base64-decode basic auth key", "key", encodedKey, logging.ErrorKey(), err)
+			logger.Info("Failed to base64-decode basic auth key", zap.String("key", encodedKey), zap.Error(err))
 		}
 
 		i := bytes.IndexByte(decoded, ':')
-		logging.Debug(logger).Log(logging.MessageKey(), "Decoded basic auth key", "key", decoded, "delimeterIndex", i)
+		logger.Debug("Decoded basic auth key", zap.ByteString("key", decoded), zap.Int("delimeterIndex", i))
 		if i > 0 {
 			userPass[string(decoded[:i])] = string(decoded[i+1:])
 		}
@@ -143,7 +137,7 @@ func buildUserPassMap(logger log.Logger, encodedBasicAuthKeys []string) (userPas
 	return
 }
 
-func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper, a service.Accessor, e service.Environment,
+func NewPrimaryHandler(logger *zap.Logger, manager device.Manager, v *viper.Viper, a service.Accessor, e service.Environment,
 	controlConstructor alice.Constructor, metricsRegistry xmetrics.Registry, r *mux.Router) (http.Handler, error) {
 	var (
 		inboundTimeout = getInboundTimeout(v)
@@ -155,11 +149,8 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		deviceAuthRules  = bascule.Validators{} //auth rules for device registration endpoints
 		serviceAuthRules = bascule.Validators{} //auth rules for everything else
 
-		infoLogger  = logging.Info(logger)
-		errorLogger = logging.Error(logger)
-
-		m        = basculemetrics.NewAuthValidationMeasures(metricsRegistry)
-		listener = basculemetrics.NewMetricListener(m)
+		m        = basculehelper.NewAuthValidationMeasures(metricsRegistry)
+		listener = basculehelper.NewMetricListener(m)
 	)
 
 	authConstructorOptions := []basculehttp.COption{
@@ -254,7 +245,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 		config := new(deviceAccessCheckConfig)
 
 		if err := v.UnmarshalKey(DeviceAccessCheckConfigKey, config); err != nil {
-			errorLogger.Log(logging.MessageKey(), "Could not unmarshall wrpCheck config for api access to device.")
+			logger.Error("Could not unmarshall wrpCheck config for api access to device.")
 			return nil, err
 		}
 
@@ -263,8 +254,8 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 			return nil, err
 		}
 
-		infoLogger.Log(logging.MessageKey(), "Enabling Device Access Validator.")
-		wrpRouterHandler = withDeviceAccessCheck(errorLogger, wrpRouterHandler, deviceAccessCheck)
+		logger.Info("Enabling Device Access Validator.")
+		wrpRouterHandler = withDeviceAccessCheck(logger, wrpRouterHandler, deviceAccessCheck)
 	}
 
 	authConstructor = basculehttp.NewConstructor(authConstructorOptions...)
@@ -313,13 +304,7 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 	var (
 		// the basic decorator chain all device connect handlers use
 		deviceConnectChain = alice.New(
-			xcontext.Populate(
-				logginghttp.SetLogger(
-					logger,
-					logginghttp.Header(device.DeviceNameHeader, device.DeviceNameHeader),
-					logginghttp.RequestInfo,
-				),
-			),
+			setLogger(logger, header(device.DeviceNameHeader, device.DeviceNameHeader)),
 			controlConstructor,
 			device.UseID.FromHeader,
 		)
@@ -373,16 +358,15 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 	return r, nil
 }
 
-func buildDeviceAccessCheck(config *deviceAccessCheckConfig, logger log.Logger, counter metrics.Counter, deviceRegistry device.Registry) (deviceAccess, error) {
-	errorLogger := logging.Error(logger)
+func buildDeviceAccessCheck(config *deviceAccessCheckConfig, logger *zap.Logger, counter metrics.Counter, deviceRegistry device.Registry) (deviceAccess, error) {
 
 	if len(config.Checks) < 1 {
-		errorLogger.Log(logging.MessageKey(), "Potential security misconfig. Include checks for deviceAccessCheck or disable it")
+		logger.Error("Potential security misconfig. Include checks for deviceAccessCheck or disable it")
 		return nil, errors.New("failed enabling DeviceAccessCheck")
 	}
 
 	if config.Type != "enforce" && config.Type != "monitor" {
-		errorLogger.Log(logging.MessageKey(), "Unexpected type for deviceAccessCheck. Supported types are 'monitor' and 'enforce'")
+		logger.Error("Unexpected type for deviceAccessCheck. Supported types are 'monitor' and 'enforce'")
 		return nil, errors.New("failed verifying DeviceAccessCheck type")
 	}
 
@@ -391,7 +375,7 @@ func buildDeviceAccessCheck(config *deviceAccessCheckConfig, logger log.Logger, 
 	for _, check := range config.Checks {
 		parsedCheck, err := parseDeviceAccessCheck(check)
 		if err != nil {
-			errorLogger.Log(logging.ErrorKey(), err, logging.MessageKey(), "deviceAccesscheck parse failure")
+			logger.Error("deviceAccesscheck parse failure", zap.Error(err))
 			return nil, errors.New("failed parsing DeviceAccessCheck checks")
 		}
 		parsedChecks = append(parsedChecks, parsedCheck)
@@ -406,7 +390,7 @@ func buildDeviceAccessCheck(config *deviceAccessCheckConfig, logger log.Logger, 
 		wrpMessagesCounter: counter,
 		checks:             parsedChecks,
 		deviceRegistry:     deviceRegistry,
-		debugLogger:        logging.Debug(logger),
+		logger:             logger,
 		sep:                config.Sep,
 	}, nil
 }
