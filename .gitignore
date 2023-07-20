@@ -74,3 +74,6 @@ talaria
 # keep talaria directory
 !deploy/helm/talaria
 
+# goreleaser
+.goreleaser.yml
+dist/
