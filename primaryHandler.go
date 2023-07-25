@@ -349,13 +349,6 @@ func NewPrimaryHandler(logger log.Logger, manager device.Manager, v *viper.Viper
 			Extend(versionCompatibleAuth).
 			Append(DeviceMetadataMiddleware(getLogger)).
 			Then(connectHandler),
-	).HeadersRegexp("Authorization", ".*")
-
-	r.Handle(
-		fmt.Sprintf("%s/{version:%s|%s}/device", baseURI, v2, version),
-		deviceConnectChain.
-			Append(DeviceMetadataMiddleware(getLogger)).
-			Then(connectHandler),
 	)
 
 	apiHandler.Handle(
