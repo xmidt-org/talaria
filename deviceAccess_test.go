@@ -74,7 +74,7 @@ func testAuthorizeWRP(t *testing.T, testCases []deviceAccessTestCase, strict boo
 				wrpMessagesCounter: counter,
 				deviceRegistry:     mockDeviceRegistry,
 				sep:                ">",
-				logger:        testLogger,
+				logger:             testLogger,
 				checks:             checks,
 			}
 
