@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2017 Comcast Cable Communications Management, LLC
+// SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
@@ -66,10 +68,10 @@ func TestParseDeviceAccessCheck(t *testing.T) {
 			config: deviceAccessCheck{
 				Name:                 "    trimWhiteSpaces    ",
 				DeviceCredentialPath: "   dcp",
-				WRPCredentialPath: "wcp 		    ",
-				InputValue: []string{"e0", "e1"},
-				Op:         IntersectsOp,
-				Inversed:   true,
+				WRPCredentialPath:    "wcp 		    ",
+				InputValue:           []string{"e0", "e1"},
+				Op:                   IntersectsOp,
+				Inversed:             true,
 			},
 			expectedCheckName:      "trimWhiteSpaces",
 			expectedDeviceCredPath: "dcp",

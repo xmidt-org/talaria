@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2017 Comcast Cable Communications Management, LLC
+// SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
@@ -140,9 +142,9 @@ func (g greaterThan) name() string {
 	return GreaterThanOp
 }
 
-//iterable checks that the given interface is of a
-//supported iterable reflect.Kind and if so,
-//returns a slice of its elements
+// iterable checks that the given interface is of a
+// supported iterable reflect.Kind and if so,
+// returns a slice of its elements
 func iterable(e interface{}) ([]interface{}, bool) {
 	switch reflect.TypeOf(e).Kind() {
 	case reflect.Slice, reflect.Array:

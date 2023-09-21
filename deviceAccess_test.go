@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2017 Comcast Cable Communications Management, LLC
+// SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
@@ -72,7 +74,7 @@ func testAuthorizeWRP(t *testing.T, testCases []deviceAccessTestCase, strict boo
 				wrpMessagesCounter: counter,
 				deviceRegistry:     mockDeviceRegistry,
 				sep:                ">",
-				logger:        testLogger,
+				logger:             testLogger,
 				checks:             checks,
 			}
 
