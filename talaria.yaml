@@ -633,3 +633,7 @@ zap:
   # "console", as well as any third-party encodings registered via
   # RegisterEncoder.
   encoding: json
+
+#(Optional) failOpen determines if talaria should allow devices without authentication to connect or not
+#default is to allow for fail open
+failOpen: true
