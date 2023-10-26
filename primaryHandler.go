@@ -79,6 +79,10 @@ const (
 	// RehasherServicesConfigKey is the path to the services for whose events talaria's
 	// rehasher should listen to.
 	RehasherServicesConfigKey = "device.rehasher.services"
+
+	// FailOpenConfigKey is the path to the fail open boolean which will determine
+	// which route to take when a device tries to connect to talaria
+	FailOpenConfigKey = "failOpen"
 )
 
 // NoOpConstructor provides a transparent way for constructors that make up
@@ -314,20 +318,41 @@ func NewPrimaryHandler(logger *zap.Logger, manager device.Manager, v *viper.Vipe
 	}
 
 	// the secured variant of the device connect handler - compatible with v2 and v3
-	r.Handle(
-		fmt.Sprintf("%s/{version:%s|%s}/device", baseURI, v2, version),
-		deviceConnectChain.
-			Extend(versionCompatibleAuth).
-			Append(DeviceMetadataMiddleware(getLogger)).
-			Then(connectHandler),
-	).HeadersRegexp("Authorization", ".*")
+	// default functionality is to allow for talaria to accept devices with or without authorization
+	// failOpen must be set to false in config in order to require authorization from any device trying to connect
+	failOpen := true
+	if v.IsSet(FailOpenConfigKey) {
+		err := v.UnmarshalKey(FailOpenConfigKey, &failOpen)
+		if err != nil {
+			logger.Error("failOpen parse failure", zap.Error(err))
+			return nil, errors.New("failed parsing FailOpen boolean")
 
-	r.Handle(
-		fmt.Sprintf("%s/{version:%s|%s}/device", baseURI, v2, version),
-		deviceConnectChain.
-			Append(DeviceMetadataMiddleware(getLogger)).
-			Then(connectHandler),
-	)
+		}
+	}
+	if failOpen {
+		r.Handle(
+			fmt.Sprintf("%s/{version:%s|%s}/device", baseURI, v2, version),
+			deviceConnectChain.
+				Extend(versionCompatibleAuth).
+				Append(DeviceMetadataMiddleware(getLogger)).
+				Then(connectHandler),
+		).HeadersRegexp("Authorization", ".*")
+
+		r.Handle(
+			fmt.Sprintf("%s/{version:%s|%s}/device", baseURI, v2, version),
+			deviceConnectChain.
+				Append(DeviceMetadataMiddleware(getLogger)).
+				Then(connectHandler),
+		)
+	} else {
+		r.Handle(
+			fmt.Sprintf("%s/{version:%s|%s}/device", baseURI, v2, version),
+			deviceConnectChain.
+				Extend(versionCompatibleAuth).
+				Append(DeviceMetadataMiddleware(getLogger)).
+				Then(connectHandler),
+		)
+	}
 
 	apiHandler.Handle(
 		"/device/{deviceID}/stat",
