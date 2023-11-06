@@ -7,7 +7,7 @@ require (
 	github.com/go-kit/kit v0.13.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/goph/emperror v0.17.3-0.20190703203600-60a8d9faa17b
-	github.com/gorilla/mux v1.8.0
+	github.com/gorilla/mux v1.8.1
 	github.com/justinas/alice v1.2.0
 	github.com/prometheus/client_golang v1.17.0
 	github.com/segmentio/ksuid v1.0.4
