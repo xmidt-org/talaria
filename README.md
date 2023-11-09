@@ -74,6 +74,9 @@ This will allow or deny devices to connect to the talaria instance.
 #### Drain Devices - `/device/drain` endpoint
 This will remove the connected devices from the talaria instance.
 
+### Open Fail
+Talaria's default functionality is to allow for devices without authorization to connect. There is an optional `failOpen` property that can be added to the talaria configuration and set to `false` in order to disable this feature. This should be it's own property and not nested under any other properties. In order to enable the open fail feature either set the property to `true` or remove it from the configuration file if previously added. 
+
 ## Build
 
 ### Source
