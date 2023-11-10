@@ -1,4 +1,7 @@
 ---
+# SPDX-FileCopyrightText: 2017 Comcast Cable Communications Management, LLC
+# SPDX-License-Identifier: Apache-2.0
+
 # The unique fully-qualified-domain-name of the server.  It is provided to
 # the X-Talaria-Server header for showing what server fulfilled the request
 # sent.
@@ -630,3 +633,7 @@ zap:
   # "console", as well as any third-party encodings registered via
   # RegisterEncoder.
   encoding: json
+
+#(Optional) failOpen determines if talaria should allow devices without authentication to connect or not
+#default is to allow for fail open
+failOpen: true
