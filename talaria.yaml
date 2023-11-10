@@ -324,9 +324,9 @@ inbound:
   # WARNING: This is an example auth token. DO NOT use this in production.
   authKey: YXV0aEhlYWRlcg==
 
-  # requestTimeout is the timeout for all inbound HTTP requests.
+  # The timeout for all inbound HTTP requests.
   # (Optional) defaults to 120s
-  requestTimeout: "120s"
+  timeout: "120s"
 
 ########################################
 #   Authorization Related Configuration
