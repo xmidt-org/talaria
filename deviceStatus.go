@@ -52,8 +52,8 @@ func onlinePayload(t time.Time, d device.Interface) []byte {
 
 func newOnlineMessage(source string, d device.Interface) (string, *wrp.Message) {
 	eventType := statusEventType(d.ID(), "online")
-
-	return eventType, &wrp.Message{
+	t := time.Now()
+	m := &wrp.Message{
 		Type:        wrp.SimpleEventMessageType,
 		Source:      source,
 		Destination: "event:" + eventType,
@@ -61,8 +61,11 @@ func newOnlineMessage(source string, d device.Interface) (string, *wrp.Message) 
 		PartnerIDs:  []string{d.Metadata().PartnerIDClaim()},
 		SessionID:   d.Metadata().SessionID(),
 		Metadata:    statusMetadata(d),
-		Payload:     onlinePayload(time.Now(), d),
+		Payload:     onlinePayload(t, d),
 	}
+	updateTimestampMetadata(m, t)
+
+	return eventType, m
 }
 
 func offlinePayload(t time.Time, d device.Interface) []byte {
@@ -92,8 +95,8 @@ func offlinePayload(t time.Time, d device.Interface) []byte {
 
 func newOfflineMessage(source string, d device.Interface) (string, *wrp.Message) {
 	eventType := statusEventType(d.ID(), "offline")
-
-	return eventType, &wrp.Message{
+	t := time.Now()
+	m := &wrp.Message{
 		Type:        wrp.SimpleEventMessageType,
 		Source:      source,
 		Destination: "event:" + eventType,
@@ -101,6 +104,13 @@ func newOfflineMessage(source string, d device.Interface) (string, *wrp.Message)
 		PartnerIDs:  []string{d.Metadata().PartnerIDClaim()},
 		SessionID:   d.Metadata().SessionID(),
 		Metadata:    statusMetadata(d),
-		Payload:     offlinePayload(time.Now(), d),
+		Payload:     offlinePayload(t, d),
 	}
+	updateTimestampMetadata(m, t)
+
+	return eventType, m
+}
+
+func updateTimestampMetadata(m *wrp.Message, t time.Time) {
+	m.Metadata[device.WRPTimestampMetadataKey] = t.Format(time.RFC3339Nano)
 }
