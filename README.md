@@ -8,6 +8,7 @@
 [![Apache V2 License](http://img.shields.io/badge/license-Apache%20V2-blue.svg)](https://github.com/xmidt-org/talaria/blob/main/LICENSE)
 [![GitHub Release](https://img.shields.io/github/release/xmidt-org/talaria.svg)](CHANGELOG.md)
 
+
 ## Summary
 Talaria's primary function is to interact with the devices:
 forwarding device events and sending requests to the device then forwarding the response.
