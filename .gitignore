@@ -63,6 +63,7 @@ coverage.txt
 # VSCode
 *.code-workspace
 .vscode/*
+.dev/*
 
 # helm 
 deploy/k8s/talaria/rendered.*
