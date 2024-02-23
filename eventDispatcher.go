@@ -123,7 +123,6 @@ func (d *eventDispatcher) send(parent context.Context, request *http.Request) er
 	// increment the queue size first, so that we always keep a positive queue size
 	d.queueSize.Add(1.0)
 	ctx, cancel := context.WithTimeout(parent, d.timeout)
-
 	eventType, ok := ctx.Value(eventTypeContextKey{}).(string)
 	if !ok {
 		eventType = unknown
