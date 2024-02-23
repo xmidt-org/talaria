@@ -84,7 +84,7 @@ func (wp *WorkerPool) transact(e outboundEnvelope) {
 		return
 	}
 
-	if response.StatusCode != 200 {
+	if response.StatusCode != http.StatusAccepted {
 		url := response.Request.URL.String()
 		code := strconv.Itoa(response.StatusCode)
 		wp.droppedMessages.With(eventType, code, non200, url).Add(1)
