@@ -82,7 +82,7 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 				expectedReason: non200,
 			},
 			{
-				description: "failure 415, caduceus notify return case",
+				description: "failure 415, caduceus /notify response case",
 				wp: &WorkerPool{
 					transactor: func(actualRequest *http.Request) (*http.Response, error) {
 						assert.Equal(expectedRequest, actualRequest)
@@ -98,7 +98,7 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 				expectedReason: non200,
 			},
 			{
-				description: "failure 503, caduceus notify return case",
+				description: "failure 503, caduceus /notify response case",
 				wp: &WorkerPool{
 					transactor: func(actualRequest *http.Request) (*http.Response, error) {
 						assert.Equal(expectedRequest, actualRequest)
@@ -114,7 +114,7 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 				expectedReason: non200,
 			},
 			{
-				description: "failure 400, caduceus notify return case",
+				description: "failure 400, caduceus /notify response case",
 				wp: &WorkerPool{
 					transactor: func(actualRequest *http.Request) (*http.Response, error) {
 						assert.Equal(expectedRequest, actualRequest)
@@ -130,7 +130,7 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 				expectedReason: non200,
 			},
 			{
-				description: "failure 408 timeout, caduceus notify return case",
+				description: "failure 408 timeout, caduceus /notify response case",
 				wp: &WorkerPool{
 					transactor: func(actualRequest *http.Request) (*http.Response, error) {
 						assert.Equal(expectedRequest, actualRequest)
