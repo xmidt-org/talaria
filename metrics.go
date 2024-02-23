@@ -43,12 +43,16 @@ const (
 	qosLevelLabel  = "qos_level"
 	partnerIDLabel = "partner_id"
 	messageType    = "message_type"
+	urlLabel       = "url"
+	codeLabel      = "code"
+	eventLabel     = "event"
 )
 
 // label values
 const (
 	accepted = "accepted"
 	rejected = "rejected"
+	unknown  = "unknown"
 
 	deviceNotFound = "device_not_found"
 	invalidWRPDest = "invalid_wrp_dest"
@@ -59,6 +63,21 @@ const (
 	incompleteCheck      = "incomplete_check"
 	denied               = "denied"
 	authorized           = "authorized"
+
+	// dropped message reasons
+	fullQueue              = "full outbound queue"
+	genericDoReason        = "do_error"
+	deadlineExceededReason = "context_deadline_exceeded"
+	contextCanceledReason  = "context_canceled"
+	addressErrReason       = "address_error"
+	parseAddrErrReason     = "parse_address_error"
+	invalidAddrReason      = "invalid_address"
+	dnsErrReason           = "dns_error"
+	hostNotFoundReason     = "host_not_found"
+	connClosedReason       = "connection_closed"
+	opErrReason            = "op_error"
+	networkErrReason       = "unknown_network_err"
+	non200                 = "non200"
 )
 
 func Metrics() []xmetrics.Metric {
@@ -78,7 +97,7 @@ func Metrics() []xmetrics.Metric {
 			Name:       OutboundRequestCounter,
 			Type:       xmetrics.CounterType,
 			Help:       "The count of outbound requests",
-			LabelNames: []string{"code"},
+			LabelNames: []string{codeLabel},
 		},
 		{
 			Name: OutboundQueueSize,
@@ -86,9 +105,10 @@ func Metrics() []xmetrics.Metric {
 			Help: "The current number of requests waiting to be sent outbound",
 		},
 		{
-			Name: OutboundDroppedMessageCounter,
-			Type: xmetrics.CounterType,
-			Help: "The total count of messages dropped due to a full outbound queue",
+			Name:       OutboundDroppedMessageCounter,
+			Type:       xmetrics.CounterType,
+			Help:       "The total count of messages dropped",
+			LabelNames: []string{eventLabel, codeLabel, outcomeLabel, reasonLabel, urlLabel},
 		},
 		{
 			Name: OutboundRetries,
@@ -192,9 +212,9 @@ func InstrumentOutboundCounter(counter *prometheus.CounterVec, next http.RoundTr
 		response, err := next.RoundTrip(request)
 		if err == nil {
 			// use "200" as the result from a 0 or negative status code, to be consistent with other golang APIs
-			labels := prometheus.Labels{"code": "200"}
+			labels := prometheus.Labels{codeLabel: "200"}
 			if response.StatusCode > 0 {
-				labels["code"] = strconv.Itoa(response.StatusCode)
+				labels[codeLabel] = strconv.Itoa(response.StatusCode)
 			}
 
 			counter.With(labels).Inc()

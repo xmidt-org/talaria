@@ -124,13 +124,19 @@ func (d *eventDispatcher) send(parent context.Context, request *http.Request) er
 	d.queueSize.Add(1.0)
 	ctx, cancel := context.WithTimeout(parent, d.timeout)
 
+	eventType, ok := ctx.Value(eventTypeContextKey{}).(string)
+	if !ok {
+		eventType = unknown
+	}
+
 	select {
 	case d.outbounds <- outboundEnvelope{request.WithContext(ctx), cancel}:
 		return nil
 
 	default:
 		d.queueSize.Add(-1.0) // the message never made it to the queue
-		d.droppedMessages.Add(1.0)
+		d.droppedMessages.With(eventType, "", fullQueue, request.URL.String()).Add(1.0)
+
 		return ErrOutboundQueueFull
 	}
 }
