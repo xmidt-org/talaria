@@ -105,36 +105,29 @@ func (wp *WorkerPool) worker() {
 }
 
 func getDoErrReason(e error) string {
+	var d *net.DNSError
 	if errors.Is(e, context.DeadlineExceeded) {
 		return deadlineExceededReason
-	}
-	if errors.Is(e, context.Canceled) {
+	} else if errors.Is(e, context.Canceled) {
 		return contextCanceledReason
-	}
-	if errors.Is(e, &net.AddrError{}) {
+	} else if errors.Is(e, &net.AddrError{}) {
 		return addressErrReason
-	}
-	if errors.Is(e, &net.ParseError{}) {
+	} else if errors.Is(e, &net.ParseError{}) {
 		return parseAddrErrReason
-	}
-	if errors.Is(e, net.InvalidAddrError("")) {
+	} else if errors.Is(e, net.InvalidAddrError("")) {
 		return invalidAddrReason
-	}
-	var d *net.DNSError
-	if errors.As(e, &d) {
+	} else if errors.As(e, &d) {
 		if d.IsNotFound {
 			return hostNotFoundReason
 		}
 		return dnsErrReason
-	}
-	if errors.Is(e, net.ErrClosed) {
+	} else if errors.Is(e, net.ErrClosed) {
 		return connClosedReason
-	}
-	if errors.Is(e, &net.OpError{}) {
+	} else if errors.Is(e, &net.OpError{}) {
 		return opErrReason
-	}
-	if errors.Is(e, net.UnknownNetworkError("")) {
+	} else if errors.Is(e, net.UnknownNetworkError("")) {
 		return networkErrReason
 	}
+
 	return genericDoReason
 }
