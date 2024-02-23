@@ -12,13 +12,22 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap/zaptest"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 func testWorkerPoolTransactHTTPSuccess(t *testing.T) {
 	var (
-		assert          = assert.New(t)
-		logger          = zaptest.NewLogger(t)
+		b       bytes.Buffer
+		assert  = assert.New(t)
+		require = require.New(t)
+		logger  = zap.New(
+			zapcore.NewCore(zapcore.NewJSONEncoder(
+				zapcore.EncoderConfig{
+					MessageKey: "message",
+				}), zapcore.AddSync(&b), zapcore.ErrorLevel),
+		)
 		target          = "http://localhost/foo"
 		expectedRequest = httptest.NewRequest("POST", target, nil).WithContext(context.WithValue(context.Background(), eventTypeContextKey{}, EventPrefix))
 		envelope        = outboundEnvelope{expectedRequest, func() {}}
@@ -40,13 +49,13 @@ func testWorkerPoolTransactHTTPSuccess(t *testing.T) {
 
 	dm.On("With", []string{eventLabel, EventPrefix, codeLabel, strconv.Itoa(http.StatusAccepted), reasonLabel, non200, urlLabel, target}).Panic("Func dm.With should have not been called")
 	dm.On("Add", 1.).Panic("Func dm.Add should have not been called")
-	wp.transact(envelope)
+	require.NotPanics(func() { wp.transact(envelope) })
+	assert.Equal(b.Len(), 0)
 }
 
 func testWorkerPoolTransactHTTPError(t *testing.T) {
 	var (
 		assert          = assert.New(t)
-		logger          = zaptest.NewLogger(t)
 		target          = "http://localhost/foo"
 		expectedRequest = httptest.NewRequest("POST", target, nil).WithContext(context.WithValue(context.Background(), eventTypeContextKey{}, EventPrefix))
 		envelope        = outboundEnvelope{expectedRequest, func() {}}
@@ -59,7 +68,6 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 			{
 				description: "failure 500",
 				wp: &WorkerPool{
-					logger: logger,
 					transactor: func(actualRequest *http.Request) (*http.Response, error) {
 						assert.Equal(expectedRequest, actualRequest)
 						return &http.Response{
@@ -76,7 +84,6 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 			{
 				description: "failure 415, caduceus notify return case",
 				wp: &WorkerPool{
-					logger: logger,
 					transactor: func(actualRequest *http.Request) (*http.Response, error) {
 						assert.Equal(expectedRequest, actualRequest)
 						return &http.Response{
@@ -93,7 +100,6 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 			{
 				description: "failure 503, caduceus notify return case",
 				wp: &WorkerPool{
-					logger: logger,
 					transactor: func(actualRequest *http.Request) (*http.Response, error) {
 						assert.Equal(expectedRequest, actualRequest)
 						return &http.Response{
@@ -110,7 +116,6 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 			{
 				description: "failure 400, caduceus notify return case",
 				wp: &WorkerPool{
-					logger: logger,
 					transactor: func(actualRequest *http.Request) (*http.Response, error) {
 						assert.Equal(expectedRequest, actualRequest)
 						return &http.Response{
@@ -127,7 +132,6 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 			{
 				description: "failure 408 timeout, caduceus notify return case",
 				wp: &WorkerPool{
-					logger: logger,
 					transactor: func(actualRequest *http.Request) (*http.Response, error) {
 						assert.Equal(expectedRequest, actualRequest)
 						return &http.Response{
@@ -146,11 +150,20 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
+			var b bytes.Buffer
+			tc.wp.logger = zap.New(
+				zapcore.NewCore(zapcore.NewJSONEncoder(
+					zapcore.EncoderConfig{
+						MessageKey: "message",
+					}), zapcore.AddSync(&b), zapcore.WarnLevel),
+			)
 			dm := new(mockCounter)
 			tc.wp.droppedMessages = dm
 			dm.On("With", []string{eventLabel, EventPrefix, codeLabel, strconv.Itoa(tc.expectedCode), reasonLabel, tc.expectedReason, urlLabel, target}).Return().Once()
 			dm.On("Add", 1.).Return().Once()
 			tc.wp.transact(envelope)
+			assert.Greater(b.Len(), 0)
+			dm.AssertExpectations(t)
 		})
 	}
 }

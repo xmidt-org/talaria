@@ -231,29 +231,41 @@ func testEventDispatcherOnDeviceEventDispatchEvent(t *testing.T) {
 	}
 }
 
-func testEventDispatcherOnDeviceEventEventTimeout(t *testing.T) {
+func testEventDispatcherOnDeviceEventFullQueue(t *testing.T) {
 	var (
+		b          bytes.Buffer
+		assert     = assert.New(t)
 		require    = require.New(t)
 		outbounder = &Outbounder{
 			RequestTimeout: 100 * time.Millisecond,
 			EventEndpoints: map[string]interface{}{"default": []string{"nowhere.com"}},
+			Logger: zap.New(
+				zapcore.NewCore(zapcore.NewJSONEncoder(
+					zapcore.EncoderConfig{
+						MessageKey: "message",
+					}), zapcore.AddSync(&b), zapcore.ErrorLevel),
+			),
 		}
-
-		d, _, err = NewEventDispatcher(NewTestOutboundMeasures(), outbounder, nil)
+		om = NewTestOutboundMeasures()
 	)
+	dm := new(mockCounter)
+	om.DroppedMessages = dm
+	d, _, err := NewEventDispatcher(om, outbounder, nil)
 
 	require.NotNil(d)
 	require.NoError(err)
 
 	d.(*eventDispatcher).outbounds = make(chan outboundEnvelope)
-	// TODO verify logger's buffer isn't empty
+	dm.On("With", []string{eventLabel, "iot", codeLabel, "", reasonLabel, fullQueue, urlLabel, "nowhere.com"}).Return().Once()
+	dm.On("Add", 1.).Return().Once()
 	d.OnDeviceEvent(&device.Event{
 		Type:     device.MessageReceived,
 		Message:  &wrp.Message{Destination: "event:iot"},
 		Contents: []byte{1, 2},
 	})
+	assert.Greater(b.Len(), 0)
+	dm.AssertExpectations(t)
 }
-
 func testEventDispatcherOnDeviceEventFilterError(t *testing.T) {
 	var (
 		assert        = assert.New(t)
@@ -429,7 +441,7 @@ func TestEventDispatcherOnDeviceEvent(t *testing.T) {
 		{"Unroutable", testEventDispatcherOnDeviceEventUnroutable},
 		{"BadURLFilter", testEventDispatcherOnDeviceEventBadURLFilter},
 		{"DispatchEvent", testEventDispatcherOnDeviceEventDispatchEvent},
-		{"EventTimeout", testEventDispatcherOnDeviceEventEventTimeout},
+		{"FullQueue", testEventDispatcherOnDeviceEventFullQueue},
 		{"FilterError", testEventDispatcherOnDeviceEventFilterError},
 		{"DispatchTo", testEventDispatcherOnDeviceEventDispatchTo},
 		{"NilEventError", testEventDispatcherOnDeviceEventNilEventError},
