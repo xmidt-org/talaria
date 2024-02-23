@@ -4,46 +4,26 @@ package main
 
 import (
 	"bytes"
-	"errors"
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 )
 
-func testWorkerPoolTransactTransactorError(t *testing.T) {
-	var (
-		assert          = assert.New(t)
-		logger          = zaptest.NewLogger(t)
-		expectedRequest = httptest.NewRequest("POST", "/", nil)
-		envelope        = outboundEnvelope{expectedRequest, func() {}}
-		om              = NewTestOutboundMeasures()
-
-		wp = &WorkerPool{
-			logger: logger,
-			transactor: func(actualRequest *http.Request) (*http.Response, error) {
-				assert.Equal(expectedRequest, actualRequest)
-				return &http.Response{Request: httptest.NewRequest("POST", "/", nil)}, errors.New("expected error")
-			},
-			droppedMessages: om.DroppedMessages,
-		}
-	)
-
-	wp.transact(envelope)
-}
-
 func testWorkerPoolTransactHTTPSuccess(t *testing.T) {
 	var (
 		assert          = assert.New(t)
 		logger          = zaptest.NewLogger(t)
-		expectedRequest = httptest.NewRequest("POST", "/", nil)
+		target          = "http://localhost/foo"
+		expectedRequest = httptest.NewRequest("POST", target, nil).WithContext(context.WithValue(context.Background(), eventTypeContextKey{}, EventPrefix))
 		envelope        = outboundEnvelope{expectedRequest, func() {}}
-		om              = NewTestOutboundMeasures()
-
-		wp = &WorkerPool{
+		dm              = new(mockCounter)
+		wp              = &WorkerPool{
 			logger: logger,
 			transactor: func(actualRequest *http.Request) (*http.Response, error) {
 				assert.Equal(expectedRequest, actualRequest)
@@ -51,13 +31,15 @@ func testWorkerPoolTransactHTTPSuccess(t *testing.T) {
 					Status:     "202 Accepted",
 					StatusCode: http.StatusAccepted,
 					Body:       io.NopCloser(new(bytes.Buffer)),
-					Request:    httptest.NewRequest("POST", "/", nil),
+					Request:    httptest.NewRequest("POST", target, nil),
 				}, nil
 			},
-			droppedMessages: om.DroppedMessages,
+			droppedMessages: dm,
 		}
 	)
 
+	dm.On("With", []string{eventLabel, EventPrefix, codeLabel, strconv.Itoa(http.StatusAccepted), reasonLabel, non200, urlLabel, target}).Panic("Func dm.With should have not been called")
+	dm.On("Add", 1.).Panic("Func dm.Add should have not been called")
 	wp.transact(envelope)
 }
 
@@ -65,31 +47,116 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 	var (
 		assert          = assert.New(t)
 		logger          = zaptest.NewLogger(t)
-		expectedRequest = httptest.NewRequest("POST", "/", nil)
+		target          = "http://localhost/foo"
+		expectedRequest = httptest.NewRequest("POST", target, nil).WithContext(context.WithValue(context.Background(), eventTypeContextKey{}, EventPrefix))
 		envelope        = outboundEnvelope{expectedRequest, func() {}}
-		om              = NewTestOutboundMeasures()
-
-		wp = &WorkerPool{
-			logger: logger,
-			transactor: func(actualRequest *http.Request) (*http.Response, error) {
-				assert.Equal(expectedRequest, actualRequest)
-				return &http.Response{
-					Status:     "500 It Burns!",
-					StatusCode: 500,
-					Body:       io.NopCloser(new(bytes.Buffer)),
-					Request:    httptest.NewRequest("POST", "/", nil),
-				}, nil
+		tests           = []struct {
+			description    string
+			wp             *WorkerPool
+			expectedCode   int
+			expectedReason string
+		}{
+			{
+				description: "failure 500",
+				wp: &WorkerPool{
+					logger: logger,
+					transactor: func(actualRequest *http.Request) (*http.Response, error) {
+						assert.Equal(expectedRequest, actualRequest)
+						return &http.Response{
+							Status:     "500 It Burns!",
+							StatusCode: http.StatusInternalServerError,
+							Body:       io.NopCloser(new(bytes.Buffer)),
+							Request:    httptest.NewRequest("POST", target, nil),
+						}, nil
+					},
+				},
+				expectedCode:   http.StatusInternalServerError,
+				expectedReason: non200,
 			},
-			droppedMessages: om.DroppedMessages,
+			{
+				description: "failure 415, caduceus notify return case",
+				wp: &WorkerPool{
+					logger: logger,
+					transactor: func(actualRequest *http.Request) (*http.Response, error) {
+						assert.Equal(expectedRequest, actualRequest)
+						return &http.Response{
+							Status:     "415",
+							StatusCode: http.StatusUnsupportedMediaType,
+							Body:       io.NopCloser(new(bytes.Buffer)),
+							Request:    httptest.NewRequest("POST", target, nil),
+						}, nil
+					},
+				},
+				expectedCode:   http.StatusUnsupportedMediaType,
+				expectedReason: non200,
+			},
+			{
+				description: "failure 503, caduceus notify return case",
+				wp: &WorkerPool{
+					logger: logger,
+					transactor: func(actualRequest *http.Request) (*http.Response, error) {
+						assert.Equal(expectedRequest, actualRequest)
+						return &http.Response{
+							Status:     "503",
+							StatusCode: http.StatusServiceUnavailable,
+							Body:       io.NopCloser(new(bytes.Buffer)),
+							Request:    httptest.NewRequest("POST", target, nil),
+						}, nil
+					},
+				},
+				expectedCode:   http.StatusServiceUnavailable,
+				expectedReason: non200,
+			},
+			{
+				description: "failure 400, caduceus notify return case",
+				wp: &WorkerPool{
+					logger: logger,
+					transactor: func(actualRequest *http.Request) (*http.Response, error) {
+						assert.Equal(expectedRequest, actualRequest)
+						return &http.Response{
+							Status:     "400",
+							StatusCode: http.StatusBadRequest,
+							Body:       io.NopCloser(new(bytes.Buffer)),
+							Request:    httptest.NewRequest("POST", target, nil),
+						}, nil
+					},
+				},
+				expectedCode:   http.StatusBadRequest,
+				expectedReason: non200,
+			},
+			{
+				description: "failure 408 timeout, caduceus notify return case",
+				wp: &WorkerPool{
+					logger: logger,
+					transactor: func(actualRequest *http.Request) (*http.Response, error) {
+						assert.Equal(expectedRequest, actualRequest)
+						return &http.Response{
+							Status:     "408",
+							StatusCode: http.StatusRequestTimeout,
+							Body:       io.NopCloser(new(bytes.Buffer)),
+							Request:    httptest.NewRequest("POST", target, nil),
+						}, context.DeadlineExceeded
+					},
+				},
+				expectedCode:   http.StatusRequestTimeout,
+				expectedReason: deadlineExceededReason,
+			},
 		}
 	)
 
-	wp.transact(envelope)
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			dm := new(mockCounter)
+			tc.wp.droppedMessages = dm
+			dm.On("With", []string{eventLabel, EventPrefix, codeLabel, strconv.Itoa(tc.expectedCode), reasonLabel, tc.expectedReason, urlLabel, target}).Return().Once()
+			dm.On("Add", 1.).Return().Once()
+			tc.wp.transact(envelope)
+		})
+	}
 }
 
 func TestWorkerPool(t *testing.T) {
 	t.Run("Transact", func(t *testing.T) {
-		t.Run("TransactorError", testWorkerPoolTransactTransactorError)
 		t.Run("HTTPSuccess", testWorkerPoolTransactHTTPSuccess)
 		t.Run("HTTPError", testWorkerPoolTransactHTTPError)
 	})
