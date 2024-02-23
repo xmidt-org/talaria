@@ -108,7 +108,7 @@ func Metrics() []xmetrics.Metric {
 			Name:       OutboundDroppedMessageCounter,
 			Type:       xmetrics.CounterType,
 			Help:       "The total count of messages dropped",
-			LabelNames: []string{eventLabel, codeLabel, outcomeLabel, reasonLabel, urlLabel},
+			LabelNames: []string{eventLabel, codeLabel, reasonLabel, urlLabel},
 		},
 		{
 			Name: OutboundRetries,

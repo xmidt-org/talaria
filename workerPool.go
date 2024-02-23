@@ -67,7 +67,7 @@ func (wp *WorkerPool) transact(e outboundEnvelope) {
 	if err := e.request.Context().Err(); err != nil {
 		url := e.request.URL.String()
 		reason := getDoErrReason(err)
-		wp.droppedMessages.With(eventType, "", reason, url).Add(1)
+		wp.droppedMessages.With(eventLabel, eventType, codeLabel, "", reasonLabel, reason, urlLabel, url).Add(1)
 		wp.logger.Error("Outbound message expired while on queue", zap.String("event", eventType), zap.String("reason", reason), zap.Error(err), zap.String("url", url))
 
 		return
@@ -78,7 +78,7 @@ func (wp *WorkerPool) transact(e outboundEnvelope) {
 		url := response.Request.URL.String()
 		reason := getDoErrReason(err)
 		code := strconv.Itoa(response.StatusCode)
-		wp.droppedMessages.With(eventType, code, reason, url).Add(1)
+		wp.droppedMessages.With(eventLabel, eventType, codeLabel, code, reasonLabel, reason, urlLabel, url).Add(1)
 		wp.logger.Error("HTTP transaction error", zap.String("event", eventType), zap.String("reason", code), zap.String("reason", reason), zap.Error(err), zap.String("url", url))
 
 		return
@@ -87,7 +87,7 @@ func (wp *WorkerPool) transact(e outboundEnvelope) {
 	if response.StatusCode != http.StatusAccepted {
 		url := response.Request.URL.String()
 		code := strconv.Itoa(response.StatusCode)
-		wp.droppedMessages.With(eventType, code, non200, url).Add(1)
+		wp.droppedMessages.With(eventLabel, eventType, codeLabel, code, reasonLabel, non200, urlLabel, url).Add(1)
 		wp.logger.Warn("HTTP response", zap.String("event", eventType), zap.String("reason", code), zap.String("reason", non200), zap.String("url", url))
 	}
 

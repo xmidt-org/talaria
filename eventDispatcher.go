@@ -135,7 +135,7 @@ func (d *eventDispatcher) send(parent context.Context, request *http.Request) er
 
 	default:
 		d.queueSize.Add(-1.0) // the message never made it to the queue
-		d.droppedMessages.With(eventType, "", fullQueue, request.URL.String()).Add(1.0)
+		d.droppedMessages.With(eventLabel, eventType, codeLabel, "", reasonLabel, fullQueue, urlLabel, request.URL.String()).Add(1.0)
 
 		return ErrOutboundQueueFull
 	}
