@@ -87,8 +87,8 @@ func (wp *WorkerPool) transact(e outboundEnvelope) {
 	if response.StatusCode != http.StatusAccepted {
 		url := response.Request.URL.String()
 		code := strconv.Itoa(response.StatusCode)
-		wp.droppedMessages.With(eventLabel, eventType, codeLabel, code, reasonLabel, non200, urlLabel, url).Add(1)
-		wp.logger.Warn("HTTP response", zap.String("event", eventType), zap.String("reason", code), zap.String("reason", non200), zap.String("url", url))
+		wp.droppedMessages.With(eventLabel, eventType, codeLabel, code, reasonLabel, non202, urlLabel, url).Add(1)
+		wp.logger.Warn("HTTP response", zap.String("event", eventType), zap.String("reason", code), zap.String("reason", non202), zap.String("url", url))
 	}
 
 	io.Copy(io.Discard, response.Body)

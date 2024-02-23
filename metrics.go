@@ -77,7 +77,8 @@ const (
 	connClosedReason       = "connection_closed"
 	opErrReason            = "op_error"
 	networkErrReason       = "unknown_network_err"
-	non200                 = "non200"
+	non202                 = "non202"
+	expected202            = "202"
 )
 
 func Metrics() []xmetrics.Metric {
@@ -97,7 +98,7 @@ func Metrics() []xmetrics.Metric {
 			Name:       OutboundRequestCounter,
 			Type:       xmetrics.CounterType,
 			Help:       "The count of outbound requests",
-			LabelNames: []string{codeLabel},
+			LabelNames: []string{eventLabel, codeLabel, reasonLabel, urlLabel},
 		},
 		{
 			Name: OutboundQueueSize,
@@ -210,13 +211,21 @@ func InstrumentOutboundDuration(obs prometheus.Observer, next http.RoundTripper)
 func InstrumentOutboundCounter(counter *prometheus.CounterVec, next http.RoundTripper) promhttp.RoundTripperFunc {
 	return promhttp.RoundTripperFunc(func(request *http.Request) (*http.Response, error) {
 		response, err := next.RoundTrip(request)
+
+		eventType, ok := request.Context().Value(eventTypeContextKey{}).(string)
+		if !ok {
+			eventType = unknown
+		}
 		if err == nil {
 			// use "200" as the result from a 0 or negative status code, to be consistent with other golang APIs
-			labels := prometheus.Labels{codeLabel: "200"}
-			if response.StatusCode > 0 {
-				labels[codeLabel] = strconv.Itoa(response.StatusCode)
+			labels := prometheus.Labels{eventLabel: eventType, codeLabel: strconv.Itoa(response.StatusCode), reasonLabel: expected202, urlLabel: response.Request.URL.String()}
+			if response.StatusCode != http.StatusAccepted {
+				labels[reasonLabel] = non202
 			}
 
+			counter.With(labels).Inc()
+		} else {
+			labels := prometheus.Labels{eventLabel: eventType, codeLabel: strconv.Itoa(response.StatusCode), reasonLabel: getDoErrReason(err), urlLabel: response.Request.URL.String()}
 			counter.With(labels).Inc()
 		}
 

@@ -47,7 +47,7 @@ func testWorkerPoolTransactHTTPSuccess(t *testing.T) {
 		}
 	)
 
-	dm.On("With", []string{eventLabel, EventPrefix, codeLabel, strconv.Itoa(http.StatusAccepted), reasonLabel, non200, urlLabel, target}).Panic("Func dm.With should have not been called")
+	dm.On("With", []string{eventLabel, EventPrefix, codeLabel, strconv.Itoa(http.StatusAccepted), reasonLabel, non202, urlLabel, target}).Panic("Func dm.With should have not been called")
 	dm.On("Add", 1.).Panic("Func dm.Add should have not been called")
 	require.NotPanics(func() { wp.transact(envelope) })
 	assert.Equal(b.Len(), 0)
@@ -79,7 +79,7 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 					},
 				},
 				expectedCode:   http.StatusInternalServerError,
-				expectedReason: non200,
+				expectedReason: non202,
 			},
 			{
 				description: "failure 415, caduceus /notify response case",
@@ -95,7 +95,7 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 					},
 				},
 				expectedCode:   http.StatusUnsupportedMediaType,
-				expectedReason: non200,
+				expectedReason: non202,
 			},
 			{
 				description: "failure 503, caduceus /notify response case",
@@ -111,7 +111,7 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 					},
 				},
 				expectedCode:   http.StatusServiceUnavailable,
-				expectedReason: non200,
+				expectedReason: non202,
 			},
 			{
 				description: "failure 400, caduceus /notify response case",
@@ -127,7 +127,7 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 					},
 				},
 				expectedCode:   http.StatusBadRequest,
-				expectedReason: non200,
+				expectedReason: non202,
 			},
 			{
 				description: "failure 408 timeout, caduceus /notify response case",
