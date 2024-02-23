@@ -20,13 +20,15 @@ func testWorkerPoolTransactTransactorError(t *testing.T) {
 		logger          = zaptest.NewLogger(t)
 		expectedRequest = httptest.NewRequest("POST", "/", nil)
 		envelope        = outboundEnvelope{expectedRequest, func() {}}
+		om              = NewTestOutboundMeasures()
 
 		wp = &WorkerPool{
 			logger: logger,
 			transactor: func(actualRequest *http.Request) (*http.Response, error) {
 				assert.Equal(expectedRequest, actualRequest)
-				return nil, errors.New("expected error")
+				return &http.Response{Request: httptest.NewRequest("POST", "/", nil)}, errors.New("expected error")
 			},
+			droppedMessages: om.DroppedMessages,
 		}
 	)
 
@@ -39,17 +41,20 @@ func testWorkerPoolTransactHTTPSuccess(t *testing.T) {
 		logger          = zaptest.NewLogger(t)
 		expectedRequest = httptest.NewRequest("POST", "/", nil)
 		envelope        = outboundEnvelope{expectedRequest, func() {}}
+		om              = NewTestOutboundMeasures()
 
 		wp = &WorkerPool{
 			logger: logger,
 			transactor: func(actualRequest *http.Request) (*http.Response, error) {
 				assert.Equal(expectedRequest, actualRequest)
 				return &http.Response{
-					Status:     "200 OK",
-					StatusCode: 200,
+					Status:     "202 Accepted",
+					StatusCode: http.StatusAccepted,
 					Body:       io.NopCloser(new(bytes.Buffer)),
+					Request:    httptest.NewRequest("POST", "/", nil),
 				}, nil
 			},
+			droppedMessages: om.DroppedMessages,
 		}
 	)
 
@@ -62,6 +67,7 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 		logger          = zaptest.NewLogger(t)
 		expectedRequest = httptest.NewRequest("POST", "/", nil)
 		envelope        = outboundEnvelope{expectedRequest, func() {}}
+		om              = NewTestOutboundMeasures()
 
 		wp = &WorkerPool{
 			logger: logger,
@@ -71,8 +77,10 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 					Status:     "500 It Burns!",
 					StatusCode: 500,
 					Body:       io.NopCloser(new(bytes.Buffer)),
+					Request:    httptest.NewRequest("POST", "/", nil),
 				}, nil
 			},
+			droppedMessages: om.DroppedMessages,
 		}
 	)
 
