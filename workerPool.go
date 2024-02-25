@@ -82,16 +82,19 @@ func (wp *WorkerPool) transact(e outboundEnvelope) {
 			code = strconv.Itoa(response.StatusCode)
 		}
 		wp.droppedMessages.With(eventLabel, eventType, codeLabel, code, reasonLabel, reason, urlLabel, url).Add(1)
-		wp.logger.Error("HTTP transaction error", zap.String("event", eventType), zap.String("reason", code), zap.String("reason", reason), zap.Error(err), zap.String("url", url))
+		wp.logger.Error("HTTP transaction error", zap.String(eventLabel, eventType), zap.String(codeLabel, code), zap.String(reasonLabel, reason), zap.Error(err), zap.String(urlLabel, url))
 
 		return
 	}
 
-	if response.StatusCode != http.StatusAccepted {
-		url := e.request.URL.String()
-		code := strconv.Itoa(response.StatusCode)
+	code := strconv.Itoa(response.StatusCode)
+	url := e.request.URL.String()
+	switch response.StatusCode {
+	case http.StatusAccepted:
+		wp.logger.Debug("HTTP response", zap.String("status", response.Status), zap.String(eventLabel, eventType), zap.String(codeLabel, code), zap.String(reasonLabel, expected202), zap.String(urlLabel, url))
+	default:
 		wp.droppedMessages.With(eventLabel, eventType, codeLabel, code, reasonLabel, non202, urlLabel, url).Add(1)
-		wp.logger.Warn("HTTP response", zap.String("event", eventType), zap.String("reason", code), zap.String("reason", non202), zap.String("url", url))
+		wp.logger.Warn("HTTP response", zap.String(eventLabel, eventType), zap.String(codeLabel, code), zap.String(reasonLabel, non202), zap.String(urlLabel, url))
 	}
 
 	io.Copy(io.Discard, response.Body)
