@@ -66,7 +66,7 @@ func (wp *WorkerPool) transact(e outboundEnvelope) {
 	// bail out early if the request has been on the queue too long
 	if err := e.request.Context().Err(); err != nil {
 		url := e.request.URL.String()
-		reason := getDoErrReason(err)
+		reason := getDroppedMessageReason(err)
 		wp.droppedMessages.With(eventLabel, eventType, codeLabel, "", reasonLabel, reason, urlLabel, url).Add(1)
 		wp.logger.Error("Outbound message expired while on queue", zap.String("event", eventType), zap.String("reason", reason), zap.Error(err), zap.String("url", url))
 
@@ -76,7 +76,7 @@ func (wp *WorkerPool) transact(e outboundEnvelope) {
 	response, err := wp.transactor(e.request)
 	if err != nil {
 		url := e.request.URL.String()
-		reason := getDoErrReason(err)
+		reason := getDroppedMessageReason(err)
 		code := genericDoReason
 		if response != nil {
 			code = strconv.Itoa(response.StatusCode)
@@ -91,10 +91,10 @@ func (wp *WorkerPool) transact(e outboundEnvelope) {
 	url := e.request.URL.String()
 	switch response.StatusCode {
 	case http.StatusAccepted:
-		wp.logger.Debug("HTTP response", zap.String("status", response.Status), zap.String(eventLabel, eventType), zap.String(codeLabel, code), zap.String(reasonLabel, expected202), zap.String(urlLabel, url))
+		wp.logger.Debug("HTTP response", zap.String("status", response.Status), zap.String(eventLabel, eventType), zap.String(codeLabel, code), zap.String(reasonLabel, expected202Code), zap.String(urlLabel, url))
 	default:
-		wp.droppedMessages.With(eventLabel, eventType, codeLabel, code, reasonLabel, non202, urlLabel, url).Add(1)
-		wp.logger.Warn("HTTP response", zap.String(eventLabel, eventType), zap.String(codeLabel, code), zap.String(reasonLabel, non202), zap.String(urlLabel, url))
+		wp.droppedMessages.With(eventLabel, eventType, codeLabel, code, reasonLabel, non202Code, urlLabel, url).Add(1)
+		wp.logger.Warn("HTTP response", zap.String(eventLabel, eventType), zap.String(codeLabel, code), zap.String(reasonLabel, non202Code), zap.String(urlLabel, url))
 	}
 
 	io.Copy(io.Discard, response.Body)
@@ -110,28 +110,30 @@ func (wp *WorkerPool) worker() {
 	}
 }
 
-func getDoErrReason(e error) string {
+func getDoErrReason(err error) string {
 	var d *net.DNSError
-	if errors.Is(e, context.DeadlineExceeded) {
+	if err == nil {
+		return noErrReason
+	} else if errors.Is(err, context.DeadlineExceeded) {
 		return deadlineExceededReason
-	} else if errors.Is(e, context.Canceled) {
+	} else if errors.Is(err, context.Canceled) {
 		return contextCanceledReason
-	} else if errors.Is(e, &net.AddrError{}) {
+	} else if errors.Is(err, &net.AddrError{}) {
 		return addressErrReason
-	} else if errors.Is(e, &net.ParseError{}) {
+	} else if errors.Is(err, &net.ParseError{}) {
 		return parseAddrErrReason
-	} else if errors.Is(e, net.InvalidAddrError("")) {
+	} else if errors.Is(err, net.InvalidAddrError("")) {
 		return invalidAddrReason
-	} else if errors.As(e, &d) {
+	} else if errors.As(err, &d) {
 		if d.IsNotFound {
 			return hostNotFoundReason
 		}
 		return dnsErrReason
-	} else if errors.Is(e, net.ErrClosed) {
+	} else if errors.Is(err, net.ErrClosed) {
 		return connClosedReason
-	} else if errors.Is(e, &net.OpError{}) {
+	} else if errors.Is(err, &net.OpError{}) {
 		return opErrReason
-	} else if errors.Is(e, net.UnknownNetworkError("")) {
+	} else if errors.Is(err, net.UnknownNetworkError("")) {
 		return networkErrReason
 	}
 

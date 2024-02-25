@@ -256,7 +256,7 @@ func testEventDispatcherOnDeviceEventFullQueue(t *testing.T) {
 	require.NoError(err)
 
 	d.(*eventDispatcher).outbounds = make(chan outboundEnvelope)
-	dm.On("With", []string{eventLabel, "iot", codeLabel, "", reasonLabel, fullQueue, urlLabel, "nowhere.com"}).Return().Once()
+	dm.On("With", []string{eventLabel, "iot", codeLabel, messageDroppedCode, reasonLabel, fullQueueReason, urlLabel, "nowhere.com"}).Return().Once()
 	dm.On("Add", 1.).Return().Once()
 	d.OnDeviceEvent(&device.Event{
 		Type:     device.MessageReceived,

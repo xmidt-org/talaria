@@ -21,6 +21,7 @@ const (
 	OutboundInFlightGauge              = "outbound_inflight"
 	OutboundRequestDuration            = "outbound_request_duration_seconds"
 	OutboundRequestCounter             = "outbound_requests"
+	TotalOutboundEvents                = "total_outbound_events"
 	OutboundQueueSize                  = "outbound_queue_size"
 	OutboundDroppedMessageCounter      = "outbound_dropped_messages"
 	OutboundRetries                    = "outbound_retries"
@@ -64,21 +65,37 @@ const (
 	denied               = "denied"
 	authorized           = "authorized"
 
-	// dropped message reasons
-	fullQueue              = "full outbound queue"
-	genericDoReason        = "do_error"
-	deadlineExceededReason = "context_deadline_exceeded"
-	contextCanceledReason  = "context_canceled"
-	addressErrReason       = "address_error"
-	parseAddrErrReason     = "parse_address_error"
-	invalidAddrReason      = "invalid_address"
-	dnsErrReason           = "dns_error"
-	hostNotFoundReason     = "host_not_found"
-	connClosedReason       = "connection_closed"
-	opErrReason            = "op_error"
-	networkErrReason       = "unknown_network_err"
-	non202                 = "non202"
-	expected202            = "202"
+	// dropped message & outbound event reasons
+	unroutableDestinationReason        = "unroutable_destination"
+	encodeErrReason                    = "encoding_err"
+	fullQueueReason                    = "full outbound queue"
+	genericDoReason                    = "do_error"
+	deadlineExceededReason             = "context_deadline_exceeded"
+	contextCanceledReason              = "context_canceled"
+	addressErrReason                   = "address_error"
+	parseAddrErrReason                 = "parse_address_error"
+	invalidAddrReason                  = "invalid_address"
+	dnsErrReason                       = "dns_error"
+	hostNotFoundReason                 = "host_not_found"
+	connClosedReason                   = "connection_closed"
+	opErrReason                        = "op_error"
+	networkErrReason                   = "unknown_network_err"
+	notSupportedEventReason            = "unsupported event"
+	noEndpointConfiguredForEventReason = "no_endpoint_configured_for_event"
+	urlSchemeNotAllowedReason          = "url_scheme_not_allowed"
+	malformedHTTPRequestReason         = "malformed_http_request"
+	panicReason                        = "panic"
+	noErrReason                        = "no_err"
+	expectedCodeReason                 = "expected_code"
+
+	// dropped message codes
+	non202Code         = "non202"
+	expected202Code    = "202"
+	messageDroppedCode = "message_dropped"
+
+	// outbound event delivery outcomes
+	successOutcome = "success"
+	failureOutcome = "failure"
 )
 
 func Metrics() []xmetrics.Metric {
@@ -99,6 +116,12 @@ func Metrics() []xmetrics.Metric {
 			Type:       xmetrics.CounterType,
 			Help:       "The count of outbound requests",
 			LabelNames: []string{eventLabel, codeLabel, reasonLabel, urlLabel},
+		},
+		{
+			Name:       TotalOutboundEvents,
+			Type:       xmetrics.CounterType,
+			Help:       "Total count of outbound events",
+			LabelNames: []string{eventLabel, reasonLabel, urlLabel, outcomeLabel},
 		},
 		{
 			Name: OutboundQueueSize,
@@ -170,6 +193,7 @@ type OutboundMeasures struct {
 	InFlight          prometheus.Gauge
 	RequestDuration   prometheus.Observer
 	RequestCounter    *prometheus.CounterVec
+	OutboundEvents    *prometheus.CounterVec
 	QueueSize         metrics.Gauge
 	Retries           metrics.Counter
 	DroppedMessages   metrics.Counter
@@ -184,6 +208,7 @@ func NewOutboundMeasures(r xmetrics.Registry) OutboundMeasures {
 		InFlight:        r.NewGaugeVec(OutboundInFlightGauge).WithLabelValues(),
 		RequestDuration: r.NewHistogramVec(OutboundRequestDuration).WithLabelValues(),
 		RequestCounter:  r.NewCounterVec(OutboundRequestCounter),
+		OutboundEvents:  r.NewCounterVec(TotalOutboundEvents),
 		QueueSize:       r.NewGauge(OutboundQueueSize),
 		Retries:         r.NewCounter(OutboundRetries),
 		DroppedMessages: r.NewCounter(OutboundDroppedMessageCounter),
@@ -217,10 +242,9 @@ func InstrumentOutboundCounter(counter *prometheus.CounterVec, next http.RoundTr
 			eventType = unknown
 		}
 		if err == nil {
-			// use "200" as the result from a 0 or negative status code, to be consistent with other golang APIs
-			labels := prometheus.Labels{eventLabel: eventType, codeLabel: strconv.Itoa(response.StatusCode), reasonLabel: expected202, urlLabel: response.Request.URL.String()}
+			labels := prometheus.Labels{eventLabel: eventType, codeLabel: strconv.Itoa(response.StatusCode), reasonLabel: expectedCodeReason, urlLabel: response.Request.URL.String()}
 			if response.StatusCode != http.StatusAccepted {
-				labels[reasonLabel] = non202
+				labels[reasonLabel] = non202Code
 			}
 
 			counter.With(labels).Inc()
