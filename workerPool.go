@@ -75,9 +75,12 @@ func (wp *WorkerPool) transact(e outboundEnvelope) {
 
 	response, err := wp.transactor(e.request)
 	if err != nil {
-		url := response.Request.URL.String()
+		url := e.request.URL.String()
 		reason := getDoErrReason(err)
-		code := strconv.Itoa(response.StatusCode)
+		code := genericDoReason
+		if response != nil {
+			code = strconv.Itoa(response.StatusCode)
+		}
 		wp.droppedMessages.With(eventLabel, eventType, codeLabel, code, reasonLabel, reason, urlLabel, url).Add(1)
 		wp.logger.Error("HTTP transaction error", zap.String("event", eventType), zap.String("reason", code), zap.String("reason", reason), zap.Error(err), zap.String("url", url))
 
@@ -85,7 +88,7 @@ func (wp *WorkerPool) transact(e outboundEnvelope) {
 	}
 
 	if response.StatusCode != http.StatusAccepted {
-		url := response.Request.URL.String()
+		url := e.request.URL.String()
 		code := strconv.Itoa(response.StatusCode)
 		wp.droppedMessages.With(eventLabel, eventType, codeLabel, code, reasonLabel, non202, urlLabel, url).Add(1)
 		wp.logger.Warn("HTTP response", zap.String("event", eventType), zap.String("reason", code), zap.String("reason", non202), zap.String("url", url))
