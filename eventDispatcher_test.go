@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/xmidt-org/webpa-common/v2/convey"
@@ -256,7 +257,7 @@ func testEventDispatcherOnDeviceEventFullQueue(t *testing.T) {
 	require.NoError(err)
 
 	d.(*eventDispatcher).outbounds = make(chan outboundEnvelope)
-	dm.On("With", []string{eventLabel, "iot", codeLabel, messageDroppedCode, reasonLabel, fullQueueReason, urlLabel, "nowhere.com"}).Return().Once()
+	dm.On("With", prometheus.Labels{eventLabel: "iot", codeLabel: messageDroppedCode, reasonLabel: fullQueueReason, urlLabel: "nowhere.com"}).Return().Once()
 	dm.On("Add", 1.).Return().Once()
 	d.OnDeviceEvent(&device.Event{
 		Type:     device.MessageReceived,

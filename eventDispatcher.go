@@ -44,8 +44,8 @@ type eventDispatcher struct {
 	source           string
 	eventMap         event.MultiMap
 	queueSize        metrics.Gauge
-	droppedMessages  metrics.Counter
-	outboundEvents   *prometheus.CounterVec
+	droppedMessages  CounterVec
+	outboundEvents   CounterVec
 	outbounds        chan<- outboundEnvelope
 }
 
@@ -101,10 +101,9 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 			d.logger.Debug("stacktrace from panic", zap.String("stacktrace", string(debug.Stack())), zap.Any("panic", r))
 			switch event.Type {
 			case device.Connect, device.Disconnect, device.MessageReceived:
-				labels := prometheus.Labels{eventLabel: eventType, reasonLabel: panicReason, urlLabel: url, outcomeLabel: failureOutcome}
 				d.logger.Error("Dropped message, event not sent", zap.String(eventLabel, eventType), zap.String(codeLabel, code), zap.String(reasonLabel, panicReason), zap.String(urlLabel, url), zap.Any("panic", r))
-				d.droppedMessages.With(eventLabel, eventType, codeLabel, code, reasonLabel, panicReason, urlLabel, url).Add(1.0)
-				d.outboundEvents.With(labels).Add(1.0)
+				d.droppedMessages.With(prometheus.Labels{eventLabel: eventType, codeLabel: code, reasonLabel: panicReason, urlLabel: url}).Add(1.0)
+				d.outboundEvents.With(prometheus.Labels{eventLabel: eventType, reasonLabel: panicReason, urlLabel: url, outcomeLabel: failureOutcome}).Add(1.0)
 			}
 		}
 	}()
@@ -159,23 +158,22 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 		}
 	}
 
-	var labels prometheus.Labels
+	var outboundEventsLabels prometheus.Labels
 	if err != nil {
 		reason := getDroppedMessageReason(err)
-		labels = prometheus.Labels{eventLabel: eventType, reasonLabel: reason, urlLabel: url, outcomeLabel: failureOutcome}
+		outboundEventsLabels = prometheus.Labels{eventLabel: eventType, reasonLabel: reason, urlLabel: url, outcomeLabel: failureOutcome}
 		if errors.Is(err, ErrorUnsupportedEvent) {
 			d.logger.Error("Dropped message, event not sent", zap.String(eventLabel, eventType), zap.String(codeLabel, code), zap.String(reasonLabel, reason), zap.String(urlLabel, url), zap.Error(err))
 		} else {
 			d.logger.Error("Dropped message, event not sent", zap.String(eventLabel, eventType), zap.String(codeLabel, code), zap.String(reasonLabel, reason), zap.String(urlLabel, url), zap.Error(err))
 		}
 
-		d.droppedMessages.With(eventLabel, eventType, codeLabel, code, reasonLabel, reason, urlLabel, url).Add(1.0)
-		d.outboundEvents.With(labels).Add(1.0)
+		d.droppedMessages.With(prometheus.Labels{eventLabel: eventType, codeLabel: code, reasonLabel: reason, urlLabel: url}).Add(1.0)
 	} else {
-		labels = prometheus.Labels{eventLabel: eventType, reasonLabel: noErrReason, urlLabel: url, outcomeLabel: successOutcome}
+		outboundEventsLabels = prometheus.Labels{eventLabel: eventType, reasonLabel: noErrReason, urlLabel: url, outcomeLabel: successOutcome}
 	}
 
-	d.outboundEvents.With(labels).Add(1.0)
+	d.outboundEvents.With(outboundEventsLabels).Add(1.0)
 }
 
 // send wraps the given request in an outboundEnvelope together with a cancellable context,

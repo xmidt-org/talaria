@@ -106,10 +106,11 @@ func Metrics() []xmetrics.Metric {
 			Help: "The number of active, in-flight requests from devices",
 		},
 		{
-			Name:    OutboundRequestDuration,
-			Type:    "histogram",
-			Help:    "The durations of outbound requests from devices",
-			Buckets: []float64{.25, .5, 1, 2.5, 5, 10},
+			Name:       OutboundRequestDuration,
+			Type:       "histogram",
+			Help:       "The durations of outbound requests from devices",
+			LabelNames: []string{eventLabel, codeLabel, reasonLabel, urlLabel},
+			Buckets:    []float64{.25, .5, 1, 2.5, 5, 10},
 		},
 		{
 			Name:       OutboundRequestCounter,
@@ -189,69 +190,111 @@ func Metrics() []xmetrics.Metric {
 	}
 }
 
+type HistogramVec interface {
+	prometheus.Collector
+	With(prometheus.Labels) prometheus.Observer
+	CurryWith(prometheus.Labels) (prometheus.ObserverVec, error)
+	GetMetricWith(prometheus.Labels) (prometheus.Observer, error)
+	GetMetricWithLabelValues(...string) (prometheus.Observer, error)
+	MustCurryWith(labels prometheus.Labels) (o prometheus.ObserverVec)
+	WithLabelValues(lvs ...string) (o prometheus.Observer)
+}
+
+type CounterVec interface {
+	prometheus.Collector
+	With(prometheus.Labels) prometheus.Counter
+}
+
 type OutboundMeasures struct {
 	InFlight          prometheus.Gauge
-	RequestDuration   prometheus.Observer
-	RequestCounter    *prometheus.CounterVec
-	OutboundEvents    *prometheus.CounterVec
+	RequestDuration   HistogramVec
+	RequestCounter    CounterVec
+	OutboundEvents    CounterVec
 	QueueSize         metrics.Gauge
 	Retries           metrics.Counter
-	DroppedMessages   metrics.Counter
-	AckSuccess        metrics.Counter
-	AckFailure        metrics.Counter
-	AckSuccessLatency metrics.Histogram
-	AckFailureLatency metrics.Histogram
+	DroppedMessages   CounterVec
+	AckSuccess        CounterVec
+	AckFailure        CounterVec
+	AckSuccessLatency HistogramVec
+	AckFailureLatency HistogramVec
 }
 
 func NewOutboundMeasures(r xmetrics.Registry) OutboundMeasures {
 	return OutboundMeasures{
 		InFlight:        r.NewGaugeVec(OutboundInFlightGauge).WithLabelValues(),
-		RequestDuration: r.NewHistogramVec(OutboundRequestDuration).WithLabelValues(),
+		RequestDuration: r.NewHistogramVec(OutboundRequestDuration),
 		RequestCounter:  r.NewCounterVec(OutboundRequestCounter),
 		OutboundEvents:  r.NewCounterVec(TotalOutboundEvents),
 		QueueSize:       r.NewGauge(OutboundQueueSize),
 		Retries:         r.NewCounter(OutboundRetries),
-		DroppedMessages: r.NewCounter(OutboundDroppedMessageCounter),
-		AckSuccess:      r.NewCounter(OutboundAckSuccessCounter),
-		AckFailure:      r.NewCounter(OutboundAckFailureCounter),
+		DroppedMessages: r.NewCounterVec(OutboundDroppedMessageCounter),
+		AckSuccess:      r.NewCounterVec(OutboundAckSuccessCounter),
+		AckFailure:      r.NewCounterVec(OutboundAckFailureCounter),
 		// 0 is for the unused `buckets` argument in xmetrics.Registry.NewHistogram
-		AckSuccessLatency: r.NewHistogram(OutboundAckSuccessLatencyHistogram, 0),
+		AckSuccessLatency: r.NewHistogramVec(OutboundAckSuccessLatencyHistogram),
 		// 0 is for the unused `buckets` argument in xmetrics.Registry.NewHistogram
-		AckFailureLatency: r.NewHistogram(OutboundAckFailureLatencyHistogram, 0),
+		AckFailureLatency: r.NewHistogramVec(OutboundAckFailureLatencyHistogram),
 	}
 }
 
-func InstrumentOutboundDuration(obs prometheus.Observer, next http.RoundTripper) promhttp.RoundTripperFunc {
+func InstrumentOutboundDuration(obs HistogramVec, next http.RoundTripper) promhttp.RoundTripperFunc {
 	return promhttp.RoundTripperFunc(func(request *http.Request) (*http.Response, error) {
+		eventType, ok := request.Context().Value(eventTypeContextKey{}).(string)
+		if !ok {
+			eventType = unknown
+		}
+
 		start := time.Now()
 		response, err := next.RoundTrip(request)
-		if err == nil {
-			obs.Observe(time.Since(start).Seconds())
+		delta := time.Since(start).Seconds()
+
+		var labels prometheus.Labels
+		if err != nil {
+			code := genericDoReason
+			if response != nil {
+				code = strconv.Itoa(response.StatusCode)
+			}
+
+			labels = prometheus.Labels{eventLabel: eventType, codeLabel: code, reasonLabel: getDoErrReason(err), urlLabel: response.Request.URL.String()}
+
+		} else {
+			labels = prometheus.Labels{eventLabel: eventType, codeLabel: strconv.Itoa(response.StatusCode), reasonLabel: expectedCodeReason, urlLabel: response.Request.URL.String()}
+			if response.StatusCode != http.StatusAccepted {
+				labels[reasonLabel] = non202Code
+			}
 		}
+
+		obs.With(labels).Observe(delta)
 
 		return response, err
 	})
 }
 
-func InstrumentOutboundCounter(counter *prometheus.CounterVec, next http.RoundTripper) promhttp.RoundTripperFunc {
+func InstrumentOutboundCounter(counter CounterVec, next http.RoundTripper) promhttp.RoundTripperFunc {
 	return promhttp.RoundTripperFunc(func(request *http.Request) (*http.Response, error) {
-		response, err := next.RoundTrip(request)
-
 		eventType, ok := request.Context().Value(eventTypeContextKey{}).(string)
 		if !ok {
 			eventType = unknown
 		}
-		if err == nil {
-			labels := prometheus.Labels{eventLabel: eventType, codeLabel: strconv.Itoa(response.StatusCode), reasonLabel: expectedCodeReason, urlLabel: response.Request.URL.String()}
+
+		response, err := next.RoundTrip(request)
+
+		var labels prometheus.Labels
+		if err != nil {
+			code := genericDoReason
+			if response != nil {
+				code = strconv.Itoa(response.StatusCode)
+			}
+
+			labels = prometheus.Labels{eventLabel: eventType, codeLabel: code, reasonLabel: getDoErrReason(err), urlLabel: response.Request.URL.String()}
+		} else {
+			labels = prometheus.Labels{eventLabel: eventType, codeLabel: strconv.Itoa(response.StatusCode), reasonLabel: expectedCodeReason, urlLabel: response.Request.URL.String()}
 			if response.StatusCode != http.StatusAccepted {
 				labels[reasonLabel] = non202Code
 			}
-
-			counter.With(labels).Inc()
-		} else {
-			labels := prometheus.Labels{eventLabel: eventType, codeLabel: strconv.Itoa(response.StatusCode), reasonLabel: getDoErrReason(err), urlLabel: response.Request.URL.String()}
-			counter.With(labels).Inc()
 		}
+
+		counter.With(labels).Inc()
 
 		return response, err
 	})

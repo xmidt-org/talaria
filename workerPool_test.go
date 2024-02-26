@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -47,7 +48,7 @@ func testWorkerPoolTransactHTTPSuccess(t *testing.T) {
 		}
 	)
 
-	dm.On("With", []string{eventLabel, EventPrefix, codeLabel, strconv.Itoa(http.StatusAccepted), reasonLabel, non202Code, urlLabel, target}).Panic("Func dm.With should have not been called")
+	dm.On("With", prometheus.Labels{eventLabel: EventPrefix, codeLabel: strconv.Itoa(http.StatusAccepted), reasonLabel: non202Code, urlLabel: target}).Panic("Func dm.With should have not been called")
 	dm.On("Add", 1.).Panic("Func dm.Add should have not been called")
 	require.NotPanics(func() { wp.transact(envelope) })
 	assert.Equal(b.Len(), 0)
@@ -159,7 +160,7 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 			)
 			dm := new(mockCounter)
 			tc.wp.droppedMessages = dm
-			dm.On("With", []string{eventLabel, EventPrefix, codeLabel, strconv.Itoa(tc.expectedCode), reasonLabel, tc.expectedReason, urlLabel, target}).Return().Once()
+			dm.On("With", prometheus.Labels{eventLabel: EventPrefix, codeLabel: strconv.Itoa(tc.expectedCode), reasonLabel: tc.expectedReason, urlLabel: target}).Return().Once()
 			dm.On("Add", 1.).Return().Once()
 			tc.wp.transact(envelope)
 			assert.Greater(b.Len(), 0)

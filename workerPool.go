@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/go-kit/kit/metrics"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
 
@@ -22,7 +23,7 @@ type WorkerPool struct {
 	outbounds       <-chan outboundEnvelope
 	workerPoolSize  uint
 	queueSize       metrics.Gauge
-	droppedMessages metrics.Counter
+	droppedMessages CounterVec
 	transactor      func(*http.Request) (*http.Response, error)
 
 	runOnce sync.Once
@@ -67,7 +68,7 @@ func (wp *WorkerPool) transact(e outboundEnvelope) {
 	if err := e.request.Context().Err(); err != nil {
 		url := e.request.URL.String()
 		reason := getDroppedMessageReason(err)
-		wp.droppedMessages.With(eventLabel, eventType, codeLabel, "", reasonLabel, reason, urlLabel, url).Add(1)
+		wp.droppedMessages.With(prometheus.Labels{eventLabel: eventType, codeLabel: messageDroppedCode, reasonLabel: reason, urlLabel: url}).Add(1)
 		wp.logger.Error("Outbound message expired while on queue", zap.String("event", eventType), zap.String("reason", reason), zap.Error(err), zap.String("url", url))
 
 		return
@@ -81,7 +82,7 @@ func (wp *WorkerPool) transact(e outboundEnvelope) {
 		if response != nil {
 			code = strconv.Itoa(response.StatusCode)
 		}
-		wp.droppedMessages.With(eventLabel, eventType, codeLabel, code, reasonLabel, reason, urlLabel, url).Add(1)
+		wp.droppedMessages.With(prometheus.Labels{eventLabel: eventType, codeLabel: code, reasonLabel: reason, urlLabel: url}).Add(1)
 		wp.logger.Error("HTTP transaction error", zap.String(eventLabel, eventType), zap.String(codeLabel, code), zap.String(reasonLabel, reason), zap.Error(err), zap.String(urlLabel, url))
 
 		return
@@ -93,7 +94,7 @@ func (wp *WorkerPool) transact(e outboundEnvelope) {
 	case http.StatusAccepted:
 		wp.logger.Debug("HTTP response", zap.String("status", response.Status), zap.String(eventLabel, eventType), zap.String(codeLabel, code), zap.String(reasonLabel, expected202Code), zap.String(urlLabel, url))
 	default:
-		wp.droppedMessages.With(eventLabel, eventType, codeLabel, code, reasonLabel, non202Code, urlLabel, url).Add(1)
+		wp.droppedMessages.With(prometheus.Labels{eventLabel: eventType, codeLabel: code, reasonLabel: non202Code, urlLabel: url}).Add(1)
 		wp.logger.Warn("HTTP response", zap.String(eventLabel, eventType), zap.String(codeLabel, code), zap.String(reasonLabel, non202Code), zap.String(urlLabel, url))
 	}
 
