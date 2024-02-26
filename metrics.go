@@ -250,13 +250,12 @@ func InstrumentOutboundDuration(obs HistogramVec, next http.RoundTripper) promht
 
 		var labels prometheus.Labels
 		if err != nil {
-			code := genericDoReason
+			code := messageDroppedCode
 			if response != nil {
 				code = strconv.Itoa(response.StatusCode)
 			}
 
 			labels = prometheus.Labels{eventLabel: eventType, codeLabel: code, reasonLabel: getDoErrReason(err), urlLabel: response.Request.URL.String()}
-
 		} else {
 			labels = prometheus.Labels{eventLabel: eventType, codeLabel: strconv.Itoa(response.StatusCode), reasonLabel: expectedCodeReason, urlLabel: response.Request.URL.String()}
 			if response.StatusCode != http.StatusAccepted {
@@ -281,14 +280,14 @@ func InstrumentOutboundCounter(counter CounterVec, next http.RoundTripper) promh
 
 		var labels prometheus.Labels
 		if err != nil {
-			code := genericDoReason
+			code := messageDroppedCode
 			if response != nil {
 				code = strconv.Itoa(response.StatusCode)
 			}
 
 			labels = prometheus.Labels{eventLabel: eventType, codeLabel: code, reasonLabel: getDoErrReason(err), urlLabel: response.Request.URL.String()}
 		} else {
-			labels = prometheus.Labels{eventLabel: eventType, codeLabel: strconv.Itoa(response.StatusCode), reasonLabel: expectedCodeReason, urlLabel: response.Request.URL.String()}
+			labels = prometheus.Labels{eventLabel: eventType, codeLabel: strconv.Itoa(response.StatusCode), reasonLabel: noErrReason, urlLabel: response.Request.URL.String()}
 			if response.StatusCode != http.StatusAccepted {
 				labels[reasonLabel] = non202Code
 			}

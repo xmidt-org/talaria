@@ -126,7 +126,6 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 		url, err = d.encodeAndDispatchEvent(eventType, wrp.Msgpack, message)
 		if err != nil {
 			d.logger.Error("Error dispatching offline event", zap.Any("eventType", eventType), zap.Any("destination", message.Destination), zap.Error(err))
-
 		}
 	case device.MessageReceived:
 		if routable, ok := event.Message.(wrp.Routable); ok {

@@ -78,10 +78,11 @@ func (wp *WorkerPool) transact(e outboundEnvelope) {
 	if err != nil {
 		url := e.request.URL.String()
 		reason := getDroppedMessageReason(err)
-		code := genericDoReason
+		code := messageDroppedCode
 		if response != nil {
 			code = strconv.Itoa(response.StatusCode)
 		}
+
 		wp.droppedMessages.With(prometheus.Labels{eventLabel: eventType, codeLabel: code, reasonLabel: reason, urlLabel: url}).Add(1)
 		wp.logger.Error("HTTP transaction error", zap.String(eventLabel, eventType), zap.String(codeLabel, code), zap.String(reasonLabel, reason), zap.Error(err), zap.String(urlLabel, url))
 
