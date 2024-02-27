@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -138,8 +139,10 @@ func getDoErrReason(err error) string {
 		return opErrReason
 	} else if errors.Is(err, net.UnknownNetworkError("")) {
 		return networkErrReason
-	} else if err := errors.Unwrap(err).Error(); strings.TrimSpace(strings.ToLower(err)) == "eof" {
-		return connectionUnexpectedlyClosedEOFReason
+	} else if err, ok := err.(*url.Error); ok {
+		if strings.TrimSpace(strings.ToLower(err.Unwrap().Error())) == "eof" {
+			return connectionUnexpectedlyClosedEOFReason
+		}
 	}
 
 	return genericDoReason
