@@ -7,6 +7,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -46,7 +47,7 @@ func testAckDispatcherOnDeviceEventQOSEventFailure(t *testing.T) {
 			mAckFailureLatency := new(mockHistogram)
 			p, mt, qosl := failure_case, failure_case, failure_case
 			// Setup labels for metrics
-			l := []string{qosLevelLabel, qosl, partnerIDLabel, p, messageType, mt}
+			l := prometheus.Labels{qosLevelLabel: qosl, partnerIDLabel: p, messageType: mt}
 			om := OutboundMeasures{
 				AckSuccess:        mAckSuccess,
 				AckFailure:        mAckFailure,
@@ -169,7 +170,7 @@ func testAckDispatcherOnDeviceEventQOSDeviceFailure(t *testing.T) {
 			require.True(ok)
 			// Setup labels for metrics
 			dm := genTestMetadata()
-			l := []string{qosLevelLabel, m.QualityOfService.Level().String(), partnerIDLabel, dm.PartnerIDClaim(), messageType, m.Type.FriendlyName()}
+			l := prometheus.Labels{qosLevelLabel: m.QualityOfService.Level().String(), partnerIDLabel: dm.PartnerIDClaim(), messageType: m.Type.FriendlyName()}
 			// Setup metrics for the dispatcher
 			om := OutboundMeasures{
 				AckSuccess:        mAckSuccess,
@@ -493,7 +494,7 @@ func testAckDispatcherOnDeviceEventQOSSuccess(t *testing.T) {
 			}
 
 			// Setup labels for metrics
-			l := []string{qosLevelLabel, qosl, partnerIDLabel, p, messageType, mt}
+			l := prometheus.Labels{qosLevelLabel: qosl, partnerIDLabel: p, messageType: mt}
 			// Setup metrics for the dispatcher
 			om := OutboundMeasures{
 				AckSuccess:        mAckSuccess,

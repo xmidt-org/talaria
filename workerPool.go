@@ -3,22 +3,30 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/go-kit/kit/metrics"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
 
 // WorkerPool describes a pool of goroutines that dispatch http.Request objects to
 // a transactor function
 type WorkerPool struct {
-	logger         *zap.Logger
-	outbounds      <-chan outboundEnvelope
-	workerPoolSize uint
-	queueSize      metrics.Gauge
-	transactor     func(*http.Request) (*http.Response, error)
+	logger          *zap.Logger
+	outbounds       <-chan outboundEnvelope
+	workerPoolSize  uint
+	queueSize       metrics.Gauge
+	droppedMessages CounterVec
+	transactor      func(*http.Request) (*http.Response, error)
 
 	runOnce sync.Once
 }
@@ -26,10 +34,11 @@ type WorkerPool struct {
 func NewWorkerPool(om OutboundMeasures, o *Outbounder, outbounds <-chan outboundEnvelope) *WorkerPool {
 	logger := o.logger()
 	return &WorkerPool{
-		logger:         logger,
-		outbounds:      outbounds,
-		workerPoolSize: o.workerPoolSize(),
-		queueSize:      om.QueueSize,
+		logger:          logger,
+		outbounds:       outbounds,
+		workerPoolSize:  o.workerPoolSize(),
+		queueSize:       om.QueueSize,
+		droppedMessages: om.DroppedMessages,
 		transactor: (&http.Client{
 			Transport: NewOutboundRoundTripper(om, o),
 			Timeout:   o.clientTimeout(),
@@ -52,22 +61,44 @@ func (wp *WorkerPool) Run() {
 func (wp *WorkerPool) transact(e outboundEnvelope) {
 	defer e.cancel()
 
+	eventType, ok := e.request.Context().Value(eventTypeContextKey{}).(string)
+	if !ok {
+		eventType = unknown
+	}
+
 	// bail out early if the request has been on the queue too long
 	if err := e.request.Context().Err(); err != nil {
-		wp.logger.Error("Outbound message expired while on queue", zap.Error(err))
+		url := e.request.URL.String()
+		reason := getDroppedMessageReason(err)
+		wp.droppedMessages.With(prometheus.Labels{eventLabel: eventType, codeLabel: messageDroppedCode, reasonLabel: reason, urlLabel: url}).Add(1)
+		wp.logger.Error("Outbound message expired while on queue", zap.String("event", eventType), zap.String("reason", reason), zap.Error(err), zap.String("url", url))
+
 		return
 	}
 
 	response, err := wp.transactor(e.request)
 	if err != nil {
-		wp.logger.Error("HTTP transaction error", zap.Error(err))
+		url := e.request.URL.String()
+		reason := getDroppedMessageReason(err)
+		code := messageDroppedCode
+		if response != nil {
+			code = strconv.Itoa(response.StatusCode)
+		}
+
+		wp.droppedMessages.With(prometheus.Labels{eventLabel: eventType, codeLabel: code, reasonLabel: reason, urlLabel: url}).Add(1)
+		wp.logger.Error("HTTP transaction error", zap.String(eventLabel, eventType), zap.String(codeLabel, code), zap.String(reasonLabel, reason), zap.Error(err), zap.String(urlLabel, url))
+
 		return
 	}
 
-	if response.StatusCode < 400 {
-		wp.logger.Debug("HTTP response", zap.String("status", response.Status), zap.Any("url", e.request.URL))
-	} else {
-		wp.logger.Error("HTTP response", zap.String("status", response.Status), zap.Any("url", e.request.URL))
+	code := strconv.Itoa(response.StatusCode)
+	url := e.request.URL.String()
+	switch response.StatusCode {
+	case http.StatusAccepted:
+		wp.logger.Debug("HTTP response", zap.String("status", response.Status), zap.String(eventLabel, eventType), zap.String(codeLabel, code), zap.String(reasonLabel, expected202Code), zap.String(urlLabel, url))
+	default:
+		wp.droppedMessages.With(prometheus.Labels{eventLabel: eventType, codeLabel: code, reasonLabel: non202Code, urlLabel: url}).Add(1)
+		wp.logger.Warn("HTTP response", zap.String(eventLabel, eventType), zap.String(codeLabel, code), zap.String(reasonLabel, non202Code), zap.String(urlLabel, url))
 	}
 
 	io.Copy(io.Discard, response.Body)
@@ -81,4 +112,38 @@ func (wp *WorkerPool) worker() {
 		wp.queueSize.Add(-1.0)
 		wp.transact(e)
 	}
+}
+
+func getDoErrReason(err error) string {
+	var d *net.DNSError
+	if err == nil {
+		return noErrReason
+	} else if errors.Is(err, context.DeadlineExceeded) {
+		return deadlineExceededReason
+	} else if errors.Is(err, context.Canceled) {
+		return contextCanceledReason
+	} else if errors.Is(err, &net.AddrError{}) {
+		return addressErrReason
+	} else if errors.Is(err, &net.ParseError{}) {
+		return parseAddrErrReason
+	} else if errors.Is(err, net.InvalidAddrError("")) {
+		return invalidAddrReason
+	} else if errors.As(err, &d) {
+		if d.IsNotFound {
+			return hostNotFoundReason
+		}
+		return dnsErrReason
+	} else if errors.Is(err, net.ErrClosed) {
+		return connClosedReason
+	} else if errors.Is(err, &net.OpError{}) {
+		return opErrReason
+	} else if errors.Is(err, net.UnknownNetworkError("")) {
+		return networkErrReason
+	} else if err, ok := err.(*url.Error); ok {
+		if strings.TrimSpace(strings.ToLower(err.Unwrap().Error())) == "eof" {
+			return connectionUnexpectedlyClosedEOFReason
+		}
+	}
+
+	return genericDoReason
 }
