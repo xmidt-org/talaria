@@ -21,6 +21,7 @@ const (
 	OutboundInFlightGauge              = "outbound_inflight"
 	OutboundRequestDuration            = "outbound_request_duration_seconds"
 	OutboundRequestCounter             = "outbound_requests"
+	OutboundRequestSizeBytes           = "outbound_request_size"
 	TotalOutboundEvents                = "total_outbound_events"
 	OutboundQueueSize                  = "outbound_queue_size"
 	OutboundDroppedMessageCounter      = "outbound_dropped_messages"
@@ -119,6 +120,13 @@ func Metrics() []xmetrics.Metric {
 			LabelNames: []string{eventLabel, codeLabel, reasonLabel, urlLabel},
 		},
 		{
+			Name:       OutboundRequestSizeBytes,
+			Type:       xmetrics.HistogramType,
+			Help:       "A histogram of request sizes for outbound requests",
+			LabelNames: []string{eventLabel, reasonLabel, urlLabel, outcomeLabel},
+			Buckets:    []float64{200, 500, 900, 1500, 3000, 6000, 12000, 24000, 48000, 96000, 192000, 384000, 768000, 1536000},
+		},
+		{
 			Name:       TotalOutboundEvents,
 			Type:       xmetrics.CounterType,
 			Help:       "Total count of outbound events",
@@ -209,6 +217,7 @@ type OutboundMeasures struct {
 	InFlight          prometheus.Gauge
 	RequestDuration   HistogramVec
 	RequestCounter    CounterVec
+	RequestSize       HistogramVec
 	OutboundEvents    CounterVec
 	QueueSize         metrics.Gauge
 	Retries           metrics.Counter
@@ -224,6 +233,7 @@ func NewOutboundMeasures(r xmetrics.Registry) OutboundMeasures {
 		InFlight:        r.NewGaugeVec(OutboundInFlightGauge).WithLabelValues(),
 		RequestDuration: r.NewHistogramVec(OutboundRequestDuration),
 		RequestCounter:  r.NewCounterVec(OutboundRequestCounter),
+		RequestSize:     r.NewHistogramVec(OutboundRequestSizeBytes),
 		OutboundEvents:  r.NewCounterVec(TotalOutboundEvents),
 		QueueSize:       r.NewGauge(OutboundQueueSize),
 		Retries:         r.NewCounter(OutboundRetries),
@@ -236,7 +246,36 @@ func NewOutboundMeasures(r xmetrics.Registry) OutboundMeasures {
 		AckFailureLatency: r.NewHistogramVec(OutboundAckFailureLatencyHistogram),
 	}
 }
+func InstrumentOutboundSize(obs HistogramVec, next http.RoundTripper) promhttp.RoundTripperFunc {
+	return promhttp.RoundTripperFunc(func(request *http.Request) (*http.Response, error) {
+		eventType, ok := request.Context().Value(eventTypeContextKey{}).(string)
+		if !ok {
+			eventType = unknown
+		}
 
+		response, err := next.RoundTrip(request)
+		size := computeApproximateRequestSize(request)
+
+		var labels prometheus.Labels
+		if err != nil {
+			code := messageDroppedCode
+			if response != nil {
+				code = strconv.Itoa(response.StatusCode)
+			}
+
+			labels = prometheus.Labels{eventLabel: eventType, codeLabel: code, reasonLabel: getDoErrReason(err), urlLabel: response.Request.URL.String()}
+		} else {
+			labels = prometheus.Labels{eventLabel: eventType, codeLabel: strconv.Itoa(response.StatusCode), reasonLabel: expectedCodeReason, urlLabel: response.Request.URL.String()}
+			if response.StatusCode != http.StatusAccepted {
+				labels[reasonLabel] = non202Code
+			}
+		}
+
+		obs.With(labels).Observe(float64(size))
+
+		return response, err
+	})
+}
 func InstrumentOutboundDuration(obs HistogramVec, next http.RoundTripper) promhttp.RoundTripperFunc {
 	return promhttp.RoundTripperFunc(func(request *http.Request) (*http.Response, error) {
 		eventType, ok := request.Context().Value(eventTypeContextKey{}).(string)
@@ -302,6 +341,7 @@ func InstrumentOutboundCounter(counter CounterVec, next http.RoundTripper) promh
 // NewOutboundRoundTripper produces an http.RoundTripper from the configured Outbounder
 // that is also decorated with appropriate metrics.
 func NewOutboundRoundTripper(om OutboundMeasures, o *Outbounder) http.RoundTripper {
+	// TODO add tests for NewOutboundRoundTripper
 	// nolint:bodyclose
 	return promhttp.RoundTripperFunc(xhttp.RetryTransactor(
 		// use the default should retry predicate ...
@@ -312,10 +352,37 @@ func NewOutboundRoundTripper(om OutboundMeasures, o *Outbounder) http.RoundTripp
 		},
 		InstrumentOutboundCounter(
 			om.RequestCounter,
-			InstrumentOutboundDuration(
-				om.RequestDuration,
-				promhttp.InstrumentRoundTripperInFlight(om.InFlight, o.transport()),
+			InstrumentOutboundSize(
+				om.RequestSize,
+				InstrumentOutboundDuration(
+					om.RequestDuration,
+					promhttp.InstrumentRoundTripperInFlight(om.InFlight, o.transport()),
+				),
 			),
 		),
 	))
+}
+
+func computeApproximateRequestSize(r *http.Request) int {
+	s := 0
+	if r.URL != nil {
+		s += len(r.URL.String())
+	}
+
+	s += len(r.Method)
+	s += len(r.Proto)
+	for name, values := range r.Header {
+		s += len(name)
+		for _, value := range values {
+			s += len(value)
+		}
+	}
+	s += len(r.Host)
+
+	// N.B. r.Form and r.MultipartForm are assumed to be included in r.URL.
+
+	if r.ContentLength != -1 {
+		s += int(r.ContentLength)
+	}
+	return s
 }
