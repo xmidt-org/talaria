@@ -123,7 +123,7 @@ func Metrics() []xmetrics.Metric {
 			Name:       OutboundRequestSizeBytes,
 			Type:       xmetrics.HistogramType,
 			Help:       "A histogram of request sizes for outbound requests",
-			LabelNames: []string{eventLabel, reasonLabel, urlLabel, outcomeLabel},
+			LabelNames: []string{eventLabel, codeLabel, reasonLabel, urlLabel},
 			Buckets:    []float64{200, 500, 900, 1500, 3000, 6000, 12000, 24000, 48000, 96000, 192000, 384000, 768000, 1536000},
 		},
 		{
