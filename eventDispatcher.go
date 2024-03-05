@@ -138,8 +138,9 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 					d.logger.Error("Error dispatching event", zap.Any("eventType", eventType), zap.Any("destination", destination), zap.Error(err))
 				}
 			} else if strings.HasPrefix(destination, DNSPrefix) {
+				eventType = event.Type.String()
 				unfilteredURL := destination[len(DNSPrefix):]
-				url, err = d.dispatchTo(unfilteredURL, contentType, event.Contents)
+				url, err = d.dispatchTo(unfilteredURL, contentType, event.Contents, eventType)
 				if err != nil {
 					d.logger.Error("Error dispatching to endpoint", zap.Any("destination", destination), zap.Error(err))
 				}
@@ -261,7 +262,7 @@ func (d *eventDispatcher) encodeAndDispatchEvent(eventType string, format wrp.Fo
 	return url, nil
 }
 
-func (d *eventDispatcher) dispatchTo(unfiltered string, contentType string, contents []byte) (string, error) {
+func (d *eventDispatcher) dispatchTo(unfiltered string, contentType string, contents []byte, eventType string) (string, error) {
 	var (
 		err error
 		url = unfiltered
@@ -278,7 +279,7 @@ func (d *eventDispatcher) dispatchTo(unfiltered string, contentType string, cont
 	}
 
 	return request.URL.String(), d.send(
-		context.WithValue(context.Background(), eventTypeContextKey{}, DNSPrefix),
+		context.WithValue(context.Background(), eventTypeContextKey{}, eventType),
 		request,
 	)
 }

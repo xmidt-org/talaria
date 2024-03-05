@@ -65,7 +65,7 @@ func newOnlineMessage(source string, d device.Interface) (string, *wrp.Message) 
 	}
 	updateTimestampMetadata(m, t)
 
-	return eventType, m
+	return m.FindEventStringSubMatch(), m
 }
 
 func offlinePayload(t time.Time, d device.Interface) []byte {
@@ -108,7 +108,7 @@ func newOfflineMessage(source string, d device.Interface) (string, *wrp.Message)
 	}
 	updateTimestampMetadata(m, t)
 
-	return eventType, m
+	return m.FindEventStringSubMatch(), m
 }
 
 func updateTimestampMetadata(m *wrp.Message, t time.Time) {
