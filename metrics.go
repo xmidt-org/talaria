@@ -89,10 +89,9 @@ const (
 	connectionUnexpectedlyClosedEOFReason = "connection_unexpectedly_closed_eof"
 	noErrReason                           = "no_err"
 	expectedCodeReason                    = "expected_code"
+	non202CodeReason                      = "non202"
 
 	// dropped message codes
-	non202Code         = "non202"
-	expected202Code    = "202"
 	messageDroppedCode = "message_dropped"
 
 	// outbound event delivery outcomes
@@ -124,7 +123,7 @@ func Metrics() []xmetrics.Metric {
 			Name:       OutboundRequestSizeBytes,
 			Type:       xmetrics.HistogramType,
 			Help:       "A histogram of request sizes for outbound requests",
-			LabelNames: []string{eventLabel, codeLabel, reasonLabel, urlLabel},
+			LabelNames: []string{eventLabel, codeLabel},
 			Buckets:    []float64{200, 500, 900, 1500, 3000, 6000, 12000, 24000, 48000, 96000, 192000, 384000, 768000, 1536000},
 		},
 		{
@@ -264,12 +263,9 @@ func InstrumentOutboundSize(obs HistogramVec, next http.RoundTripper) promhttp.R
 				code = strconv.Itoa(response.StatusCode)
 			}
 
-			labels = prometheus.Labels{eventLabel: eventType, codeLabel: code, reasonLabel: getDoErrReason(err), urlLabel: request.URL.String()}
+			labels = prometheus.Labels{eventLabel: eventType, codeLabel: code}
 		} else {
-			labels = prometheus.Labels{eventLabel: eventType, codeLabel: strconv.Itoa(response.StatusCode), reasonLabel: expectedCodeReason, urlLabel: request.URL.String()}
-			if response.StatusCode != http.StatusAccepted {
-				labels[reasonLabel] = non202Code
-			}
+			labels = prometheus.Labels{eventLabel: eventType, codeLabel: strconv.Itoa(response.StatusCode)}
 		}
 
 		obs.With(labels).Observe(float64(size))
@@ -299,7 +295,7 @@ func InstrumentOutboundDuration(obs HistogramVec, next http.RoundTripper) promht
 		} else {
 			labels = prometheus.Labels{eventLabel: eventType, codeLabel: strconv.Itoa(response.StatusCode), reasonLabel: expectedCodeReason, urlLabel: request.URL.String()}
 			if response.StatusCode != http.StatusAccepted {
-				labels[reasonLabel] = non202Code
+				labels[reasonLabel] = non202CodeReason
 			}
 		}
 
@@ -329,7 +325,7 @@ func InstrumentOutboundCounter(counter CounterVec, next http.RoundTripper) promh
 		} else {
 			labels = prometheus.Labels{eventLabel: eventType, codeLabel: strconv.Itoa(response.StatusCode), reasonLabel: noErrReason, urlLabel: request.URL.String()}
 			if response.StatusCode != http.StatusAccepted {
-				labels[reasonLabel] = non202Code
+				labels[reasonLabel] = non202CodeReason
 			}
 		}
 
