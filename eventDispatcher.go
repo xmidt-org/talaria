@@ -132,10 +132,13 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 			destination := routable.To()
 			contentType := event.Format.ContentType()
 			if strings.HasPrefix(destination, EventPrefix) {
-				eventType = destination[len(EventPrefix):]
-				url, err = d.dispatchEvent(eventType, contentType, event.Contents)
-				if err != nil {
-					d.logger.Error("Error dispatching event", zap.Any("eventType", eventType), zap.Any("destination", destination), zap.Error(err))
+				var l wrp.Locator
+				if l, err = wrp.ParseLocator(destination); err == nil {
+					eventType = l.Authority
+					url, err = d.dispatchEvent(eventType, contentType, event.Contents)
+					if err != nil {
+						d.logger.Error("Error dispatching event", zap.Any("eventType", eventType), zap.Any("destination", destination), zap.Error(err))
+					}
 				}
 			} else if strings.HasPrefix(destination, DNSPrefix) {
 				eventType = event.Type.String()
