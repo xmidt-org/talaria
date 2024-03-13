@@ -124,7 +124,7 @@ func Metrics() []xmetrics.Metric {
 			Type:       xmetrics.HistogramType,
 			Help:       "A histogram of request sizes for outbound requests",
 			LabelNames: []string{eventLabel, codeLabel},
-			Buckets:    []float64{200, 500, 900, 1500, 3000, 6000, 12000, 24000, 48000, 96000, 192000, 384000, 768000, 1536000},
+			Buckets:    []float64{200, 500, 900, 1500, 3000, 6000, 12000, 24000, 48000, 96000, 192000},
 		},
 		{
 			Name:       TotalOutboundEvents,
