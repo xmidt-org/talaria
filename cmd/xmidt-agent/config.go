@@ -11,6 +11,7 @@ import (
 
 	"github.com/goschtalt/goschtalt"
 	"github.com/xmidt-org/arrange/arrangehttp"
+	"github.com/xmidt-org/retry"
 	"github.com/xmidt-org/sallust"
 	"github.com/xmidt-org/wrp-go/v3"
 	"gopkg.in/dealancer/validate.v2"
@@ -18,12 +19,48 @@ import (
 
 // Config is the configuration for the xmidt-agent.
 type Config struct {
+	Client           Client
 	Identity         Identity
 	OperationalState OperationalState
 	XmidtCredentials XmidtCredentials
 	XmidtService     XmidtService
 	Logger           sallust.Config
 	Storage          Storage
+}
+
+type Client struct {
+	//  FetchURL is the url used to fetch the WS url.
+	FetchURL string
+	//  (optional) FetchURLTimeout is the timeout for the fetching the WS url. If this is not set, the default is 30 seconds.
+	FetchURLTimeout time.Duration
+	//  (optional) PingInterval is the ping interval allowed for the WS connection.
+	PingInterval time.Duration
+	//  (optional) PingTimeout is the ping timeout for the WS connection.
+	PingTimeout time.Duration
+	//  (optional) ConnectTimeout is the connect timeout for the WS connection.
+	ConnectTimeout time.Duration
+	//  (optional) KeepAliveInterval is the keep alive interval for the WS connection.
+	KeepAliveInterval time.Duration
+	//  (optional) IdleConnTimeout is the idle connection timeout for the WS connection.
+	IdleConnTimeout time.Duration
+	//  (optional) TLSHandshakeTimeout is the TLS handshake timeout for the WS connection.
+	TLSHandshakeTimeout time.Duration
+	//  (optional) ExpectContinueTimeout is the expect continue timeout for the WS connection.
+	ExpectContinueTimeout time.Duration
+	//  (optional) MaxMessageBytes is the largest allowable message to send or receive.
+	MaxMessageBytes int64
+	// (optional) DisableV4 determines whether or not to allow IPv4 for the WS connection.
+	// If this is not set, the default is false (IPv4 is enabled).
+	// Either V4 or V6 can be disabled, but not both.
+	DisableV4 bool
+	// (optional) DisableV6 determines whether or not to allow IPv6 for the WS connection.
+	// If this is not set, the default is false (IPv6 is enabled).
+	// Either V4 or V6 can be disabled, but not both.
+	DisableV6 bool
+	//  (optional) RetryPolicy sets the retry policy factory used for delaying between retry attempts for reconnection.
+	RetryPolicy retry.Config
+	// (optional) Once sets whether or not to only attempt to connect once.
+	Once bool
 }
 
 // Identity contains the information that identifies the device.

@@ -10,8 +10,22 @@ import (
 	"time"
 
 	"github.com/xmidt-org/retry"
+	"github.com/xmidt-org/sallust"
 	"github.com/xmidt-org/wrp-go/v3"
 	"github.com/xmidt-org/xmidt-agent/internal/websocket/event"
+	"go.uber.org/zap"
+)
+
+const (
+	expectContinueTimeoutDefault = 1 * time.Second
+	idleConnTimeoutDefault       = 10 * time.Second
+	tlsHandshakeTimeoutDefault
+	fetchUrlTimeoutDefault = 30 * time.Second
+	pingIntervalDefault
+	connectionTimeoutDefault
+	keepAliveIntervalDefault
+	pingTimeoutDefault     = 90 * time.Second
+	maxMessageBytesDefault = 256 * 1024
 )
 
 // DeviceID sets the device ID for the WS connection.
@@ -54,7 +68,10 @@ func FetchURLTimeout(d time.Duration) Option {
 		func(ws *Websocket) error {
 			if d < 0 {
 				return fmt.Errorf("%w: negative FetchURLTimeout", ErrMisconfiguredWS)
+			} else if d == 0 {
+				d = fetchUrlTimeoutDefault
 			}
+
 			ws.urlFetchingTimeout = d
 			return nil
 		})
@@ -74,6 +91,12 @@ func CredentialsDecorator(f func(http.Header) error) Option {
 func PingInterval(d time.Duration) Option {
 	return optionFunc(
 		func(ws *Websocket) error {
+			if d < 0 {
+				return fmt.Errorf("%w: negative PingInterval", ErrMisconfiguredWS)
+			} else if d == 0 {
+				d = pingIntervalDefault
+			}
+
 			ws.pingInterval = d
 			return nil
 		})
@@ -84,6 +107,12 @@ func PingInterval(d time.Duration) Option {
 func PingTimeout(d time.Duration) Option {
 	return optionFunc(
 		func(ws *Websocket) error {
+			if d < 0 {
+				return fmt.Errorf("%w: negative PingTimeout", ErrMisconfiguredWS)
+			} else if d == 0 {
+				d = pingTimeoutDefault
+			}
+
 			ws.pingTimeout = d
 			return nil
 		})
@@ -94,6 +123,12 @@ func PingTimeout(d time.Duration) Option {
 func KeepAliveInterval(d time.Duration) Option {
 	return optionFunc(
 		func(ws *Websocket) error {
+			if d < 0 {
+				return fmt.Errorf("%w: negative KeepAliveInterval", ErrMisconfiguredWS)
+			} else if d == 0 {
+				d = keepAliveIntervalDefault
+			}
+
 			ws.keepAliveInterval = d
 			return nil
 		})
@@ -104,6 +139,12 @@ func KeepAliveInterval(d time.Duration) Option {
 func TLSHandshakeTimeout(d time.Duration) Option {
 	return optionFunc(
 		func(ws *Websocket) error {
+			if d < 0 {
+				return fmt.Errorf("%w: negative TLSHandshakeTimeout", ErrMisconfiguredWS)
+			} else if d == 0 {
+				d = tlsHandshakeTimeoutDefault
+			}
+
 			ws.tlsHandshakeTimeout = d
 			return nil
 		})
@@ -114,6 +155,12 @@ func TLSHandshakeTimeout(d time.Duration) Option {
 func IdleConnTimeout(d time.Duration) Option {
 	return optionFunc(
 		func(ws *Websocket) error {
+			if d < 0 {
+				return fmt.Errorf("%w: negative IdleConnTimeout", ErrMisconfiguredWS)
+			} else if d == 0 {
+				d = idleConnTimeoutDefault
+			}
+
 			ws.idleConnTimeout = d
 			return nil
 		})
@@ -124,6 +171,12 @@ func IdleConnTimeout(d time.Duration) Option {
 func ExpectContinueTimeout(d time.Duration) Option {
 	return optionFunc(
 		func(ws *Websocket) error {
+			if d < 0 {
+				return fmt.Errorf("%w: negative ExpectContinueTimeout", ErrMisconfiguredWS)
+			} else if d == 0 {
+				d = expectContinueTimeoutDefault
+			}
+
 			ws.expectContinueTimeout = d
 			return nil
 		})
@@ -158,7 +211,10 @@ func ConnectTimeout(d time.Duration) Option {
 		func(ws *Websocket) error {
 			if d < 0 {
 				return fmt.Errorf("%w: negative ConnectTimeout", ErrMisconfiguredWS)
+			} else if d == 0 {
+				d = connectionTimeoutDefault
 			}
+
 			ws.connectTimeout = d
 			return nil
 		})
@@ -187,6 +243,19 @@ func Once(once ...bool) Option {
 		})
 }
 
+// Logger sets the zap logger.
+func Logger(l *zap.Logger) Option {
+	return optionFunc(
+		func(ws *Websocket) error {
+			if l == nil {
+				l = sallust.Default()
+			}
+
+			ws.l = l
+			return nil
+		})
+}
+
 // NowFunc sets the now function for the WS connection.
 func NowFunc(f func() time.Time) Option {
 	return optionFunc(
@@ -194,6 +263,7 @@ func NowFunc(f func() time.Time) Option {
 			if f == nil {
 				return fmt.Errorf("%w: nil NowFunc", ErrMisconfiguredWS)
 			}
+
 			ws.nowFunc = f
 			return nil
 		})
@@ -213,6 +283,10 @@ func RetryPolicy(pf retry.PolicyFactory) Option {
 func MaxMessageBytes(bytes int64) Option {
 	return optionFunc(
 		func(ws *Websocket) error {
+			if bytes == 0 {
+				bytes = maxMessageBytesDefault
+			}
+
 			ws.maxMessageBytes = bytes
 			return nil
 		})

@@ -15,6 +15,7 @@ import (
 	"github.com/xmidt-org/retry"
 	"github.com/xmidt-org/wrp-go/v3"
 	"github.com/xmidt-org/xmidt-agent/internal/websocket/event"
+	"go.uber.org/zap"
 	nhws "nhooyr.io/websocket"
 )
 
@@ -22,7 +23,13 @@ var (
 	ErrMisconfiguredWS = errors.New("misconfigured WS")
 	ErrClosed          = errors.New("websocket closed")
 	ErrInvalidMsgType  = errors.New("invalid message type")
+	ErrPing            = errors.New("ws ping failed")
 )
+
+// emptyBuffer is solely used as an address of a global empty buffer.
+// This sentinel value will reset pointers of the writePump's encoder
+// such that the gc can clean things up.
+var emptyBuffer = []byte{}
 
 type Websocket struct {
 	// id is the device ID for the WS connection.
@@ -94,6 +101,7 @@ type Websocket struct {
 	m        sync.Mutex
 	wg       sync.WaitGroup
 	shutdown context.CancelFunc
+	l        *zap.Logger
 
 	conn *nhws.Conn
 }
@@ -115,15 +123,15 @@ func New(opts ...Option) (*Websocket, error) {
 
 	defaults := []Option{
 		NowFunc(time.Now),
-		FetchURLTimeout(30 * time.Second),
-		PingInterval(30 * time.Second),
-		PingTimeout(90 * time.Second),
-		ConnectTimeout(30 * time.Second),
-		KeepAliveInterval(30 * time.Second),
-		IdleConnTimeout(10 * time.Second),
-		TLSHandshakeTimeout(10 * time.Second),
-		ExpectContinueTimeout(1 * time.Second),
-		MaxMessageBytes(256 * 1024),
+		FetchURLTimeout(fetchUrlTimeoutDefault),
+		PingInterval(pingIntervalDefault),
+		PingTimeout(pingTimeoutDefault),
+		ConnectTimeout(connectionTimeoutDefault),
+		KeepAliveInterval(keepAliveIntervalDefault),
+		IdleConnTimeout(idleConnTimeoutDefault),
+		TLSHandshakeTimeout(tlsHandshakeTimeoutDefault),
+		ExpectContinueTimeout(expectContinueTimeoutDefault),
+		MaxMessageBytes(maxMessageBytesDefault),
 		WithIPv4(),
 		WithIPv6(),
 		Once(false),
@@ -225,7 +233,9 @@ func (ws *Websocket) run(ctx context.Context) {
 	ws.wg.Add(1)
 	defer ws.wg.Done()
 
+	pingTicker := time.NewTicker(ws.pingInterval)
 	decoder := wrp.NewDecoder(nil, wrp.Msgpack)
+	encoder := wrp.NewEncoder(nil, wrp.Msgpack)
 	mode := ws.nextMode(ipv4)
 
 	policy := ws.retryPolicyFactory.NewPolicy(ctx)
@@ -258,7 +268,7 @@ func (ws *Websocket) run(ctx context.Context) {
 			// Read loop
 			for {
 				var msg wrp.Message
-				typ, reader, err := conn.Reader(ctx)
+				typ, reader, err := ws.conn.Reader(ctx)
 				if err == nil {
 					if typ != nhws.MessageBinary {
 						err = ErrInvalidMsgType
@@ -291,6 +301,20 @@ func (ws *Websocket) run(ctx context.Context) {
 				ws.msgListeners.Visit(func(l event.MsgListener) {
 					l.OnMessage(msg)
 				})
+				var frameContents []byte
+				// nolint: typecheck
+
+				// if the request was in a format other than Msgpack, or if the caller did not pass
+				// Contents, then do the encoding here.
+				encoder.ResetBytes(&frameContents)
+				err = encoder.Encode(msg)
+				encoder.ResetBytes(&emptyBuffer)
+				if err != nil {
+					ws.l.Error("xmidt-agent failed to response to wrp message", zap.Error(err))
+					continue
+				}
+
+				ws.conn.Write(ctx, nhws.MessageBinary, frameContents)
 			}
 		}
 

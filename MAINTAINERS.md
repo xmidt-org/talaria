@@ -1,6 +1,6 @@
 Maintainers of this repository:
 
 * Weston Schmidt @schmidtw
-* Joel Unzain @joe94
+* Owen Cabalceta @denopink
 * John Bass @johnabass
 * Nick Harter @njharter

@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime/debug"
 
 	"github.com/alecthomas/kong"
 	"github.com/goschtalt/goschtalt"
@@ -14,8 +15,11 @@ import (
 	_ "github.com/goschtalt/yaml-decoder"
 	_ "github.com/goschtalt/yaml-encoder"
 	"github.com/xmidt-org/sallust"
+	"github.com/xmidt-org/wrp-go/v3"
 	"github.com/xmidt-org/xmidt-agent/internal/credentials"
 	"github.com/xmidt-org/xmidt-agent/internal/jwtxt"
+	"github.com/xmidt-org/xmidt-agent/internal/websocket"
+	"github.com/xmidt-org/xmidt-agent/internal/websocket/event"
 
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
@@ -41,6 +45,15 @@ type CLI struct {
 	Show  bool     `optional:"" short:"s" help:"Show the configuration and exit."`
 	Graph string   `optional:"" short:"g" help:"Output the dependency graph to the specified file."`
 	Files []string `optional:"" short:"f" help:"Specific configuration files or directories."`
+}
+
+type LifeCycleIn struct {
+	fx.In
+	Logger     *zap.Logger
+	LC         fx.Lifecycle
+	Shutdowner fx.Shutdowner
+	WS         *websocket.Websocket
+	CancelList []event.CancelFunc
 }
 
 // xmidtAgent is the main entry point for the program.  It is responsible for
@@ -72,6 +85,10 @@ func xmidtAgent(args []string) (*fx.App, error) {
 			provideConfig,
 			provideCredentials,
 			provideInstructions,
+			provideWS,
+			func(id Identity) wrp.DeviceID {
+				return id.DeviceID
+			},
 
 			goschtalt.UnmarshalFunc[sallust.Config]("logger", goschtalt.Optional()),
 			goschtalt.UnmarshalFunc[Identity]("identity"),
@@ -79,6 +96,7 @@ func xmidtAgent(args []string) (*fx.App, error) {
 			goschtalt.UnmarshalFunc[XmidtCredentials]("xmidt_credentials"),
 			goschtalt.UnmarshalFunc[XmidtService]("xmidt_service"),
 			goschtalt.UnmarshalFunc[Storage]("storage"),
+			goschtalt.UnmarshalFunc[Client]("client"),
 		),
 
 		fsProvide(),
@@ -96,6 +114,7 @@ func xmidtAgent(args []string) (*fx.App, error) {
 					fmt.Println(s)
 				}
 			},
+			lifeCycle,
 		),
 	)
 
@@ -170,29 +189,76 @@ func provideCLIWithOpts(args cliArgs, testOpts bool) (*CLI, error) {
 	return &cli, nil
 }
 
+type LoggerIn struct {
+	fx.In
+	CLI *CLI
+	Cfg sallust.Config
+}
+
 // Create the logger and configure it based on if the program is in
 // debug mode or normal mode.
-func provideLogger(cli *CLI, cfg sallust.Config) (*zap.Logger, error) {
-	if cli.Dev {
-		cfg.Level = "DEBUG"
-		cfg.Development = true
-		cfg.Encoding = "console"
-		cfg.EncoderConfig = sallust.EncoderConfig{
-			TimeKey:        "T",
-			LevelKey:       "L",
-			NameKey:        "N",
-			CallerKey:      "C",
-			FunctionKey:    zapcore.OmitKey,
-			MessageKey:     "M",
-			StacktraceKey:  "S",
-			LineEnding:     zapcore.DefaultLineEnding,
-			EncodeLevel:    "capitalColor",
-			EncodeTime:     "RFC3339",
-			EncodeDuration: "string",
-			EncodeCaller:   "short",
-		}
-		cfg.OutputPaths = []string{"stderr"}
-		cfg.ErrorOutputPaths = []string{"stderr"}
+func provideLogger(in LoggerIn) (*zap.Logger, error) {
+	in.Cfg.EncoderConfig = sallust.EncoderConfig{
+		TimeKey:        "T",
+		LevelKey:       "L",
+		NameKey:        "N",
+		CallerKey:      "C",
+		FunctionKey:    zapcore.OmitKey,
+		MessageKey:     "M",
+		StacktraceKey:  "S",
+		LineEnding:     zapcore.DefaultLineEnding,
+		EncodeLevel:    "capitalColor",
+		EncodeTime:     "RFC3339",
+		EncodeDuration: "string",
+		EncodeCaller:   "short",
 	}
-	return cfg.Build()
+
+	if in.CLI.Dev {
+		in.Cfg.Level = "DEBUG"
+		in.Cfg.Development = true
+		in.Cfg.Encoding = "console"
+		in.Cfg.OutputPaths = append(in.Cfg.OutputPaths, "stderr")
+		in.Cfg.ErrorOutputPaths = append(in.Cfg.ErrorOutputPaths, "stderr")
+	}
+
+	return in.Cfg.Build()
+}
+
+func lifeCycle(in LifeCycleIn) {
+	logger := in.Logger.With(zap.String("component", "fx_lifecycle"))
+	in.LC.Append(
+		fx.Hook{
+			OnStart: func(ctx context.Context) error {
+				defer func() {
+					if r := recover(); nil != r {
+						logger.Error("stacktrace from panic", zap.String("stacktrace", string(debug.Stack())), zap.Any("panic", r))
+					}
+				}()
+
+				logger.Info("starting ws")
+				in.WS.Start()
+
+				return nil
+			},
+			OnStop: func(ctx context.Context) error {
+				defer func() {
+					if r := recover(); nil != r {
+						logger.Error("stacktrace from panic", zap.String("stacktrace", string(debug.Stack())), zap.Any("panic", r))
+					}
+
+					if err := in.Shutdowner.Shutdown(); err != nil {
+						logger.Error("encountered error trying to shutdown app: ", zap.Error(err))
+					}
+				}()
+
+				logger.Info("stopping ws listeners")
+				in.WS.Stop()
+				for _, c := range in.CancelList {
+					c()
+				}
+
+				return nil
+			},
+		},
+	)
 }
