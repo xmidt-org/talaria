@@ -1,5 +1,6 @@
 # SPDX-FileCopyrightText: 2022 Comcast Cable Communications Management, LLC
 # SPDX-License-Identifier: Apache-2.0
+---
 apiVersion: v1
 data:
   talaria.yaml: |
@@ -422,4 +423,3 @@ spec:
       imagePullSecrets:
         - name: {{ .Values.imagePullSecretName }}}
       {{ end }}
-      

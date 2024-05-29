@@ -427,4 +427,3 @@ spec:
             - name: talaria-config
               mountPath: "/etc/talaria"
               readOnly: true
-
