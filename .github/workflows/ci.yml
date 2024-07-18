@@ -20,7 +20,7 @@ on:
 
 jobs:
   ci:
-    uses: xmidt-org/shared-go/.github/workflows/ci.yml@9288f34ac2e3b491e8d456197f41db6df41d0efd # v4.3.0
+    uses: xmidt-org/shared-go/.github/workflows/ci.yml@2cfcfbb8d0b4d0749d46488ea4c60ef998e566bd # v4.4.16
     with:
       style-skip:            true
       release-type:          program
@@ -33,4 +33,5 @@ jobs:
         .release/docker
         LICENSE
         NOTICE
+      yaml-lint-skip: false
     secrets: inherit

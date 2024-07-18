@@ -306,7 +306,7 @@ inbound:
 
   # requestTimeout is the timeout for all inbound HTTP requests.
   # (Optional) defaults to 120s
-  requestTimeout: (( grab $INBOUND_REQUEST_TIMEOUT || "120s" )) 
+  requestTimeout: (( grab $INBOUND_REQUEST_TIMEOUT || "120s" ))
 
 eventMap:
   default: (( grab $CADUCEUS_ENDPOINT || "http://caduceus:6000/api/v3/notify" ))
@@ -508,6 +508,6 @@ tracing:
   # so that trace information is not written to stdout.
   # skipTraceExport: true
 
-  # endpoint is where trace information should be routed. Applies to otlp, zipkin, and jaegar. OTLP/gRPC uses port 4317 by default. 
+  # endpoint is where trace information should be routed. Applies to otlp, zipkin, and jaegar. OTLP/gRPC uses port 4317 by default.
   # OTLP/HTTP uses port 4318 by default.
   endpoint: (( grab $TRACING_PROVIDER_ENDPOINT || "http://zipkin:9411/api/v2/spans" ))
