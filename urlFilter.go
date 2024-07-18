@@ -3,8 +3,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strings"
+)
+
+var (
+	ErrorURLSchemeNotAllowed = errors.New("url scheme not allowed")
 )
 
 // URLFilter represents a strategy for validating and possibly mutating URLs from devices.
@@ -48,7 +53,7 @@ func (uf *urlFilter) Filter(v string) (string, error) {
 
 	scheme := v[:position]
 	if !uf.allowedSchemes[v[:position]] {
-		return "", fmt.Errorf("Scheme not allowed: %s", scheme)
+		return "", fmt.Errorf("%w: %s", ErrorURLSchemeNotAllowed, scheme)
 	}
 
 	return v, nil

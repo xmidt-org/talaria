@@ -5,10 +5,12 @@ package main
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/xmidt-org/webpa-common/v2/convey"
@@ -231,27 +233,83 @@ func testEventDispatcherOnDeviceEventDispatchEvent(t *testing.T) {
 	}
 }
 
-func testEventDispatcherOnDeviceEventEventTimeout(t *testing.T) {
+func testEventDispatcherOnDeviceEventFullQueue(t *testing.T) {
 	var (
-		require    = require.New(t)
+		b                 bytes.Buffer
+		assert            = assert.New(t)
+		require           = require.New(t)
+		expectedEventType = "node-change"
+
 		outbounder = &Outbounder{
 			RequestTimeout: 100 * time.Millisecond,
 			EventEndpoints: map[string]interface{}{"default": []string{"nowhere.com"}},
+			Logger: zap.New(
+				zapcore.NewCore(zapcore.NewJSONEncoder(
+					zapcore.EncoderConfig{
+						MessageKey: "message",
+					}), zapcore.AddSync(&b), zapcore.ErrorLevel),
+			),
 		}
-
-		d, _, err = NewEventDispatcher(NewTestOutboundMeasures(), outbounder, nil)
+		om = NewTestOutboundMeasures()
 	)
+	dm := new(mockCounter)
+	om.DroppedMessages = dm
+	d, _, err := NewEventDispatcher(om, outbounder, nil)
 
 	require.NotNil(d)
 	require.NoError(err)
 
 	d.(*eventDispatcher).outbounds = make(chan outboundEnvelope)
-	// TODO verify logger's buffer isn't empty
+	dm.On("With", prometheus.Labels{eventLabel: expectedEventType, codeLabel: messageDroppedCode, reasonLabel: fullQueueReason, urlLabel: "nowhere.com"}).Return().Once()
+	dm.On("Add", 1.).Return().Once()
 	d.OnDeviceEvent(&device.Event{
 		Type:     device.MessageReceived,
-		Message:  &wrp.Message{Destination: "event:iot"},
+		Message:  &wrp.Message{Destination: fmt.Sprintf("event:%s/mac:11:22:33:44:55:66/Online/unknown/deb2eb69999", expectedEventType)},
 		Contents: []byte{1, 2},
 	})
+	assert.Greater(b.Len(), 0)
+	dm.AssertExpectations(t)
+}
+
+func testEventDispatcherOnDeviceEventMessageReceived(t *testing.T) {
+	var (
+		assert            = assert.New(t)
+		require           = require.New(t)
+		b                 bytes.Buffer
+		expectedEventType = "node-change"
+		m                 = wrp.Message{Destination: fmt.Sprintf("event:%s/mac:11:22:33:44:55:66/Online/unknown/deb2eb69999", expectedEventType)}
+		o                 = Outbounder{
+			Method:         "PATCH",
+			EventEndpoints: map[string]interface{}{"default": []string{"nowhere.com"}},
+			Logger: zap.New(
+				zapcore.NewCore(zapcore.NewJSONEncoder(
+					zapcore.EncoderConfig{
+						MessageKey: "message",
+					}), zapcore.AddSync(&b), zapcore.ErrorLevel),
+			),
+		}
+		dispatcher, outbounds, err = NewEventDispatcher(NewTestOutboundMeasures(), &o, nil)
+	)
+
+	require.NotNil(dispatcher)
+	require.NotNil(outbounds)
+	require.NoError(err)
+
+	dispatcher.OnDeviceEvent(&device.Event{
+		Type:    device.MessageReceived,
+		Message: &m,
+	})
+
+	require.Equal(1, len(outbounds))
+	e := <-outbounds
+	e.cancel()
+	<-e.request.Context().Done()
+
+	assert.Equal(o.method(), e.request.Method)
+	assert.Zero(b)
+	eventType, ok := e.request.Context().Value(eventTypeContextKey{}).(string)
+	require.True(ok)
+	assert.Equal(expectedEventType, eventType)
 }
 
 func testEventDispatcherOnDeviceEventFilterError(t *testing.T) {
@@ -260,8 +318,18 @@ func testEventDispatcherOnDeviceEventFilterError(t *testing.T) {
 		require       = require.New(t)
 		urlFilter     = new(mockURLFilter)
 		expectedError = errors.New("expected")
-
-		dispatcher, outbounds, err = NewEventDispatcher(NewTestOutboundMeasures(), nil, urlFilter)
+		b             bytes.Buffer
+		o             = Outbounder{
+			Method:         "PATCH",
+			EventEndpoints: map[string]interface{}{"default": []string{"nowhere.com"}},
+			Logger: zap.New(
+				zapcore.NewCore(zapcore.NewJSONEncoder(
+					zapcore.EncoderConfig{
+						MessageKey: "message",
+					}), zapcore.AddSync(&b), zapcore.ErrorLevel),
+			),
+		}
+		dispatcher, outbounds, err = NewEventDispatcher(NewTestOutboundMeasures(), &o, urlFilter)
 	)
 
 	require.NotNil(dispatcher)
@@ -276,8 +344,8 @@ func testEventDispatcherOnDeviceEventFilterError(t *testing.T) {
 		Message: &wrp.Message{Destination: "dns:doesnotmatter.com"},
 	})
 
-	// TODO verify logger's buffer isn't empty
 	assert.Equal(0, len(outbounds))
+	assert.NotZero(b)
 	urlFilter.AssertExpectations(t)
 }
 
@@ -425,11 +493,12 @@ func TestEventDispatcherOnDeviceEvent(t *testing.T) {
 		test        func(*testing.T)
 	}{
 		{"ConnectEvent", testEventDispatcherOnDeviceEventConnectEvent},
+		{"CorrectEventType", testEventDispatcherOnDeviceEventMessageReceived},
 		{"DisconnectEvent", testEventDispatcherOnDeviceEventDisconnectEvent},
 		{"Unroutable", testEventDispatcherOnDeviceEventUnroutable},
 		{"BadURLFilter", testEventDispatcherOnDeviceEventBadURLFilter},
 		{"DispatchEvent", testEventDispatcherOnDeviceEventDispatchEvent},
-		{"EventTimeout", testEventDispatcherOnDeviceEventEventTimeout},
+		{"FullQueue", testEventDispatcherOnDeviceEventFullQueue},
 		{"FilterError", testEventDispatcherOnDeviceEventFilterError},
 		{"DispatchTo", testEventDispatcherOnDeviceEventDispatchTo},
 		{"NilEventError", testEventDispatcherOnDeviceEventNilEventError},

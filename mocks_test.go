@@ -5,15 +5,37 @@ package main
 import (
 	"context"
 	"crypto"
+	"fmt"
 	"unicode/utf8"
 
-	"github.com/go-kit/kit/metrics"
 	"github.com/golang-jwt/jwt"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/mock"
 	"github.com/xmidt-org/clortho"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/wrp-go/v3"
+
+	dto "github.com/prometheus/client_model/go"
 )
+
+type mockCollector struct {
+}
+
+func (m *mockCollector) Describe(chan<- *prometheus.Desc) {
+}
+func (m *mockCollector) Collect(chan<- prometheus.Metric) {
+}
+
+type mockMetric struct {
+}
+
+func (m *mockMetric) Desc() *prometheus.Desc {
+	return &prometheus.Desc{}
+}
+
+func (m *mockMetric) Write(*dto.Metric) error {
+	return nil
+}
 
 type mockURLFilter struct {
 	mock.Mock
@@ -69,6 +91,7 @@ func (parser *mockJWTParser) ParseJWT(token string, claims jwt.Claims, parseFunc
 
 // mockHistogram provides the mock implementation of the metrics.Histogram object
 type mockHistogram struct {
+	mockCollector
 	mock.Mock
 }
 
@@ -76,18 +99,38 @@ func (m *mockHistogram) Observe(value float64) {
 	m.Called(value)
 }
 
-func (m *mockHistogram) With(labelValues ...string) metrics.Histogram {
-	for _, v := range labelValues {
-		if !utf8.ValidString(v) {
-			panic("not UTF-8")
+func (m *mockHistogram) With(labelValues prometheus.Labels) prometheus.Observer {
+	for k, v := range labelValues {
+		if !utf8.ValidString(k) {
+			panic(fmt.Sprintf("key `%s`, value `%s`: key is not UTF-8", k, v))
+		} else if !utf8.ValidString(v) {
+			panic(fmt.Sprintf("key `%s`, value `%s`: value is not UTF-8", k, v))
 		}
 	}
 	m.Called(labelValues)
 	return m
 }
 
+func (m *mockHistogram) CurryWith(labels prometheus.Labels) (o prometheus.ObserverVec, err error) {
+	return o, err
+}
+func (m *mockHistogram) GetMetricWith(labels prometheus.Labels) (o prometheus.Observer, err error) {
+	return o, err
+}
+func (m *mockHistogram) GetMetricWithLabelValues(...string) (o prometheus.Observer, err error) {
+	return o, err
+}
+func (m *mockHistogram) MustCurryWith(labels prometheus.Labels) (o prometheus.ObserverVec) {
+	return o
+}
+func (m *mockHistogram) WithLabelValues(lvs ...string) (o prometheus.Observer) {
+	return o
+}
+
 // mockCounter provides the mock implementation of the metrics.Counter object
 type mockCounter struct {
+	mockCollector
+	mockMetric
 	mock.Mock
 }
 
@@ -95,10 +138,13 @@ func (m *mockCounter) Add(delta float64) {
 	m.Called(delta)
 }
 
-func (m *mockCounter) With(labelValues ...string) metrics.Counter {
-	for _, v := range labelValues {
-		if !utf8.ValidString(v) {
-			panic("not UTF-8")
+func (m *mockCounter) Inc() {}
+func (m *mockCounter) With(labelValues prometheus.Labels) prometheus.Counter {
+	for k, v := range labelValues {
+		if !utf8.ValidString(k) {
+			panic(fmt.Sprintf("key `%s`, value `%s`: key is not UTF-8", k, v))
+		} else if !utf8.ValidString(v) {
+			panic(fmt.Sprintf("key `%s`, value `%s`: value is not UTF-8", k, v))
 		}
 	}
 	m.Called(labelValues)
