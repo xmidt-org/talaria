@@ -15,7 +15,6 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/go-kit/kit/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/webpa-common/v2/event"
@@ -43,7 +42,7 @@ type eventDispatcher struct {
 	authorizationKey string
 	source           string
 	eventMap         event.MultiMap
-	queueSize        metrics.Gauge
+	queueSize        prometheus.Gauge
 	droppedMessages  CounterVec
 	outboundEvents   CounterVec
 	outbounds        chan<- outboundEnvelope

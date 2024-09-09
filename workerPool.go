@@ -13,7 +13,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/go-kit/kit/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
@@ -24,7 +23,7 @@ type WorkerPool struct {
 	logger          *zap.Logger
 	outbounds       <-chan outboundEnvelope
 	workerPoolSize  uint
-	queueSize       metrics.Gauge
+	queueSize       prometheus.Gauge
 	droppedMessages CounterVec
 	transactor      func(*http.Request) (*http.Response, error)
 

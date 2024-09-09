@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/fatih/structs"
-	"github.com/go-kit/kit/metrics"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/thedevsaddam/gojsonq/v2"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"go.uber.org/zap"
@@ -77,26 +77,26 @@ type deviceAccess interface {
 
 type talariaDeviceAccess struct {
 	strict             bool
-	wrpMessagesCounter metrics.Counter
+	wrpMessagesCounter CounterVec
 	deviceRegistry     device.Registry
 	checks             []*parsedCheck
 	sep                string
 	logger             *zap.Logger
 }
 
-func (t *talariaDeviceAccess) withFailure(labelValues ...string) metrics.Counter {
+func (t *talariaDeviceAccess) withFailure(labelValues ...string) prometheus.Counter {
 	if !t.strict {
 		return t.withSuccess(labelValues...)
 	}
-	return t.wrpMessagesCounter.With(append(labelValues, outcomeLabel, rejected)...)
+	return t.wrpMessagesCounter.WithLabelValues(append(labelValues, outcomeLabel, rejected)...)
 }
 
-func (t *talariaDeviceAccess) withFatal(labelValues ...string) metrics.Counter {
-	return t.wrpMessagesCounter.With(append(labelValues, outcomeLabel, rejected)...)
+func (t *talariaDeviceAccess) withFatal(labelValues ...string) prometheus.Counter {
+	return t.wrpMessagesCounter.WithLabelValues(append(labelValues, outcomeLabel, rejected)...)
 }
 
-func (t *talariaDeviceAccess) withSuccess(labelValues ...string) metrics.Counter {
-	return t.wrpMessagesCounter.With(append(labelValues, outcomeLabel, accepted)...)
+func (t *talariaDeviceAccess) withSuccess(labelValues ...string) prometheus.Counter {
+	return t.wrpMessagesCounter.WithLabelValues(append(labelValues, outcomeLabel, accepted)...)
 }
 
 func getRight(check *parsedCheck, wrpCredentials *gojsonq.JSONQ) interface{} {

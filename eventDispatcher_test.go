@@ -34,12 +34,14 @@ func genTestMetadata() *device.Metadata {
 
 func testEventDispatcherOnDeviceEventConnectEvent(t *testing.T) {
 	var (
-		assert                     = assert.New(t)
-		require                    = require.New(t)
-		d                          = new(device.MockDevice)
-		dispatcher, outbounds, err = NewEventDispatcher(NewTestOutboundMeasures(), nil, nil)
+		assert  = assert.New(t)
+		require = require.New(t)
+		d       = new(device.MockDevice)
 	)
 
+	om, err := NewTestOutboundMeasures()
+	require.NoError(err)
+	dispatcher, outbounds, err := NewEventDispatcher(om, nil, nil)
 	require.NotNil(dispatcher)
 	require.NotNil(outbounds)
 	require.NoError(err)
@@ -57,12 +59,14 @@ func testEventDispatcherOnDeviceEventConnectEvent(t *testing.T) {
 
 func testEventDispatcherOnDeviceEventDisconnectEvent(t *testing.T) {
 	var (
-		assert                     = assert.New(t)
-		require                    = require.New(t)
-		d                          = new(device.MockDevice)
-		dispatcher, outbounds, err = NewEventDispatcher(NewTestOutboundMeasures(), nil, nil)
+		assert  = assert.New(t)
+		require = require.New(t)
+		d       = new(device.MockDevice)
 	)
 
+	om, err := NewTestOutboundMeasures()
+	require.NoError(err)
+	dispatcher, outbounds, err := NewEventDispatcher(om, nil, nil)
 	require.NotNil(dispatcher)
 	require.NotNil(outbounds)
 	require.NoError(err)
@@ -83,11 +87,13 @@ func testEventDispatcherOnDeviceEventDisconnectEvent(t *testing.T) {
 
 func testEventDispatcherOnDeviceEventUnroutable(t *testing.T) {
 	var (
-		assert                     = assert.New(t)
-		require                    = require.New(t)
-		dispatcher, outbounds, err = NewEventDispatcher(NewTestOutboundMeasures(), nil, nil)
+		assert  = assert.New(t)
+		require = require.New(t)
 	)
 
+	om, err := NewTestOutboundMeasures()
+	require.NoError(err)
+	dispatcher, outbounds, err := NewEventDispatcher(om, nil, nil)
 	require.NotNil(dispatcher)
 	require.NotNil(outbounds)
 	require.NoError(err)
@@ -102,10 +108,13 @@ func testEventDispatcherOnDeviceEventUnroutable(t *testing.T) {
 
 func testEventDispatcherOnDeviceEventBadURLFilter(t *testing.T) {
 	var (
-		assert                     = assert.New(t)
-		dispatcher, outbounds, err = NewEventDispatcher(NewTestOutboundMeasures(), &Outbounder{DefaultScheme: "bad"}, nil)
+		assert  = assert.New(t)
+		require = require.New(t)
 	)
 
+	om, err := NewTestOutboundMeasures()
+	require.NoError(err)
+	dispatcher, outbounds, err := NewEventDispatcher(om, &Outbounder{DefaultScheme: "bad"}, nil)
 	assert.Nil(dispatcher)
 	assert.Nil(outbounds)
 	assert.Error(err)
@@ -188,11 +197,13 @@ func testEventDispatcherOnDeviceEventDispatchEvent(t *testing.T) {
 			t.Logf("%#v, method=%s, format=%s", record, record.outbounder.method(), format)
 
 			var (
-				expectedContents           = []byte{1, 2, 3, 4}
-				urlFilter                  = new(mockURLFilter)
-				dispatcher, outbounds, err = NewEventDispatcher(NewTestOutboundMeasures(), record.outbounder, urlFilter)
+				expectedContents = []byte{1, 2, 3, 4}
+				urlFilter        = new(mockURLFilter)
 			)
 
+			om, err := NewTestOutboundMeasures()
+			require.NoError(err)
+			dispatcher, outbounds, err := NewEventDispatcher(om, record.outbounder, urlFilter)
 			require.NotNil(dispatcher)
 			require.NotNil(outbounds)
 			require.NoError(err)
@@ -250,8 +261,10 @@ func testEventDispatcherOnDeviceEventFullQueue(t *testing.T) {
 					}), zapcore.AddSync(&b), zapcore.ErrorLevel),
 			),
 		}
-		om = NewTestOutboundMeasures()
 	)
+
+	om, err := NewTestOutboundMeasures()
+	require.NoError(err)
 	dm := new(mockCounter)
 	om.DroppedMessages = dm
 	d, _, err := NewEventDispatcher(om, outbounder, nil)
@@ -288,9 +301,11 @@ func testEventDispatcherOnDeviceEventMessageReceived(t *testing.T) {
 					}), zapcore.AddSync(&b), zapcore.ErrorLevel),
 			),
 		}
-		dispatcher, outbounds, err = NewEventDispatcher(NewTestOutboundMeasures(), &o, nil)
 	)
 
+	om, err := NewTestOutboundMeasures()
+	require.NoError(err)
+	dispatcher, outbounds, err := NewEventDispatcher(om, &o, nil)
 	require.NotNil(dispatcher)
 	require.NotNil(outbounds)
 	require.NoError(err)
@@ -329,9 +344,11 @@ func testEventDispatcherOnDeviceEventFilterError(t *testing.T) {
 					}), zapcore.AddSync(&b), zapcore.ErrorLevel),
 			),
 		}
-		dispatcher, outbounds, err = NewEventDispatcher(NewTestOutboundMeasures(), &o, urlFilter)
 	)
 
+	om, err := NewTestOutboundMeasures()
+	require.NoError(err)
+	dispatcher, outbounds, err := NewEventDispatcher(om, &o, urlFilter)
 	require.NotNil(dispatcher)
 	require.NotNil(outbounds)
 	require.NoError(err)
@@ -411,11 +428,13 @@ func testEventDispatcherOnDeviceEventDispatchTo(t *testing.T) {
 			t.Logf("%#v, method=%s, format=%s", record, record.outbounder.method(), format)
 
 			var (
-				expectedContents           = []byte{4, 7, 8, 1}
-				urlFilter                  = new(mockURLFilter)
-				dispatcher, outbounds, err = NewEventDispatcher(NewTestOutboundMeasures(), record.outbounder, urlFilter)
+				expectedContents = []byte{4, 7, 8, 1}
+				urlFilter        = new(mockURLFilter)
 			)
 
+			om, err := NewTestOutboundMeasures()
+			require.NoError(err)
+			dispatcher, outbounds, err := NewEventDispatcher(om, record.outbounder, urlFilter)
 			require.NotNil(dispatcher)
 			require.NotNil(outbounds)
 			require.NoError(err)
@@ -468,7 +487,9 @@ func testEventDispatcherOnDeviceEventNilEventError(t *testing.T) {
 			}), zapcore.AddSync(&b), zapcore.ErrorLevel),
 	)
 	o.Logger = logger
-	dp, _, err := NewEventDispatcher(NewTestOutboundMeasures(), o, nil)
+	om, err := NewTestOutboundMeasures()
+	require.NoError(err)
+	dp, _, err := NewEventDispatcher(om, o, nil)
 	require.NotNil(dp)
 	require.NoError(err)
 	// Purge init logs
@@ -481,8 +502,11 @@ func testEventDispatcherOnDeviceEventNilEventError(t *testing.T) {
 
 func testEventDispatcherOnDeviceEventEventMapError(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 	o := &Outbounder{EventEndpoints: map[string]interface{}{"bad": -17.6}}
-	dp, _, err := NewEventDispatcher(NewTestOutboundMeasures(), o, nil)
+	om, err := NewTestOutboundMeasures()
+	require.NoError(err)
+	dp, _, err := NewEventDispatcher(om, o, nil)
 	assert.Nil(dp)
 	assert.Error(err)
 }
