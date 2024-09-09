@@ -3,10 +3,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/xmidt-org/candlelight"
+	"github.com/xmidt-org/touchstone"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 	"go.uber.org/zap"
 
@@ -20,9 +23,6 @@ import (
 	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/xhttp"
 	"github.com/xmidt-org/webpa-common/v2/xhttp/gate"
-
-	// nolint:staticcheck
-	"github.com/xmidt-org/webpa-common/v2/xmetrics"
 )
 
 const (
@@ -32,7 +32,7 @@ const (
 	drainPath  = "/device/drain"
 )
 
-func StartControlServer(logger *zap.Logger, manager device.Manager, deviceGate devicegate.Interface, registry xmetrics.Registry, v *viper.Viper, tracing candlelight.Tracing) (func(http.Handler) http.Handler, error) {
+func StartControlServer(logger *zap.Logger, manager device.Manager, deviceGate devicegate.Interface, tf *touchstone.Factory, v *viper.Viper, tracing candlelight.Tracing) (func(http.Handler) http.Handler, error) {
 	if !v.IsSet(ControlKey) {
 		return xhttp.NilConstructor, nil
 	}
@@ -44,17 +44,45 @@ func StartControlServer(logger *zap.Logger, manager device.Manager, deviceGate d
 
 	options.Logger = logger
 
+	var errs error
+	gateStatus, err := tf.NewGauge(
+		prometheus.GaugeOpts{
+			Name: GateStatus,
+			Help: "Indicates whether the device gate is open (1.0) or closed (0.0)",
+		},
+	)
+	errs = errors.Join(errs, err)
+
+	drainStatus, err := tf.NewGauge(
+		prometheus.GaugeOpts{
+			Name: DrainStatus,
+			Help: "Indicates whether a device drain operation is currently running",
+		},
+	)
+	errs = errors.Join(errs, err)
+
+	drainCounter, err := tf.NewGauge(
+		prometheus.GaugeOpts{
+			Name: DrainCounter,
+			Help: "The total count of devices disconnected due to a drain since the server started",
+		},
+	)
+	errs = errors.Join(errs, err)
+	if errs != nil {
+		return xhttp.NilConstructor, err
+	}
+
 	var (
 		g = gate.New(
 			true,
-			gate.WithGauge(registry.NewGauge(GateStatus)),
+			gate.WithGauge(gateStatus),
 		)
 
 		d = drain.New(
 			drain.WithLogger(logger),
 			drain.WithManager(manager),
-			drain.WithStateGauge(registry.NewGauge(DrainStatus)),
-			drain.WithDrainCounter(registry.NewCounter(DrainCounter)),
+			drain.WithStateGauge(drainStatus),
+			drain.WithDrainCounter(drainCounter),
 		)
 
 		gateLogger    = devicegate.GateLogger{Logger: logger}

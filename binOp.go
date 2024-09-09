@@ -11,9 +11,9 @@ import (
 
 // Errors
 var (
-	errIterableTypeOnly  = errors.New("Only slices and arrays are currently supported as iterable")
-	errNumericalTypeOnly = errors.New("Only numerical values are supported")
-	errOpNotSupported    = errors.New("Operation not supported")
+	errIterableTypeOnly  = errors.New("only slices and arrays are currently supported as iterable")
+	errNumericalTypeOnly = errors.New("only numerical values are supported")
+	errOpNotSupported    = errors.New("operation not supported")
 )
 
 // Supported operations

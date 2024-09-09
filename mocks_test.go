@@ -112,19 +112,23 @@ func (m *mockHistogram) With(labelValues prometheus.Labels) prometheus.Observer 
 }
 
 func (m *mockHistogram) CurryWith(labels prometheus.Labels) (o prometheus.ObserverVec, err error) {
-	return o, err
+	return m, nil
 }
+
 func (m *mockHistogram) GetMetricWith(labels prometheus.Labels) (o prometheus.Observer, err error) {
-	return o, err
+	return m, nil
 }
+
 func (m *mockHistogram) GetMetricWithLabelValues(...string) (o prometheus.Observer, err error) {
-	return o, err
+	return m, nil
 }
+
 func (m *mockHistogram) MustCurryWith(labels prometheus.Labels) (o prometheus.ObserverVec) {
-	return o
+	return m
 }
+
 func (m *mockHistogram) WithLabelValues(lvs ...string) (o prometheus.Observer) {
-	return o
+	return m
 }
 
 // mockCounter provides the mock implementation of the metrics.Counter object
@@ -132,13 +136,19 @@ type mockCounter struct {
 	mockCollector
 	mockMetric
 	mock.Mock
+
+	// port over testCounter functionality
+	count      float64
+	labelPairs map[string]string
 }
 
 func (m *mockCounter) Add(delta float64) {
+	m.count += delta
 	m.Called(delta)
 }
 
 func (m *mockCounter) Inc() {}
+
 func (m *mockCounter) With(labelValues prometheus.Labels) prometheus.Counter {
 	for k, v := range labelValues {
 		if !utf8.ValidString(k) {
@@ -147,7 +157,33 @@ func (m *mockCounter) With(labelValues prometheus.Labels) prometheus.Counter {
 			panic(fmt.Sprintf("key `%s`, value `%s`: value is not UTF-8", k, v))
 		}
 	}
+
 	m.Called(labelValues)
+	return m
+}
+
+func (m *mockCounter) CurryWith(labels prometheus.Labels) (c *prometheus.CounterVec, err error) {
+	return &prometheus.CounterVec{}, nil
+}
+
+func (m *mockCounter) GetMetricWith(labels prometheus.Labels) (c prometheus.Counter, err error) {
+	return m, nil
+}
+
+func (m *mockCounter) GetMetricWithLabelValues(lvs ...string) (c prometheus.Counter, err error) {
+	return m, nil
+}
+
+func (m *mockCounter) MustCurryWith(labels prometheus.Labels) (c *prometheus.CounterVec) {
+	return &prometheus.CounterVec{}
+}
+
+func (m *mockCounter) WithLabelValues(lvs ...string) (c prometheus.Counter) {
+	// port over testCounter functionality
+	for i := 0; i < len(lvs)-1; i += 2 {
+		m.labelPairs[lvs[i]] = lvs[i+1]
+	}
+
 	return m
 }
 

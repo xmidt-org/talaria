@@ -15,14 +15,13 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/xmidt-org/sallust"
+	"github.com/xmidt-org/touchstone"
 	"github.com/xmidt-org/webpa-common/v2/adapter"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/webpa-common/v2/event"
-	"go.uber.org/zap/zaptest"
-
-	// nolint:staticcheck
-	"github.com/xmidt-org/webpa-common/v2/xmetrics"
 	"github.com/xmidt-org/wrp-go/v3"
+	"go.uber.org/zap/zaptest"
 )
 
 func ExampleOutbounder() {
@@ -39,12 +38,6 @@ func ExampleOutbounder() {
 	)
 
 	defer server.Close()
-
-	metricsRegistry, err := xmetrics.NewRegistry(nil, Metrics)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
 
 	var (
 		// set the workerPoolSize to 1 so that output order is deterministic
@@ -73,7 +66,24 @@ func ExampleOutbounder() {
 		return
 	}
 
-	listeners, err := o.Start(NewOutboundMeasures(metricsRegistry))
+	cfg := touchstone.Config{
+		DefaultNamespace: "n",
+		DefaultSubsystem: "s",
+	}
+	_, pr, err := touchstone.New(cfg)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	tf := touchstone.NewFactory(cfg, sallust.Default(), pr)
+	om, err := NewOutboundMeasures(tf)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	listeners, err := o.Start(om)
 	if err != nil {
 		fmt.Println(err)
 		return
