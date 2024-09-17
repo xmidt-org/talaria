@@ -122,8 +122,6 @@ func testEventDispatcherOnDeviceEventBadURLFilter(t *testing.T) {
 
 func testEventDispatcherOnDeviceEventDispatchEvent(t *testing.T) {
 	var (
-		assert   = assert.New(t)
-		require  = require.New(t)
 		testData = []struct {
 			outbounder        *Outbounder
 			destination       string
@@ -193,54 +191,61 @@ func testEventDispatcherOnDeviceEventDispatchEvent(t *testing.T) {
 	)
 
 	for _, record := range testData {
-		for _, format := range []wrp.Format{wrp.Msgpack, wrp.JSON} {
-			t.Logf("%#v, method=%s, format=%s", record, record.outbounder.method(), format)
+		t.Run(record.destination, func(t *testing.T) {
+			assert := assert.New(t)
+			require := require.New(t)
+			for _, format := range []wrp.Format{wrp.Msgpack, wrp.JSON} {
+				t.Logf("%#v, method=%s, format=%s", record, record.outbounder.method(), format)
 
-			var (
-				expectedContents = []byte{1, 2, 3, 4}
-				urlFilter        = new(mockURLFilter)
-			)
+				var (
+					expectedContents = []byte{1, 2, 3, 4}
+					urlFilter        = new(mockURLFilter)
+				)
 
-			om, err := NewTestOutboundMeasures()
-			require.NoError(err)
-			dispatcher, outbounds, err := NewEventDispatcher(om, record.outbounder, urlFilter)
-			require.NotNil(dispatcher)
-			require.NotNil(outbounds)
-			require.NoError(err)
+				om, err := NewTestOutboundMeasures()
+				require.NoError(err)
+				dispatcher, outbounds, err := NewEventDispatcher(om, record.outbounder, urlFilter)
+				require.NotNil(dispatcher)
+				require.NotNil(outbounds)
+				require.NoError(err)
 
-			dispatcher.OnDeviceEvent(&device.Event{
-				Type:     device.MessageReceived,
-				Message:  &wrp.Message{Destination: record.destination},
-				Format:   format,
-				Contents: expectedContents,
-			})
+				testDevice := device.MockDevice{}
+				testDevice.On("Metadata").Return(genTestMetadata())
+				dispatcher.OnDeviceEvent(&device.Event{
+					Type:     device.MessageReceived,
+					Message:  &wrp.Message{Destination: record.destination},
+					Format:   format,
+					Contents: expectedContents,
+					Device:   &testDevice,
+				})
 
-			assert.Equal(len(record.expectedEndpoints), len(outbounds), "incorrect envelope count")
-			actualEndpoints := make(map[string]bool, len(record.expectedEndpoints))
-			for len(outbounds) > 0 {
-				select {
-				case e := <-outbounds:
-					e.cancel()
-					<-e.request.Context().Done()
+				assert.Equal(len(record.expectedEndpoints), len(outbounds), "incorrect envelope count")
+				actualEndpoints := make(map[string]bool, len(record.expectedEndpoints))
+				for len(outbounds) > 0 {
+					select {
+					case e := <-outbounds:
+						e.cancel()
+						<-e.request.Context().Done()
 
-					assert.Equal(record.outbounder.method(), e.request.Method)
-					assert.Equal(format.ContentType(), e.request.Header.Get("Content-Type"))
+						assert.Equal(record.outbounder.method(), e.request.Method)
+						assert.Equal(format.ContentType(), e.request.Header.Get("Content-Type"))
 
-					urlString := e.request.URL.String()
-					assert.False(actualEndpoints[urlString])
-					actualEndpoints[urlString] = true
+						urlString := e.request.URL.String()
+						assert.False(actualEndpoints[urlString])
+						actualEndpoints[urlString] = true
 
-					actualContents, err := io.ReadAll(e.request.Body)
-					assert.NoError(err)
-					assert.Equal(expectedContents, actualContents)
+						actualContents, err := io.ReadAll(e.request.Body)
+						assert.NoError(err)
+						assert.Equal(expectedContents, actualContents)
 
-				default:
+					default:
+					}
 				}
-			}
 
-			assert.Equal(record.expectedEndpoints, actualEndpoints)
-			urlFilter.AssertExpectations(t)
-		}
+				assert.Equal(record.expectedEndpoints, actualEndpoints)
+				urlFilter.AssertExpectations(t)
+			}
+		})
 	}
 }
 
@@ -275,10 +280,18 @@ func testEventDispatcherOnDeviceEventFullQueue(t *testing.T) {
 	d.(*eventDispatcher).outbounds = make(chan outboundEnvelope)
 	dm.On("With", prometheus.Labels{eventLabel: expectedEventType, codeLabel: messageDroppedCode, reasonLabel: fullQueueReason, urlLabel: "nowhere.com"}).Return().Once()
 	dm.On("Add", 1.).Return().Once()
+	testDevice := device.MockDevice{}
+	metadata := new(device.Metadata)
+	metadata.SetClaims(map[string]interface{}{
+		device.PartnerIDClaimKey: "partner-1",
+		device.TrustClaimKey:     1000,
+	})
+	testDevice.On("Metadata").Return(metadata)
 	d.OnDeviceEvent(&device.Event{
 		Type:     device.MessageReceived,
 		Message:  &wrp.Message{Destination: fmt.Sprintf("event:%s/mac:11:22:33:44:55:66/Online/unknown/deb2eb69999", expectedEventType)},
 		Contents: []byte{1, 2},
+		Device:   &testDevice,
 	})
 	assert.Greater(b.Len(), 0)
 	dm.AssertExpectations(t)
@@ -310,9 +323,12 @@ func testEventDispatcherOnDeviceEventMessageReceived(t *testing.T) {
 	require.NotNil(outbounds)
 	require.NoError(err)
 
+	testDevice := device.MockDevice{}
+	testDevice.On("Metadata").Return(genTestMetadata())
 	dispatcher.OnDeviceEvent(&device.Event{
 		Type:    device.MessageReceived,
 		Message: &m,
+		Device:  &testDevice,
 	})
 
 	require.Equal(1, len(outbounds))
@@ -356,9 +372,12 @@ func testEventDispatcherOnDeviceEventFilterError(t *testing.T) {
 	urlFilter.On("Filter", "doesnotmatter.com").Once().
 		Return("", expectedError)
 
+	testDevice := device.MockDevice{}
+	testDevice.On("Metadata").Return(genTestMetadata())
 	dispatcher.OnDeviceEvent(&device.Event{
 		Type:    device.MessageReceived,
 		Message: &wrp.Message{Destination: "dns:doesnotmatter.com"},
+		Device:  &testDevice,
 	})
 
 	assert.Equal(0, len(outbounds))
@@ -368,8 +387,6 @@ func testEventDispatcherOnDeviceEventFilterError(t *testing.T) {
 
 func testEventDispatcherOnDeviceEventDispatchTo(t *testing.T) {
 	var (
-		assert   = assert.New(t)
-		require  = require.New(t)
 		testData = []struct {
 			outbounder            *Outbounder
 			destination           string
@@ -424,50 +441,57 @@ func testEventDispatcherOnDeviceEventDispatchTo(t *testing.T) {
 	)
 
 	for _, record := range testData {
-		for _, format := range []wrp.Format{wrp.Msgpack, wrp.JSON} {
-			t.Logf("%#v, method=%s, format=%s", record, record.outbounder.method(), format)
+		t.Run(record.destination, func(t *testing.T) {
+			assert := assert.New(t)
+			require := require.New(t)
+			for _, format := range []wrp.Format{wrp.Msgpack, wrp.JSON} {
+				t.Logf("%#v, method=%s, format=%s", record, record.outbounder.method(), format)
 
-			var (
-				expectedContents = []byte{4, 7, 8, 1}
-				urlFilter        = new(mockURLFilter)
-			)
+				var (
+					expectedContents = []byte{4, 7, 8, 1}
+					urlFilter        = new(mockURLFilter)
+				)
 
-			om, err := NewTestOutboundMeasures()
-			require.NoError(err)
-			dispatcher, outbounds, err := NewEventDispatcher(om, record.outbounder, urlFilter)
-			require.NotNil(dispatcher)
-			require.NotNil(outbounds)
-			require.NoError(err)
+				om, err := NewTestOutboundMeasures()
+				require.NoError(err)
+				dispatcher, outbounds, err := NewEventDispatcher(om, record.outbounder, urlFilter)
+				require.NotNil(dispatcher)
+				require.NotNil(outbounds)
+				require.NoError(err)
 
-			urlFilter.On("Filter", record.expectedUnfilteredURL).Once().
-				Return(record.expectedEndpoint, (error)(nil))
+				urlFilter.On("Filter", record.expectedUnfilteredURL).Once().
+					Return(record.expectedEndpoint, (error)(nil))
 
-			dispatcher.OnDeviceEvent(&device.Event{
-				Type:     device.MessageReceived,
-				Message:  &wrp.Message{Destination: record.destination},
-				Format:   format,
-				Contents: expectedContents,
-			})
+				testDevice := device.MockDevice{}
+				testDevice.On("Metadata").Return(genTestMetadata())
+				dispatcher.OnDeviceEvent(&device.Event{
+					Type:     device.MessageReceived,
+					Message:  &wrp.Message{Destination: record.destination},
+					Format:   format,
+					Contents: expectedContents,
+					Device:   &testDevice,
+				})
 
-			if !record.expectsEnvelope {
-				assert.Equal(0, len(outbounds))
-				continue
+				if !record.expectsEnvelope {
+					assert.Equal(0, len(outbounds))
+					continue
+				}
+
+				e := <-outbounds
+				e.cancel()
+				<-e.request.Context().Done()
+
+				assert.Equal(record.outbounder.method(), e.request.Method)
+				assert.Equal(format.ContentType(), e.request.Header.Get("Content-Type"))
+				assert.Equal(record.expectedEndpoint, e.request.URL.String())
+
+				actualContents, err := io.ReadAll(e.request.Body)
+				assert.NoError(err)
+				assert.Equal(expectedContents, actualContents)
+
+				urlFilter.AssertExpectations(t)
 			}
-
-			e := <-outbounds
-			e.cancel()
-			<-e.request.Context().Done()
-
-			assert.Equal(record.outbounder.method(), e.request.Method)
-			assert.Equal(format.ContentType(), e.request.Header.Get("Content-Type"))
-			assert.Equal(record.expectedEndpoint, e.request.URL.String())
-
-			actualContents, err := io.ReadAll(e.request.Body)
-			assert.NoError(err)
-			assert.Equal(expectedContents, actualContents)
-
-			urlFilter.AssertExpectations(t)
-		}
+		})
 	}
 }
 
@@ -512,6 +536,7 @@ func testEventDispatcherOnDeviceEventEventMapError(t *testing.T) {
 }
 
 func TestEventDispatcherOnDeviceEvent(t *testing.T) {
+	// TODO improve tests by included 0 trust cases
 	tests := []struct {
 		description string
 		test        func(*testing.T)

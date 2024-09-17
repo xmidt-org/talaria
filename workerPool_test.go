@@ -58,7 +58,8 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 	var (
 		assert          = assert.New(t)
 		target          = "http://localhost/foo"
-		expectedRequest = httptest.NewRequest("POST", target, nil).WithContext(context.WithValue(context.Background(), eventTypeContextKey{}, EventPrefix))
+		ctx             = context.WithValue(context.Background(), eventTypeContextKey{}, EventPrefix)
+		expectedRequest = httptest.NewRequest("POST", target, nil).WithContext(context.WithValue(ctx, trustClaimKey{}, 1000))
 		envelope        = outboundEnvelope{expectedRequest, func() {}}
 		tests           = []struct {
 			description    string
@@ -170,6 +171,7 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 }
 
 func TestWorkerPool(t *testing.T) {
+	// TODO improve tests by included 0 trust cases
 	t.Run("Transact", func(t *testing.T) {
 		t.Run("HTTPSuccess", testWorkerPoolTransactHTTPSuccess)
 		t.Run("HTTPError", testWorkerPoolTransactHTTPError)

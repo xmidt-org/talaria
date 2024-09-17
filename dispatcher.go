@@ -27,3 +27,5 @@ type outboundEnvelope struct {
 
 // eventTypeContextKey is the internal key type for storing the event type
 type eventTypeContextKey struct{}
+
+type trustClaimKey struct{}

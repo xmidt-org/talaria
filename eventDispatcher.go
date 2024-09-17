@@ -88,15 +88,21 @@ func NewEventDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFilter)
 func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 	// TODO improve how we test dispatchEvent & dispatchTo
 	var (
-		err       error
-		message   *wrp.Message
-		eventType = unknown
-		url       = unknown
-		code      = messageDroppedCode
+		err        error
+		message    *wrp.Message
+		trustClaim int
+		eventType  = unknown
+		url        = unknown
+		code       = messageDroppedCode
 	)
 
 	defer func() {
 		if r := recover(); nil != r {
+			if trustClaim == 0 {
+				eventType = untrusted
+				url = untrusted
+			}
+
 			d.logger.Debug("stacktrace from panic", zap.String("stacktrace", string(debug.Stack())), zap.Any("panic", r))
 			switch event.Type {
 			case device.Connect, device.Disconnect, device.MessageReceived:
@@ -110,19 +116,31 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 	if event == nil {
 		d.logger.Error("Error nil event")
 		return
+	} else if event.Device == nil {
+		d.logger.Error("Error nil event.Device")
+		return
 	}
+
+	if metadata := event.Device.Metadata(); metadata != nil {
+		trustClaim = metadata.TrustClaim()
+	}
+
+	ctx := context.WithValue(
+		context.Background(), trustClaimKey{},
+		trustClaim,
+	)
 
 	switch event.Type {
 	case device.Connect:
 		eventType, message = newOnlineMessage(d.source, event.Device)
-		url, err = d.encodeAndDispatchEvent(eventType, wrp.Msgpack, message)
+		url, err = d.encodeAndDispatchEvent(ctx, eventType, wrp.Msgpack, message)
 		if err != nil {
 			d.logger.Error("Error dispatching online event", zap.Any("eventType", eventType), zap.Any("destination", message.Destination), zap.Error(err))
 		}
 
 	case device.Disconnect:
 		eventType, message = newOfflineMessage(d.source, event.Device)
-		url, err = d.encodeAndDispatchEvent(eventType, wrp.Msgpack, message)
+		url, err = d.encodeAndDispatchEvent(ctx, eventType, wrp.Msgpack, message)
 		if err != nil {
 			d.logger.Error("Error dispatching offline event", zap.Any("eventType", eventType), zap.Any("destination", message.Destination), zap.Error(err))
 		}
@@ -134,7 +152,7 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 				var l wrp.Locator
 				if l, err = wrp.ParseLocator(destination); err == nil {
 					eventType = l.Authority
-					url, err = d.dispatchEvent(eventType, contentType, event.Contents)
+					url, err = d.dispatchEvent(ctx, eventType, contentType, event.Contents)
 					if err != nil {
 						d.logger.Error("Error dispatching event", zap.Any("eventType", eventType), zap.Any("destination", destination), zap.Error(err))
 					}
@@ -142,7 +160,7 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 			} else if strings.HasPrefix(destination, DNSPrefix) {
 				eventType = event.Type.String()
 				unfilteredURL := destination[len(DNSPrefix):]
-				url, err = d.dispatchTo(unfilteredURL, contentType, event.Contents, eventType)
+				url, err = d.dispatchTo(ctx, unfilteredURL, contentType, event.Contents, eventType)
 				if err != nil {
 					d.logger.Error("Error dispatching to endpoint", zap.Any("destination", destination), zap.Error(err))
 				}
@@ -158,6 +176,11 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 		if routable, ok := event.Message.(wrp.Routable); ok {
 			url = routable.To()
 		}
+	}
+
+	if trustClaim == 0 {
+		eventType = untrusted
+		url = untrusted
 	}
 
 	var outboundEventsLabels prometheus.Labels
@@ -214,7 +237,7 @@ func (d *eventDispatcher) newRequest(url, contentType string, body io.Reader) (*
 	return request, nil
 }
 
-func (d *eventDispatcher) dispatchEvent(eventType, contentType string, contents []byte) (string, error) {
+func (d *eventDispatcher) dispatchEvent(ctx context.Context, eventType, contentType string, contents []byte) (string, error) {
 	url := unknown
 	endpoints, ok := d.eventMap.Get(eventType, DefaultEventType)
 	if !ok {
@@ -223,8 +246,8 @@ func (d *eventDispatcher) dispatchEvent(eventType, contentType string, contents 
 		return url, fmt.Errorf("%w: %s", ErrorNoEndpointConfiguredForEvent, eventType)
 	}
 
-	ctx := context.WithValue(
-		context.Background(), eventTypeContextKey{},
+	ctx = context.WithValue(
+		ctx, eventTypeContextKey{},
 		eventType,
 	)
 
@@ -243,7 +266,7 @@ func (d *eventDispatcher) dispatchEvent(eventType, contentType string, contents 
 	return url, nil
 }
 
-func (d *eventDispatcher) encodeAndDispatchEvent(eventType string, format wrp.Format, message *wrp.Message) (string, error) {
+func (d *eventDispatcher) encodeAndDispatchEvent(ctx context.Context, eventType string, format wrp.Format, message *wrp.Message) (string, error) {
 	var (
 		err error
 		url = unknown
@@ -257,14 +280,14 @@ func (d *eventDispatcher) encodeAndDispatchEvent(eventType string, format wrp.Fo
 		return url, fmt.Errorf("%w; %s", ErrorEncodingFailed, err)
 	}
 
-	if url, err = d.dispatchEvent(eventType, format.ContentType(), contents); err != nil {
+	if url, err = d.dispatchEvent(ctx, eventType, format.ContentType(), contents); err != nil {
 		return url, err
 	}
 
 	return url, nil
 }
 
-func (d *eventDispatcher) dispatchTo(unfiltered string, contentType string, contents []byte, eventType string) (string, error) {
+func (d *eventDispatcher) dispatchTo(ctx context.Context, unfiltered string, contentType string, contents []byte, eventType string) (string, error) {
 	var (
 		err error
 		url = unfiltered
@@ -281,7 +304,7 @@ func (d *eventDispatcher) dispatchTo(unfiltered string, contentType string, cont
 	}
 
 	return request.URL.String(), d.send(
-		context.WithValue(context.Background(), eventTypeContextKey{}, eventType),
+		context.WithValue(ctx, eventTypeContextKey{}, eventType),
 		request,
 	)
 }

@@ -10,6 +10,9 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	// nolint:staticcheck
+	// TODO replace httpaux/retry with github.com/xmidt-org/retry
 	"github.com/xmidt-org/httpaux/retry"
 	"github.com/xmidt-org/touchstone"
 )
@@ -50,9 +53,10 @@ const (
 
 // label values
 const (
-	accepted = "accepted"
-	rejected = "rejected"
-	unknown  = "unknown"
+	accepted  = "accepted"
+	rejected  = "rejected"
+	unknown   = "unknown"
+	untrusted = "untrusted"
 
 	deviceNotFound = "device_not_found"
 	invalidWRPDest = "invalid_wrp_dest"
@@ -305,8 +309,17 @@ func InstrumentOutboundSize(obs HistogramVec, next http.RoundTripper) promhttp.R
 			eventType = unknown
 		}
 
+		trustClaim, ok := request.Context().Value(trustClaimKey{}).(int)
+		if !ok {
+			trustClaim = 0
+		}
+
 		response, err := next.RoundTrip(request)
 		size := computeApproximateRequestSize(request)
+
+		if trustClaim == 0 {
+			eventType = untrusted
+		}
 
 		var labels prometheus.Labels
 		if err != nil {
@@ -333,9 +346,20 @@ func InstrumentOutboundDuration(obs HistogramVec, next http.RoundTripper) promht
 			eventType = unknown
 		}
 
+		trustClaim, ok := request.Context().Value(trustClaimKey{}).(int)
+		if !ok {
+			trustClaim = 0
+		}
+
 		start := time.Now()
 		response, err := next.RoundTrip(request)
 		delta := time.Since(start).Seconds()
+
+		url := request.URL.String()
+		if trustClaim == 0 {
+			url = untrusted
+			eventType = untrusted
+		}
 
 		var labels prometheus.Labels
 		if err != nil {
@@ -344,9 +368,9 @@ func InstrumentOutboundDuration(obs HistogramVec, next http.RoundTripper) promht
 				code = strconv.Itoa(response.StatusCode)
 			}
 
-			labels = prometheus.Labels{eventLabel: eventType, codeLabel: code, reasonLabel: getDoErrReason(err), urlLabel: request.URL.String()}
+			labels = prometheus.Labels{eventLabel: eventType, codeLabel: code, reasonLabel: getDoErrReason(err), urlLabel: url}
 		} else {
-			labels = prometheus.Labels{eventLabel: eventType, codeLabel: strconv.Itoa(response.StatusCode), reasonLabel: expectedCodeReason, urlLabel: request.URL.String()}
+			labels = prometheus.Labels{eventLabel: eventType, codeLabel: strconv.Itoa(response.StatusCode), reasonLabel: expectedCodeReason, urlLabel: url}
 			if response.StatusCode != http.StatusAccepted {
 				labels[reasonLabel] = non202CodeReason
 			}
@@ -365,7 +389,18 @@ func InstrumentOutboundCounter(counter CounterVec, next http.RoundTripper) promh
 			eventType = unknown
 		}
 
+		trustClaim, ok := request.Context().Value(trustClaimKey{}).(int)
+		if !ok {
+			trustClaim = 0
+		}
+
 		response, err := next.RoundTrip(request)
+
+		url := request.URL.String()
+		if trustClaim == 0 {
+			url = untrusted
+			eventType = untrusted
+		}
 
 		var labels prometheus.Labels
 		if err != nil {
@@ -374,9 +409,9 @@ func InstrumentOutboundCounter(counter CounterVec, next http.RoundTripper) promh
 				code = strconv.Itoa(response.StatusCode)
 			}
 
-			labels = prometheus.Labels{eventLabel: eventType, codeLabel: code, reasonLabel: getDoErrReason(err), urlLabel: request.URL.String()}
+			labels = prometheus.Labels{eventLabel: eventType, codeLabel: code, reasonLabel: getDoErrReason(err), urlLabel: url}
 		} else {
-			labels = prometheus.Labels{eventLabel: eventType, codeLabel: strconv.Itoa(response.StatusCode), reasonLabel: noErrReason, urlLabel: request.URL.String()}
+			labels = prometheus.Labels{eventLabel: eventType, codeLabel: strconv.Itoa(response.StatusCode), reasonLabel: noErrReason, urlLabel: url}
 			if response.StatusCode != http.StatusAccepted {
 				labels[reasonLabel] = non202CodeReason
 			}

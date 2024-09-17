@@ -65,9 +65,19 @@ func (wp *WorkerPool) transact(e outboundEnvelope) {
 		eventType = unknown
 	}
 
+	trustClaim, ok := e.request.Context().Value(trustClaimKey{}).(int)
+	if !ok {
+		trustClaim = 0
+	}
+
+	url := e.request.URL.String()
+	if trustClaim == 0 {
+		url = untrusted
+		eventType = untrusted
+	}
+
 	// bail out early if the request has been on the queue too long
 	if err := e.request.Context().Err(); err != nil {
-		url := e.request.URL.String()
 		reason := getDroppedMessageReason(err)
 		wp.droppedMessages.With(prometheus.Labels{eventLabel: eventType, codeLabel: messageDroppedCode, reasonLabel: reason, urlLabel: url}).Add(1)
 		wp.logger.Error("Outbound message expired while on queue", zap.String("event", eventType), zap.String("reason", reason), zap.Error(err), zap.String("url", url))
@@ -77,7 +87,6 @@ func (wp *WorkerPool) transact(e outboundEnvelope) {
 
 	response, err := wp.transactor(e.request)
 	if err != nil {
-		url := e.request.URL.String()
 		reason := getDroppedMessageReason(err)
 		code := messageDroppedCode
 		if response != nil {
@@ -91,7 +100,6 @@ func (wp *WorkerPool) transact(e outboundEnvelope) {
 	}
 
 	code := strconv.Itoa(response.StatusCode)
-	url := e.request.URL.String()
 	switch response.StatusCode {
 	case http.StatusAccepted:
 		wp.logger.Debug("HTTP response", zap.String("status", response.Status), zap.String(eventLabel, eventType), zap.String(codeLabel, code), zap.String(reasonLabel, expectedCodeReason), zap.String(urlLabel, url))
