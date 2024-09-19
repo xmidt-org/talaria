@@ -10,6 +10,9 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	// TODO replace httpaux/retry with github.com/xmidt-org/retry
+	// nolint:staticcheck
 	"github.com/xmidt-org/httpaux/retry"
 	"github.com/xmidt-org/touchstone"
 )
