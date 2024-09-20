@@ -7,6 +7,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/xmidt-org/webpa-common/v2/device"
@@ -40,7 +41,7 @@ func testAuthorizeWRP(t *testing.T, testCases []deviceAccessTestCase, strict boo
 				mockDevice         = new(device.MockDevice)
 				mockBinOp          = new(mockBinOp)
 				testLogger         = zaptest.NewLogger(t)
-				counter            = mockCounter{labelPairs: make(map[string]string)}
+				counter            = mockCounter{labelPairs: make(map[string]string), labels: []string{reasonLabel, outcomeLabel}}
 				expectedLabels     = getLabelMaps(testCase.ExpectedError, testCase.IsFatal, strict, testCase.BaseLabelPairs)
 
 				wrpMsg = &wrp.Message{
@@ -66,7 +67,7 @@ func testAuthorizeWRP(t *testing.T, testCases []deviceAccessTestCase, strict boo
 				checks = getChecks(t, mockBinOp, testCase.IncompleteCheck, testCase.Authorized)
 			}
 
-			counter.On("WithLabelValues", []string{reasonLabel, invalidWRPDest, outcomeLabel, rejected}).Return().Once()
+			counter.On("With", expectedLabels).Return().Once()
 			counter.On("Add", 1.).Return().Once()
 			deviceAccessAuthority := &talariaDeviceAccess{
 				strict:             strict,
@@ -166,7 +167,7 @@ func TestAuthorizeWRP(t *testing.T) {
 	})
 }
 
-func getLabelMaps(err error, isFatal, strict bool, baseLabelPairs map[string]string) map[string]string {
+func getLabelMaps(err error, isFatal, strict bool, baseLabelPairs map[string]string) prometheus.Labels {
 	out := make(map[string]string)
 
 	for k, v := range baseLabelPairs {
