@@ -604,7 +604,7 @@ zap:
   # OutputPaths is a list of URLs or file paths to write logging output to.
   outputPaths:
     - stdout
-    # - /var/log/caduceus/caduceus.log
+    # - /var/log/talaria/talaria.log
 
   # Level is the minimum enabled logging level. Note that this is a dynamic
   # level, so calling Config.Level.SetLevel will atomically change the log
@@ -615,7 +615,7 @@ zap:
   # zapcore.EncoderConfig for details.
   errorOutputPaths:
     - stderr
-    # - /var/log/caduceus/caduceus.log
+    # - /var/log/talaria/talaria.log
 
   # DisableCaller stops annotating logs with the calling function's file
   # name and line number. By default, all logs are annotated.
