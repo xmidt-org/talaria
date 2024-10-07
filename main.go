@@ -14,12 +14,16 @@ import (
 	"syscall"
 
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"github.com/xmidt-org/bascule/basculehelper"
 	"github.com/xmidt-org/candlelight"
+	"github.com/xmidt-org/touchstone"
+
+	// nolint:staticcheck
+	"github.com/xmidt-org/webpa-common/v2/xmetrics"
 
 	"github.com/xmidt-org/webpa-common/v2/adapter"
 	// nolint:staticcheck
@@ -37,8 +41,6 @@ import (
 	"github.com/xmidt-org/webpa-common/v2/service/monitor"
 	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/service/servicecfg"
-	// nolint:staticcheck
-	"github.com/xmidt-org/webpa-common/v2/xmetrics"
 	"github.com/xmidt-org/webpa-common/v2/xresolver/consul"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 )
@@ -60,7 +62,7 @@ func setupDefaultConfigValues(v *viper.Viper) {
 	v.SetDefault(RehasherServicesConfigKey, []string{applicationName})
 }
 
-func newDeviceManager(logger *zap.Logger, r xmetrics.Registry, v *viper.Viper) (device.Manager, devicegate.Interface, *consul.ConsulWatcher, error) {
+func newDeviceManager(logger *zap.Logger, r xmetrics.Registry, tf *touchstone.Factory, v *viper.Viper) (device.Manager, devicegate.Interface, *consul.ConsulWatcher, error) {
 	deviceOptions, err := device.NewOptions(logger, v.Sub(device.DeviceManagerKey))
 	if err != nil {
 		return nil, nil, nil, err
@@ -71,7 +73,12 @@ func newDeviceManager(logger *zap.Logger, r xmetrics.Registry, v *viper.Viper) (
 		return nil, nil, nil, err
 	}
 
-	outboundListeners, err := outbounder.Start(NewOutboundMeasures(r))
+	om, err := NewOutboundMeasures(tf)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to get OutboundMeasures: %s", err)
+	}
+
+	outboundListeners, err := outbounder.Start(om)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -121,7 +128,7 @@ func talaria(arguments []string) int {
 		f = pflag.NewFlagSet(applicationName, pflag.ContinueOnError)
 		v = viper.New()
 
-		logger, metricsRegistry, webPA, err = server.Initialize(applicationName, arguments, f, v, Metrics, device.Metrics, rehasher.Metrics, service.Metrics, basculehelper.AuthValidationMetrics)
+		logger, metricsRegistry, webPA, err = server.Initialize(applicationName, arguments, f, v, device.Metrics, rehasher.Metrics, service.Metrics)
 	)
 
 	if parseErr, done := printVersion(f, arguments); done {
@@ -148,7 +155,19 @@ func talaria(arguments []string) int {
 	}
 	logger.Info("tracing status", zap.Bool("enabled", !tracing.IsNoop()))
 
-	manager, filterGate, watcher, err := newDeviceManager(logger, metricsRegistry, v)
+	promReg, ok := metricsRegistry.(prometheus.Registerer)
+	if !ok {
+		fmt.Fprintf(os.Stderr, "failed to get prometheus registerer")
+
+		return 1
+	}
+
+	var tsConfig touchstone.Config
+	// Get touchstone & zap configurations
+	v.UnmarshalKey("touchstone", &tsConfig)
+	tf := touchstone.NewFactory(tsConfig, logger, promReg)
+
+	manager, filterGate, watcher, err := newDeviceManager(logger, metricsRegistry, tf, v)
 	if err != nil {
 		logger.Error("unable to create device manager", zap.Error(err))
 		return 2
@@ -169,7 +188,7 @@ func talaria(arguments []string) int {
 		return 4
 	}
 
-	controlConstructor, err := StartControlServer(logger, manager, filterGate, metricsRegistry, v, tracing)
+	controlConstructor, err := StartControlServer(logger, manager, filterGate, tf, v, tracing)
 	if err != nil {
 		logger.Error("unable to create control server", zap.Error(err))
 		return 3
@@ -189,7 +208,7 @@ func talaria(arguments []string) int {
 	}
 	rootRouter.Use(otelmux.Middleware("primary", otelMuxOptions...), candlelight.EchoFirstTraceNodeInfo(tracing.Propagator(), true))
 
-	primaryHandler, err := NewPrimaryHandler(logger, manager, v, a, e, controlConstructor, metricsRegistry, rootRouter)
+	primaryHandler, err := NewPrimaryHandler(logger, manager, v, a, e, controlConstructor, tf, rootRouter)
 	if err != nil {
 		logger.Error("unable to start device management", zap.Error(err))
 		return 4

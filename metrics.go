@@ -3,17 +3,18 @@
 package main
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/go-kit/kit/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/xmidt-org/webpa-common/v2/xhttp"
 
+	// TODO replace httpaux/retry with github.com/xmidt-org/retry
 	// nolint:staticcheck
-	"github.com/xmidt-org/webpa-common/v2/xmetrics"
+	"github.com/xmidt-org/httpaux/retry"
+	"github.com/xmidt-org/touchstone"
 )
 
 // Metric names
@@ -99,118 +100,34 @@ const (
 	failureOutcome = "failure"
 )
 
-func Metrics() []xmetrics.Metric {
-	return []xmetrics.Metric{
-		{
-			Name: OutboundInFlightGauge,
-			Type: xmetrics.GaugeType,
-			Help: "The number of active, in-flight requests from devices",
-		},
-		{
-			Name:       OutboundRequestDuration,
-			Type:       "histogram",
-			Help:       "The durations of outbound requests from devices",
-			LabelNames: []string{eventLabel, codeLabel, reasonLabel, urlLabel},
-			Buckets:    []float64{.25, .5, 1, 2.5, 5, 10},
-		},
-		{
-			Name:       OutboundRequestCounter,
-			Type:       xmetrics.CounterType,
-			Help:       "The count of outbound requests",
-			LabelNames: []string{eventLabel, codeLabel, reasonLabel, urlLabel},
-		},
-		{
-			Name:       OutboundRequestSizeBytes,
-			Type:       xmetrics.HistogramType,
-			Help:       "A histogram of request sizes for outbound requests",
-			LabelNames: []string{eventLabel, codeLabel},
-			Buckets:    []float64{200, 500, 900, 1500, 3000, 6000, 12000, 24000, 48000, 96000, 192000},
-		},
-		{
-			Name:       TotalOutboundEvents,
-			Type:       xmetrics.CounterType,
-			Help:       "Total count of outbound events",
-			LabelNames: []string{eventLabel, reasonLabel, urlLabel, outcomeLabel},
-		},
-		{
-			Name: OutboundQueueSize,
-			Type: xmetrics.GaugeType,
-			Help: "The current number of requests waiting to be sent outbound",
-		},
-		{
-			Name:       OutboundDroppedMessageCounter,
-			Type:       xmetrics.CounterType,
-			Help:       "The total count of messages dropped",
-			LabelNames: []string{eventLabel, codeLabel, reasonLabel, urlLabel},
-		},
-		{
-			Name: OutboundRetries,
-			Type: xmetrics.CounterType,
-			Help: "The total count of outbound HTTP retries",
-		},
-		{
-			Name:       OutboundAckSuccessCounter,
-			Type:       xmetrics.CounterType,
-			Help:       "Number of outbound WRP acks",
-			LabelNames: []string{qosLevelLabel, partnerIDLabel, messageType},
-		},
-		{
-			Name:       OutboundAckFailureCounter,
-			Type:       xmetrics.CounterType,
-			Help:       "Number of outbound WRP ack failures",
-			LabelNames: []string{qosLevelLabel, partnerIDLabel, messageType},
-		},
-		{
-			Name:       OutboundAckSuccessLatencyHistogram,
-			Type:       xmetrics.HistogramType,
-			Help:       "A histogram of latencies for successful outbound WRP acks",
-			LabelNames: []string{qosLevelLabel, partnerIDLabel, messageType},
-			Buckets:    []float64{0.0625, 0.125, .25, .5, 1, 5, 10, 20, 40, 80, 160},
-		},
-		{
-			Name:       OutboundAckFailureLatencyHistogram,
-			Type:       xmetrics.HistogramType,
-			Help:       "A histogram of latencies for failed outbound WRP acks",
-			LabelNames: []string{qosLevelLabel, partnerIDLabel, messageType},
-			Buckets:    []float64{0.0625, 0.125, .25, .5, 1, 5, 10, 20, 40, 80, 160},
-		},
-		{
-			Name: GateStatus,
-			Type: xmetrics.GaugeType,
-			Help: "Indicates whether the device gate is open (1.0) or closed (0.0)",
-		},
-		{
-			Name: DrainStatus,
-			Type: xmetrics.GaugeType,
-			Help: "Indicates whether a device drain operation is currently running",
-		},
-		{
-			Name: DrainCounter,
-			Type: xmetrics.CounterType,
-			Help: "The total count of devices disconnected due to a drain since the server started",
-		},
-		{
-			Name:       InboundWRPMessageCounter,
-			Type:       xmetrics.CounterType,
-			Help:       "Number of inbound WRP Messages successfully decoded and ready to route to device",
-			LabelNames: []string{outcomeLabel, reasonLabel},
-		},
-	}
-}
-
 type HistogramVec interface {
 	prometheus.Collector
-	With(prometheus.Labels) prometheus.Observer
-	CurryWith(prometheus.Labels) (prometheus.ObserverVec, error)
-	GetMetricWith(prometheus.Labels) (prometheus.Observer, error)
-	GetMetricWithLabelValues(...string) (prometheus.Observer, error)
+	With(labels prometheus.Labels) prometheus.Observer
+	CurryWith(labels prometheus.Labels) (prometheus.ObserverVec, error)
+	GetMetricWith(labels prometheus.Labels) (prometheus.Observer, error)
+	GetMetricWithLabelValues(lvs ...string) (prometheus.Observer, error)
 	MustCurryWith(labels prometheus.Labels) (o prometheus.ObserverVec)
 	WithLabelValues(lvs ...string) (o prometheus.Observer)
 }
 
 type CounterVec interface {
 	prometheus.Collector
-	With(prometheus.Labels) prometheus.Counter
+	CurryWith(labels prometheus.Labels) (*prometheus.CounterVec, error)
+	GetMetricWith(labels prometheus.Labels) (prometheus.Counter, error)
+	GetMetricWithLabelValues(lvs ...string) (prometheus.Counter, error)
+	MustCurryWith(labels prometheus.Labels) *prometheus.CounterVec
+	With(labels prometheus.Labels) prometheus.Counter
+	WithLabelValues(lvs ...string) prometheus.Counter
+}
+
+type GaugeVec interface {
+	prometheus.Collector
+	CurryWith(labels prometheus.Labels) (*prometheus.GaugeVec, error)
+	GetMetricWith(labels prometheus.Labels) (prometheus.Gauge, error)
+	GetMetricWithLabelValues(lvs ...string) (prometheus.Gauge, error)
+	MustCurryWith(labels prometheus.Labels) *prometheus.GaugeVec
+	With(labels prometheus.Labels) prometheus.Gauge
+	WithLabelValues(lvs ...string) prometheus.Gauge
 }
 
 type OutboundMeasures struct {
@@ -219,8 +136,8 @@ type OutboundMeasures struct {
 	RequestCounter    CounterVec
 	RequestSize       HistogramVec
 	OutboundEvents    CounterVec
-	QueueSize         metrics.Gauge
-	Retries           metrics.Counter
+	QueueSize         prometheus.Gauge
+	Retries           prometheus.Counter
 	DroppedMessages   CounterVec
 	AckSuccess        CounterVec
 	AckFailure        CounterVec
@@ -228,24 +145,162 @@ type OutboundMeasures struct {
 	AckFailureLatency HistogramVec
 }
 
-func NewOutboundMeasures(r xmetrics.Registry) OutboundMeasures {
-	return OutboundMeasures{
-		InFlight:        r.NewGaugeVec(OutboundInFlightGauge).WithLabelValues(),
-		RequestDuration: r.NewHistogramVec(OutboundRequestDuration),
-		RequestCounter:  r.NewCounterVec(OutboundRequestCounter),
-		RequestSize:     r.NewHistogramVec(OutboundRequestSizeBytes),
-		OutboundEvents:  r.NewCounterVec(TotalOutboundEvents),
-		QueueSize:       r.NewGauge(OutboundQueueSize),
-		Retries:         r.NewCounter(OutboundRetries),
-		DroppedMessages: r.NewCounterVec(OutboundDroppedMessageCounter),
-		AckSuccess:      r.NewCounterVec(OutboundAckSuccessCounter),
-		AckFailure:      r.NewCounterVec(OutboundAckFailureCounter),
-		// 0 is for the unused `buckets` argument in xmetrics.Registry.NewHistogram
-		AckSuccessLatency: r.NewHistogramVec(OutboundAckSuccessLatencyHistogram),
-		// 0 is for the unused `buckets` argument in xmetrics.Registry.NewHistogram
-		AckFailureLatency: r.NewHistogramVec(OutboundAckFailureLatencyHistogram),
-	}
+func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs error) {
+	var err error
+
+	om.InFlight, err = tf.NewGauge(prometheus.GaugeOpts{
+		Name: OutboundInFlightGauge,
+		Help: "The number of active, in-flight requests from devices",
+	})
+	errs = errors.Join(errs, err)
+
+	om.RequestDuration, err = tf.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name: OutboundRequestDuration,
+			Help: "The durations of outbound requests from devices",
+			// Each bucket is at most 10% wider than the previous one),
+			// which will result in each power of two divided into 8 buckets.
+			// (e.g. there will be 8 buckets between 1
+			// and 2, same as between 2 and 4, and 4 and 8, etc.).
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramZeroThreshold:    0.25,
+			NativeHistogramMaxBucketNumber:  10,
+			NativeHistogramMinResetDuration: time.Hour * 24 * 7,
+			NativeHistogramMaxZeroThreshold: 0.5,
+			// Disable exemplars.
+			NativeHistogramMaxExemplars: -1,
+			NativeHistogramExemplarTTL:  time.Minute * 5,
+		},
+		[]string{eventLabel, codeLabel, reasonLabel, urlLabel}...,
+	)
+	errs = errors.Join(errs, err)
+
+	om.RequestCounter, err = tf.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: OutboundRequestCounter,
+			Help: "The count of outbound requests",
+		},
+		[]string{eventLabel, codeLabel, reasonLabel, urlLabel}...,
+	)
+	errs = errors.Join(errs, err)
+
+	om.RequestSize, err = tf.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name: OutboundRequestSizeBytes,
+			Help: "A histogram of request sizes for outbound requests",
+			// Each bucket is at most 10% wider than the previous one),
+			// which will result in each power of two divided into 8 buckets.
+			// (e.g. there will be 8 buckets between 1
+			// and 2, same as between 2 and 4, and 4 and 8, etc.).
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramZeroThreshold:    200,
+			NativeHistogramMaxBucketNumber:  10,
+			NativeHistogramMinResetDuration: time.Hour * 24 * 7,
+			NativeHistogramMaxZeroThreshold: 1500,
+			// Disable exemplars.
+			NativeHistogramMaxExemplars: -1,
+			NativeHistogramExemplarTTL:  time.Minute * 5,
+		},
+		[]string{eventLabel, codeLabel}...,
+	)
+	errs = errors.Join(errs, err)
+
+	om.OutboundEvents, err = tf.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: TotalOutboundEvents,
+			Help: "Total count of outbound events",
+		},
+		[]string{eventLabel, reasonLabel, urlLabel, outcomeLabel}...,
+	)
+	errs = errors.Join(errs, err)
+
+	om.QueueSize, err = tf.NewGauge(
+		prometheus.GaugeOpts{
+			Name: OutboundQueueSize,
+			Help: "The current number of requests waiting to be sent outbound",
+		},
+	)
+	errs = errors.Join(errs, err)
+
+	om.Retries, err = tf.NewCounter(
+		prometheus.CounterOpts{
+			Name: OutboundRetries,
+			Help: "The total count of outbound HTTP retries",
+		},
+	)
+	errs = errors.Join(errs, err)
+
+	om.DroppedMessages, err = tf.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: OutboundDroppedMessageCounter,
+			Help: "The total count of messages dropped",
+		},
+		[]string{eventLabel, codeLabel, reasonLabel, urlLabel}...,
+	)
+	errs = errors.Join(errs, err)
+
+	om.AckSuccess, err = tf.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: OutboundAckSuccessCounter,
+			Help: "Number of outbound WRP acks",
+		},
+		[]string{qosLevelLabel, partnerIDLabel, messageType}...,
+	)
+	errs = errors.Join(errs, err)
+
+	om.AckFailure, err = tf.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: OutboundAckFailureCounter,
+			Help: "Number of outbound WRP ack failures",
+		},
+		[]string{qosLevelLabel, partnerIDLabel, messageType}...,
+	)
+	errs = errors.Join(errs, err)
+
+	om.AckSuccessLatency, err = tf.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name: OutboundAckSuccessLatencyHistogram,
+			Help: "A histogram of latencies for successful outbound WRP acks",
+			// Each bucket is at most 10% wider than the previous one),
+			// which will result in each power of two divided into 8 buckets.
+			// (e.g. there will be 8 buckets between 1
+			// and 2, same as between 2 and 4, and 4 and 8, etc.).
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramZeroThreshold:    0.0625,
+			NativeHistogramMaxBucketNumber:  11,
+			NativeHistogramMinResetDuration: time.Hour * 24 * 7,
+			NativeHistogramMaxZeroThreshold: 0.125,
+			// Disable exemplars.
+			NativeHistogramMaxExemplars: -1,
+			NativeHistogramExemplarTTL:  time.Minute * 5,
+		},
+		[]string{qosLevelLabel, partnerIDLabel, messageType}...,
+	)
+	errs = errors.Join(errs, err)
+
+	om.AckFailureLatency, err = tf.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name: OutboundAckFailureLatencyHistogram,
+			Help: "A histogram of latencies for failed outbound WRP acks",
+			// Each bucket is at most 10% wider than the previous one),
+			// which will result in each power of two divided into 8 buckets.
+			// (e.g. there will be 8 buckets between 1
+			// and 2, same as between 2 and 4, and 4 and 8, etc.).
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramZeroThreshold:    0.0625,
+			NativeHistogramMaxBucketNumber:  11,
+			NativeHistogramMinResetDuration: time.Hour * 24 * 7,
+			NativeHistogramMaxZeroThreshold: 0.125,
+			// Disable exemplars.
+			NativeHistogramMaxExemplars: -1,
+			NativeHistogramExemplarTTL:  time.Minute * 5,
+		},
+		[]string{qosLevelLabel, partnerIDLabel, messageType}...,
+	)
+
+	return om, errors.Join(errs, err)
 }
+
 func InstrumentOutboundSize(obs HistogramVec, next http.RoundTripper) promhttp.RoundTripperFunc {
 	return promhttp.RoundTripperFunc(func(request *http.Request) (*http.Response, error) {
 		eventType, ok := request.Context().Value(eventTypeContextKey{}).(string)
@@ -273,6 +328,7 @@ func InstrumentOutboundSize(obs HistogramVec, next http.RoundTripper) promhttp.R
 		return response, err
 	})
 }
+
 func InstrumentOutboundDuration(obs HistogramVec, next http.RoundTripper) promhttp.RoundTripperFunc {
 	return promhttp.RoundTripperFunc(func(request *http.Request) (*http.Response, error) {
 		eventType, ok := request.Context().Value(eventTypeContextKey{}).(string)
@@ -340,24 +396,33 @@ func InstrumentOutboundCounter(counter CounterVec, next http.RoundTripper) promh
 func NewOutboundRoundTripper(om OutboundMeasures, o *Outbounder) http.RoundTripper {
 	// TODO add tests for NewOutboundRoundTripper
 	// nolint:bodyclose
-	return promhttp.RoundTripperFunc(xhttp.RetryTransactor(
-		// use the default should retry predicate ...
-		xhttp.RetryOptions{
-			Logger:  o.logger(),
-			Retries: o.retries(),
-			Counter: om.Retries,
-		},
-		InstrumentOutboundCounter(
-			om.RequestCounter,
-			InstrumentOutboundSize(
-				om.RequestSize,
-				InstrumentOutboundDuration(
-					om.RequestDuration,
-					promhttp.InstrumentRoundTripperInFlight(om.InFlight, o.transport()),
+	return promhttp.RoundTripperFunc(
+		retry.New(
+			retry.Config{
+				Retries: o.retries(),
+				Check: func(resp *http.Response, err error) bool {
+					shouldRetry := retry.DefaultCheck(resp, err)
+					if shouldRetry {
+						om.Retries.Add(1)
+					}
+
+					return shouldRetry
+				},
+			},
+			&http.Client{
+				Transport: InstrumentOutboundCounter(
+					om.RequestCounter,
+					InstrumentOutboundSize(
+						om.RequestSize,
+						InstrumentOutboundDuration(
+							om.RequestDuration,
+							promhttp.InstrumentRoundTripperInFlight(om.InFlight, o.transport()),
+						),
+					),
 				),
-			),
-		),
-	))
+			},
+		).Do,
+	)
 }
 
 func computeApproximateRequestSize(r *http.Request) int {

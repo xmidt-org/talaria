@@ -10,20 +10,15 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-kit/kit/metrics"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/viper"
 	"github.com/xmidt-org/bascule"
-	"github.com/xmidt-org/bascule/basculehelper"
 	"github.com/xmidt-org/clortho/clorthometrics"
 	"github.com/xmidt-org/clortho/clorthozap"
 	"github.com/xmidt-org/sallust"
 	"github.com/xmidt-org/touchstone"
-
-	// nolint:staticcheck
-	"github.com/xmidt-org/webpa-common/v2/xmetrics"
 	"go.uber.org/zap"
 
 	// nolint:staticcheck
@@ -34,7 +29,6 @@ import (
 
 	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/device"
-
 	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/service"
 	// nolint:staticcheck
@@ -128,7 +122,7 @@ func buildUserPassMap(logger *zap.Logger, encodedBasicAuthKeys []string) (userPa
 }
 
 func NewPrimaryHandler(logger *zap.Logger, manager device.Manager, v *viper.Viper, a service.Accessor, e service.Environment,
-	controlConstructor alice.Constructor, metricsRegistry xmetrics.Registry, r *mux.Router) (http.Handler, error) {
+	controlConstructor alice.Constructor, tf *touchstone.Factory, r *mux.Router) (http.Handler, error) {
 	var (
 		inboundTimeout = getInboundTimeout(v)
 		apiHandler     = r.PathPrefix(fmt.Sprintf("%s/{version:%s|%s}", baseURI, v2, version)).Subrouter()
@@ -139,9 +133,23 @@ func NewPrimaryHandler(logger *zap.Logger, manager device.Manager, v *viper.Vipe
 		deviceAuthRules  = bascule.Validators{} //auth rules for device registration endpoints
 		serviceAuthRules = bascule.Validators{} //auth rules for everything else
 
-		m        = basculehelper.NewAuthValidationMeasures(metricsRegistry)
-		listener = basculehelper.NewMetricListener(m)
 	)
+
+	authCounter, err := tf.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: basculehttp.AuthValidationOutcome,
+			Help: "Counter for success and failure reason results through bascule",
+		}, basculehttp.ServerLabel, basculehttp.OutcomeLabel)
+	if err != nil {
+		return nil, err
+	}
+
+	listener, err := basculehttp.NewMetricListener(
+		&basculehttp.AuthValidationMeasures{ValidationOutcome: authCounter},
+	)
+	if err != nil {
+		return nil, err
+	}
 
 	authConstructorOptions := []basculehttp.COption{
 		basculehttp.WithCLogger(getLogger),
@@ -169,21 +177,9 @@ func NewPrimaryHandler(logger *zap.Logger, manager device.Manager, v *viper.Vipe
 			return nil, errors.New("failed to create clortho reolver")
 		}
 
-		promReg, ok := metricsRegistry.(prometheus.Registerer)
-		if !ok {
-			return nil, errors.New("failed to get prometheus registerer")
-
-		}
-
-		var (
-			tsConfig touchstone.Config
-			zConfig  sallust.Config
-		)
-		// Get touchstone & zap configurations
-		v.UnmarshalKey("touchstone", &tsConfig)
+		var zConfig sallust.Config
 		v.UnmarshalKey("zap", &zConfig)
 		zlogger := zap.Must(zConfig.Build())
-		tf := touchstone.NewFactory(tsConfig, zlogger, promReg)
 		// Instantiate a metric listener for the resolver
 		cml, err := clorthometrics.NewListener(clorthometrics.WithFactory(tf))
 		if err != nil {
@@ -239,7 +235,19 @@ func NewPrimaryHandler(logger *zap.Logger, manager device.Manager, v *viper.Vipe
 			return nil, err
 		}
 
-		deviceAccessCheck, err := buildDeviceAccessCheck(config, logger, metricsRegistry.NewCounter(InboundWRPMessageCounter), manager)
+		inboundWRPMessageCounter, err := tf.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: InboundWRPMessageCounter,
+				Help: "Number of inbound WRP Messages successfully decoded and ready to route to device",
+			},
+			[]string{outcomeLabel, reasonLabel}...,
+		)
+		if err != nil {
+			logger.Error(fmt.Sprintf("Could not create %s metric.", InboundWRPMessageCounter))
+			return nil, err
+		}
+
+		deviceAccessCheck, err := buildDeviceAccessCheck(config, logger, inboundWRPMessageCounter, manager)
 		if err != nil {
 			return nil, err
 		}
@@ -369,7 +377,7 @@ func NewPrimaryHandler(logger *zap.Logger, manager device.Manager, v *viper.Vipe
 	return r, nil
 }
 
-func buildDeviceAccessCheck(config *deviceAccessCheckConfig, logger *zap.Logger, counter metrics.Counter, deviceRegistry device.Registry) (deviceAccess, error) {
+func buildDeviceAccessCheck(config *deviceAccessCheckConfig, logger *zap.Logger, counter *prometheus.CounterVec, deviceRegistry device.Registry) (deviceAccess, error) {
 
 	if len(config.Checks) < 1 {
 		logger.Error("Potential security misconfig. Include checks for deviceAccessCheck or disable it")

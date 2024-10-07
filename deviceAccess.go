@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/fatih/structs"
-	"github.com/go-kit/kit/metrics"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/thedevsaddam/gojsonq/v2"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"go.uber.org/zap"
@@ -77,26 +77,26 @@ type deviceAccess interface {
 
 type talariaDeviceAccess struct {
 	strict             bool
-	wrpMessagesCounter metrics.Counter
+	wrpMessagesCounter CounterVec
 	deviceRegistry     device.Registry
 	checks             []*parsedCheck
 	sep                string
 	logger             *zap.Logger
 }
 
-func (t *talariaDeviceAccess) withFailure(labelValues ...string) metrics.Counter {
+func (t *talariaDeviceAccess) withFailure(reason string) prometheus.Counter {
 	if !t.strict {
-		return t.withSuccess(labelValues...)
+		return t.withSuccess(reason)
 	}
-	return t.wrpMessagesCounter.With(append(labelValues, outcomeLabel, rejected)...)
+	return t.wrpMessagesCounter.With(prometheus.Labels{reasonLabel: reason, outcomeLabel: rejected})
 }
 
-func (t *talariaDeviceAccess) withFatal(labelValues ...string) metrics.Counter {
-	return t.wrpMessagesCounter.With(append(labelValues, outcomeLabel, rejected)...)
+func (t *talariaDeviceAccess) withFatal(reason string) prometheus.Counter {
+	return t.wrpMessagesCounter.With(prometheus.Labels{reasonLabel: reason, outcomeLabel: rejected})
 }
 
-func (t *talariaDeviceAccess) withSuccess(labelValues ...string) metrics.Counter {
-	return t.wrpMessagesCounter.With(append(labelValues, outcomeLabel, accepted)...)
+func (t *talariaDeviceAccess) withSuccess(reason string) prometheus.Counter {
+	return t.wrpMessagesCounter.With(prometheus.Labels{reasonLabel: reason, outcomeLabel: accepted})
 }
 
 func getRight(check *parsedCheck, wrpCredentials *gojsonq.JSONQ) interface{} {
@@ -112,13 +112,13 @@ func getRight(check *parsedCheck, wrpCredentials *gojsonq.JSONQ) interface{} {
 func (t *talariaDeviceAccess) authorizeWRP(_ context.Context, message *wrp.Message) error {
 	ID, err := device.ParseID(message.Destination)
 	if err != nil {
-		t.withFatal(reasonLabel, invalidWRPDest).Add(1)
+		t.withFatal(invalidWRPDest).Add(1)
 		return errInvalidWRPDestination
 	}
 
 	d, ok := t.deviceRegistry.Get(ID)
 	if !ok {
-		t.withFatal(reasonLabel, deviceNotFound).Add(1)
+		t.withFatal(deviceNotFound).Add(1)
 		return errDeviceNotFound
 	}
 	deviceCredentials := gojsonq.New(gojsonq.WithSeparator(t.sep)).FromInterface(d.Metadata().Claims())
@@ -128,7 +128,7 @@ func (t *talariaDeviceAccess) authorizeWRP(_ context.Context, message *wrp.Messa
 		left := deviceCredentials.Reset().Find(c.deviceCredentialPath)
 
 		if left == nil {
-			t.withFailure(reasonLabel, missingDeviceCredential).Add(1)
+			t.withFailure(missingDeviceCredential).Add(1)
 			if t.strict {
 				return errDeviceCredentialMissing
 			}
@@ -137,7 +137,7 @@ func (t *talariaDeviceAccess) authorizeWRP(_ context.Context, message *wrp.Messa
 
 		right := getRight(c, wrpCredentials)
 		if right == nil {
-			t.withFailure(reasonLabel, missingWRPCredential).Add(1)
+			t.withFailure(missingWRPCredential).Add(1)
 			if t.strict {
 				return errWRPCredentialsMissing
 			}
@@ -153,7 +153,7 @@ func (t *talariaDeviceAccess) authorizeWRP(_ context.Context, message *wrp.Messa
 		ok, err := c.assertion.evaluate(left, right)
 		if err != nil {
 			t.logger.Debug("Check failed to complete", zap.String("check", c.name), zap.Error(err))
-			t.withFailure(reasonLabel, incompleteCheck).Add(1)
+			t.withFailure(incompleteCheck).Add(1)
 
 			if t.strict {
 				return errIncompleteCheck
@@ -163,7 +163,7 @@ func (t *talariaDeviceAccess) authorizeWRP(_ context.Context, message *wrp.Messa
 
 		if !ok {
 			t.logger.Debug("WRP is unauthorized to reach device", zap.String("check", c.name))
-			t.withFailure(reasonLabel, denied).Add(1)
+			t.withFailure(denied).Add(1)
 
 			if t.strict {
 				return errDeniedDeviceAccess
@@ -173,6 +173,6 @@ func (t *talariaDeviceAccess) authorizeWRP(_ context.Context, message *wrp.Messa
 		}
 	}
 
-	t.withSuccess(reasonLabel, authorized).Add(1)
+	t.withSuccess(authorized).Add(1)
 	return nil
 }
