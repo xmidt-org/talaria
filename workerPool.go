@@ -60,44 +60,41 @@ func (wp *WorkerPool) Run() {
 func (wp *WorkerPool) transact(e outboundEnvelope) {
 	defer e.cancel()
 
-	eventType, ok := e.request.Context().Value(eventTypeContextKey{}).(string)
+	scheme, ok := e.request.Context().Value(schemeContextKey{}).(string)
 	if !ok {
-		eventType = unknown
+		scheme = unknown
 	}
 
 	// bail out early if the request has been on the queue too long
 	if err := e.request.Context().Err(); err != nil {
-		url := e.request.URL.String()
 		reason := getDroppedMessageReason(err)
-		wp.droppedMessages.With(prometheus.Labels{eventLabel: eventType, codeLabel: messageDroppedCode, reasonLabel: reason, urlLabel: url}).Add(1)
-		wp.logger.Error("Outbound message expired while on queue", zap.String("event", eventType), zap.String("reason", reason), zap.Error(err), zap.String("url", url))
+		wp.droppedMessages.With(prometheus.Labels{schemeLabel: scheme, codeLabel: messageDroppedCode, reasonLabel: reason}).Add(1)
+		wp.logger.Error("Outbound message expired while on queue", zap.String(schemeLabel, scheme), zap.String("reason", reason), zap.Error(err))
 
 		return
 	}
 
 	response, err := wp.transactor(e.request)
 	if err != nil {
-		url := e.request.URL.String()
 		reason := getDroppedMessageReason(err)
 		code := messageDroppedCode
 		if response != nil {
 			code = strconv.Itoa(response.StatusCode)
 		}
 
-		wp.droppedMessages.With(prometheus.Labels{eventLabel: eventType, codeLabel: code, reasonLabel: reason, urlLabel: url}).Add(1)
-		wp.logger.Error("HTTP transaction error", zap.String(eventLabel, eventType), zap.String(codeLabel, code), zap.String(reasonLabel, reason), zap.Error(err), zap.String(urlLabel, url))
+		wp.droppedMessages.With(prometheus.Labels{schemeLabel: scheme, codeLabel: code, reasonLabel: reason}).Add(1)
+		wp.logger.Error("HTTP transaction error", zap.String(schemeLabel, scheme), zap.String(codeLabel, code), zap.String(reasonLabel, reason), zap.Error(err))
 
 		return
 	}
 
 	code := strconv.Itoa(response.StatusCode)
-	url := e.request.URL.String()
 	switch response.StatusCode {
 	case http.StatusAccepted:
-		wp.logger.Debug("HTTP response", zap.String("status", response.Status), zap.String(eventLabel, eventType), zap.String(codeLabel, code), zap.String(reasonLabel, expectedCodeReason), zap.String(urlLabel, url))
+		wp.logger.Debug("HTTP response", zap.String("status", response.Status), zap.String(schemeLabel, scheme), zap.String(codeLabel, code), zap.String(reasonLabel, expectedCodeReason))
 	default:
-		wp.droppedMessages.With(prometheus.Labels{eventLabel: eventType, codeLabel: code, reasonLabel: non202CodeReason, urlLabel: url}).Add(1)
-		wp.logger.Warn("HTTP response", zap.String(eventLabel, eventType), zap.String(codeLabel, code), zap.String(reasonLabel, non202CodeReason), zap.String(urlLabel, url))
+		wp.droppedMessages.With(prometheus.Labels{schemeLabel: scheme, codeLabel: code, reasonLabel: non202CodeReason}).Add(1)
+		wp.logger.Warn("HTTP response", zap.String(schemeLabel, scheme), zap.String(codeLabel, code), zap.String(reasonLabel, non202CodeReason))
 	}
 
 	io.Copy(io.Discard, response.Body)

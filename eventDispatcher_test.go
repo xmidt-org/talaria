@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"testing"
 	"time"
 
@@ -122,8 +123,6 @@ func testEventDispatcherOnDeviceEventBadURLFilter(t *testing.T) {
 
 func testEventDispatcherOnDeviceEventDispatchEvent(t *testing.T) {
 	var (
-		assert   = assert.New(t)
-		require  = require.New(t)
 		testData = []struct {
 			outbounder        *Outbounder
 			destination       string
@@ -193,54 +192,59 @@ func testEventDispatcherOnDeviceEventDispatchEvent(t *testing.T) {
 	)
 
 	for _, record := range testData {
-		for _, format := range []wrp.Format{wrp.Msgpack, wrp.JSON} {
-			t.Logf("%#v, method=%s, format=%s", record, record.outbounder.method(), format)
+		t.Run(record.destination, func(t *testing.T) {
+			for _, format := range []wrp.Format{wrp.Msgpack, wrp.JSON} {
+				assert := assert.New(t)
+				require := require.New(t)
 
-			var (
-				expectedContents = []byte{1, 2, 3, 4}
-				urlFilter        = new(mockURLFilter)
-			)
+				t.Logf("%#v, method=%s, format=%s", record, record.outbounder.method(), format)
 
-			om, err := NewTestOutboundMeasures()
-			require.NoError(err)
-			dispatcher, outbounds, err := NewEventDispatcher(om, record.outbounder, urlFilter)
-			require.NotNil(dispatcher)
-			require.NotNil(outbounds)
-			require.NoError(err)
+				var (
+					expectedContents = []byte{1, 2, 3, 4}
+					urlFilter        = new(mockURLFilter)
+				)
 
-			dispatcher.OnDeviceEvent(&device.Event{
-				Type:     device.MessageReceived,
-				Message:  &wrp.Message{Destination: record.destination},
-				Format:   format,
-				Contents: expectedContents,
-			})
+				om, err := NewTestOutboundMeasures()
+				require.NoError(err)
+				dispatcher, outbounds, err := NewEventDispatcher(om, record.outbounder, urlFilter)
+				require.NotNil(dispatcher)
+				require.NotNil(outbounds)
+				require.NoError(err)
 
-			assert.Equal(len(record.expectedEndpoints), len(outbounds), "incorrect envelope count")
-			actualEndpoints := make(map[string]bool, len(record.expectedEndpoints))
-			for len(outbounds) > 0 {
-				select {
-				case e := <-outbounds:
-					e.cancel()
-					<-e.request.Context().Done()
+				dispatcher.OnDeviceEvent(&device.Event{
+					Type:     device.MessageReceived,
+					Message:  &wrp.Message{Destination: record.destination},
+					Format:   format,
+					Contents: expectedContents,
+				})
 
-					assert.Equal(record.outbounder.method(), e.request.Method)
-					assert.Equal(format.ContentType(), e.request.Header.Get("Content-Type"))
+				assert.Equal(len(record.expectedEndpoints), len(outbounds), "incorrect envelope count")
+				actualEndpoints := make(map[string]bool, len(record.expectedEndpoints))
+				for len(outbounds) > 0 {
+					select {
+					case e := <-outbounds:
+						e.cancel()
+						<-e.request.Context().Done()
 
-					urlString := e.request.URL.String()
-					assert.False(actualEndpoints[urlString])
-					actualEndpoints[urlString] = true
+						assert.Equal(record.outbounder.method(), e.request.Method)
+						assert.Equal(format.ContentType(), e.request.Header.Get("Content-Type"))
 
-					actualContents, err := io.ReadAll(e.request.Body)
-					assert.NoError(err)
-					assert.Equal(expectedContents, actualContents)
+						urlString := e.request.URL.String()
+						assert.False(actualEndpoints[urlString])
+						actualEndpoints[urlString] = true
 
-				default:
+						actualContents, err := io.ReadAll(e.request.Body)
+						assert.NoError(err)
+						assert.Equal(expectedContents, actualContents)
+
+					default:
+					}
 				}
-			}
 
-			assert.Equal(record.expectedEndpoints, actualEndpoints)
-			urlFilter.AssertExpectations(t)
-		}
+				assert.Equal(record.expectedEndpoints, actualEndpoints)
+				urlFilter.AssertExpectations(t)
+			}
+		})
 	}
 }
 
@@ -273,7 +277,7 @@ func testEventDispatcherOnDeviceEventFullQueue(t *testing.T) {
 	require.NoError(err)
 
 	d.(*eventDispatcher).outbounds = make(chan outboundEnvelope)
-	dm.On("With", prometheus.Labels{eventLabel: expectedEventType, codeLabel: messageDroppedCode, reasonLabel: fullQueueReason, urlLabel: "nowhere.com"}).Return().Once()
+	dm.On("With", prometheus.Labels{schemeLabel: unknown, codeLabel: messageDroppedCode, reasonLabel: fullQueueReason}).Return().Once()
 	dm.On("Add", 1.).Return().Once()
 	d.OnDeviceEvent(&device.Event{
 		Type:     device.MessageReceived,
@@ -284,47 +288,100 @@ func testEventDispatcherOnDeviceEventFullQueue(t *testing.T) {
 	dm.AssertExpectations(t)
 }
 
-func testEventDispatcherOnDeviceEventMessageReceived(t *testing.T) {
-	var (
-		assert            = assert.New(t)
-		require           = require.New(t)
-		b                 bytes.Buffer
-		expectedEventType = "node-change"
-		m                 = wrp.Message{Destination: fmt.Sprintf("event:%s/mac:11:22:33:44:55:66/Online/unknown/deb2eb69999", expectedEventType)}
-		o                 = Outbounder{
-			Method:         "PATCH",
-			EventEndpoints: map[string]interface{}{"default": []string{"nowhere.com"}},
-			Logger: zap.New(
-				zapcore.NewCore(zapcore.NewJSONEncoder(
-					zapcore.EncoderConfig{
-						MessageKey: "message",
-					}), zapcore.AddSync(&b), zapcore.ErrorLevel),
-			),
-		}
-	)
+func testEventDispatcherEventTypes(t *testing.T) {
 
-	om, err := NewTestOutboundMeasures()
-	require.NoError(err)
-	dispatcher, outbounds, err := NewEventDispatcher(om, &o, nil)
-	require.NotNil(dispatcher)
-	require.NotNil(outbounds)
-	require.NoError(err)
+	tests := []struct {
+		description    string
+		event          device.Event
+		expectedScheme string
+	}{
+		{
+			description: "event",
+			event: device.Event{
+				Type:    device.MessageReceived,
+				Message: &wrp.Message{Destination: "event:node-change/mac:11:22:33:44:55:66/Online/unknown/deb2eb69999"},
+			},
+			expectedScheme: wrp.SchemeEvent,
+		},
+		{
+			description: "dns",
+			event: device.Event{
+				Type:    device.MessageReceived,
+				Message: &wrp.Message{Destination: "dns:node-change/mac:11:22:33:44:55:66/Online/unknown/deb2eb69999"},
+			},
+			expectedScheme: wrp.SchemeDNS,
+		},
+		{
+			description: "device-status: Connect",
+			event: device.Event{
+				Type: device.Connect,
+			},
+			expectedScheme: wrp.SchemeEvent,
+		},
+		{
+			description: "device-status: Disconnect",
+			event: device.Event{
+				Type: device.Disconnect,
+			},
+			expectedScheme: wrp.SchemeEvent,
+		},
+		// Note, event types MessageSent, MessageFailed, TransactionComplete and TransactionBroken are always dropped.
+	}
 
-	dispatcher.OnDeviceEvent(&device.Event{
-		Type:    device.MessageReceived,
-		Message: &m,
-	})
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
 
-	require.Equal(1, len(outbounds))
-	e := <-outbounds
-	e.cancel()
-	<-e.request.Context().Done()
+			var (
+				assert         = assert.New(t)
+				require        = require.New(t)
+				d              = new(device.MockDevice)
+				deviceMetadata = genTestMetadata()
+				b              bytes.Buffer
+				o              = Outbounder{
+					Method:         "PATCH",
+					EventEndpoints: map[string]interface{}{"default": []string{"nowhere.com"}},
+					Logger: zap.New(
+						zapcore.NewCore(zapcore.NewJSONEncoder(
+							zapcore.EncoderConfig{
+								MessageKey: "message",
+							}), zapcore.AddSync(&b), zapcore.ErrorLevel),
+					),
+				}
+			)
 
-	assert.Equal(o.method(), e.request.Method)
-	assert.Zero(b)
-	eventType, ok := e.request.Context().Value(eventTypeContextKey{}).(string)
-	require.True(ok)
-	assert.Equal(expectedEventType, eventType)
+			switch tc.event.Type {
+			case device.Connect, device.Disconnect:
+				d.On("ID").Return(device.ID("mac:123412341234"))
+				d.On("Metadata").Return(deviceMetadata)
+				d.On("Convey").Return(convey.C(nil))
+				if tc.event.Type == device.Disconnect {
+					d.On("Statistics").Return(device.NewStatistics(nil, time.Now()))
+					d.On("CloseReason").Return(device.CloseReason{})
+				}
+			}
+
+			om, err := NewTestOutboundMeasures()
+			require.NoError(err)
+			dispatcher, outbounds, err := NewEventDispatcher(om, &o, nil)
+			require.NotNil(dispatcher)
+			require.NotNil(outbounds)
+			require.NoError(err)
+
+			tc.event.Device = d
+			dispatcher.OnDeviceEvent(&tc.event)
+
+			require.Equal(1, len(outbounds))
+			e := <-outbounds
+			e.cancel()
+			<-e.request.Context().Done()
+
+			assert.Equal(o.method(), e.request.Method)
+			assert.Zero(b)
+			scheme, ok := e.request.Context().Value(schemeContextKey{}).(string)
+			require.True(ok)
+			assert.Equal(tc.expectedScheme, scheme)
+		})
+	}
 }
 
 func testEventDispatcherOnDeviceEventFilterError(t *testing.T) {
@@ -511,13 +568,163 @@ func testEventDispatcherOnDeviceEventEventMapError(t *testing.T) {
 	assert.Error(err)
 }
 
+func testEventDispatcherMetrics(t *testing.T) {
+	url := "nowhere.com"
+	tests := []struct {
+		description                  string
+		event                        device.Event
+		expectedDropMessageLabels    prometheus.Labels
+		expectedOutboundEventsLabels prometheus.Labels
+		expectedOutboundTotal        int
+		unsupportedEventType         bool
+	}{
+		{
+			description:                  "Connect",
+			event:                        device.Event{Type: device.Connect},
+			expectedOutboundEventsLabels: prometheus.Labels{schemeLabel: wrp.SchemeEvent, reasonLabel: noErrReason, outcomeLabel: successOutcome},
+			expectedOutboundTotal:        1,
+		},
+		{
+			description:                  "Disconnect",
+			event:                        device.Event{Type: device.Disconnect},
+			expectedOutboundEventsLabels: prometheus.Labels{schemeLabel: wrp.SchemeEvent, reasonLabel: noErrReason, outcomeLabel: successOutcome},
+			expectedOutboundTotal:        1,
+		},
+		{
+			description:                  "MessageReceived: event scheme",
+			event:                        device.Event{Type: device.MessageReceived, Message: &wrp.Message{Destination: "event:custom-event"}},
+			expectedOutboundEventsLabels: prometheus.Labels{schemeLabel: wrp.SchemeEvent, reasonLabel: noErrReason, outcomeLabel: successOutcome},
+			expectedOutboundTotal:        1,
+		},
+		{
+			description:                  "MessageReceived: dns scheme",
+			event:                        device.Event{Type: device.MessageReceived, Message: &wrp.Message{Destination: "dns:some_url/custom-event"}},
+			expectedOutboundEventsLabels: prometheus.Labels{schemeLabel: wrp.SchemeDNS, reasonLabel: noErrReason, outcomeLabel: successOutcome},
+			expectedOutboundTotal:        1,
+		},
+		{
+			description:                  "MessageReceived: dns scheme (with https protocol)",
+			event:                        device.Event{Type: device.MessageReceived, Message: &wrp.Message{Destination: "dns:https://some_url/custom-event"}},
+			expectedOutboundEventsLabels: prometheus.Labels{schemeLabel: wrp.SchemeDNS, reasonLabel: noErrReason, outcomeLabel: successOutcome},
+			expectedOutboundTotal:        1,
+		},
+		{
+			description:                  "MessageSent",
+			event:                        device.Event{Type: device.MessageSent},
+			expectedDropMessageLabels:    prometheus.Labels{schemeLabel: unknown, codeLabel: messageDroppedCode, reasonLabel: notSupportedEventReason},
+			expectedOutboundEventsLabels: prometheus.Labels{schemeLabel: unknown, reasonLabel: notSupportedEventReason, outcomeLabel: failureOutcome},
+			unsupportedEventType:         true,
+		},
+		{
+			description:                  "MessageFailed",
+			event:                        device.Event{Type: device.MessageFailed},
+			expectedDropMessageLabels:    prometheus.Labels{schemeLabel: unknown, codeLabel: messageDroppedCode, reasonLabel: notSupportedEventReason},
+			expectedOutboundEventsLabels: prometheus.Labels{schemeLabel: unknown, reasonLabel: notSupportedEventReason, outcomeLabel: failureOutcome},
+			unsupportedEventType:         true,
+		},
+		{
+			description:                  "TransactionComplete",
+			event:                        device.Event{Type: device.TransactionComplete},
+			expectedDropMessageLabels:    prometheus.Labels{schemeLabel: unknown, codeLabel: messageDroppedCode, reasonLabel: notSupportedEventReason},
+			expectedOutboundEventsLabels: prometheus.Labels{schemeLabel: unknown, reasonLabel: notSupportedEventReason, outcomeLabel: failureOutcome},
+			unsupportedEventType:         true,
+		},
+		{
+			description:                  "TransactionBroken",
+			event:                        device.Event{Type: device.TransactionBroken},
+			expectedDropMessageLabels:    prometheus.Labels{schemeLabel: unknown, codeLabel: messageDroppedCode, reasonLabel: notSupportedEventReason},
+			expectedOutboundEventsLabels: prometheus.Labels{schemeLabel: unknown, reasonLabel: notSupportedEventReason, outcomeLabel: failureOutcome},
+			unsupportedEventType:         true,
+		},
+		{
+			description:                  "Nonexistent positive event type",
+			event:                        device.Event{Type: device.EventType(math.MaxUint8)},
+			expectedDropMessageLabels:    prometheus.Labels{schemeLabel: unknown, codeLabel: messageDroppedCode, reasonLabel: notSupportedEventReason},
+			expectedOutboundEventsLabels: prometheus.Labels{schemeLabel: unknown, reasonLabel: notSupportedEventReason, outcomeLabel: failureOutcome},
+			unsupportedEventType:         true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			var (
+				assert  = assert.New(t)
+				require = require.New(t)
+				d       = new(device.MockDevice)
+				b       = bytes.Buffer{}
+				o       = Outbounder{
+					Method:         "PATCH",
+					EventEndpoints: map[string]interface{}{"default": []string{url}},
+					Logger: zap.New(
+						zapcore.NewCore(zapcore.NewJSONEncoder(
+							zapcore.EncoderConfig{
+								MessageKey: "message",
+							}), zapcore.AddSync(&b), zapcore.ErrorLevel),
+					),
+				}
+
+				dropMessagesCounter   = new(mockCounter)
+				outboundEventsCounter = new(mockCounter)
+				deviceMetadata        = genTestMetadata()
+			)
+
+			om, err := NewTestOutboundMeasures()
+			require.NoError(err)
+
+			om.DroppedMessages = dropMessagesCounter
+			om.OutboundEvents = outboundEventsCounter
+			dispatcher, outbounds, err := NewEventDispatcher(om, &o, nil)
+
+			require.NotNil(dispatcher)
+			require.NotNil(outbounds)
+			require.NoError(err)
+
+			switch tc.event.Type {
+			case device.Connect, device.Disconnect:
+				d.On("ID").Return(device.ID("mac:123412341234"))
+				d.On("Metadata").Return(deviceMetadata)
+				d.On("Convey").Return(convey.C(nil))
+				if tc.event.Type == device.Disconnect {
+					d.On("Statistics").Return(device.NewStatistics(nil, time.Now()))
+					d.On("CloseReason").Return(device.CloseReason{})
+				}
+			}
+
+			if tc.unsupportedEventType {
+				require.NotEmpty(tc.expectedDropMessageLabels, "expectedDropMessageLabels should not be empty")
+
+				dropMessagesCounter.On("With", tc.expectedDropMessageLabels).Return().Once()
+				dropMessagesCounter.On("Add", 1.).Return().Once()
+			} else {
+				dropMessagesCounter.On("With", tc.expectedDropMessageLabels).Panic("Func dropMessagesCounter.With should have not been called")
+				dropMessagesCounter.On("Add", 1.).Panic("Func dropMessagesCounter.Add should have not been called")
+			}
+
+			require.NotEmpty(tc.expectedOutboundEventsLabels, "expectedOutboundEventsLabels should not be empty")
+			outboundEventsCounter.On("With", tc.expectedOutboundEventsLabels).Return().Once()
+			outboundEventsCounter.On("Add", 1.).Return().Once()
+
+			tc.event.Device = d
+			dispatcher.OnDeviceEvent(&tc.event)
+			assert.Equal(tc.expectedOutboundTotal, len(outbounds))
+			assert.Zero(b)
+
+			d.AssertExpectations(t)
+			outboundEventsCounter.AssertExpectations(t)
+			if tc.unsupportedEventType {
+				dropMessagesCounter.AssertExpectations(t)
+			}
+		})
+	}
+}
+
 func TestEventDispatcherOnDeviceEvent(t *testing.T) {
 	tests := []struct {
 		description string
 		test        func(*testing.T)
 	}{
 		{"ConnectEvent", testEventDispatcherOnDeviceEventConnectEvent},
-		{"CorrectEventType", testEventDispatcherOnDeviceEventMessageReceived},
+		{"EventTypes", testEventDispatcherEventTypes},
 		{"DisconnectEvent", testEventDispatcherOnDeviceEventDisconnectEvent},
 		{"Unroutable", testEventDispatcherOnDeviceEventUnroutable},
 		{"BadURLFilter", testEventDispatcherOnDeviceEventBadURLFilter},
@@ -527,6 +734,7 @@ func TestEventDispatcherOnDeviceEvent(t *testing.T) {
 		{"DispatchTo", testEventDispatcherOnDeviceEventDispatchTo},
 		{"NilEventError", testEventDispatcherOnDeviceEventNilEventError},
 		{"EventMapError", testEventDispatcherOnDeviceEventEventMapError},
+		{"EventDispatcherMetrics", testEventDispatcherMetrics},
 	}
 
 	for _, tc := range tests {
