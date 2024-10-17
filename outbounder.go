@@ -22,12 +22,6 @@ const (
 	// OutbounderKey is the Viper subkey which is expected to hold Outbounder configuration
 	OutbounderKey = "device.outbound"
 
-	// EventPrefix is the string prefix for WRP destinations that should be treated as events
-	EventPrefix = "event:"
-
-	// DNSPrefix is the string prefix for WRP destinations that should be treated as exact URLs
-	DNSPrefix = "dns:"
-
 	DefaultDefaultScheme = "https"
 	DefaultAllowedScheme = "https"
 

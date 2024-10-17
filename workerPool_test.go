@@ -14,6 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/xmidt-org/wrp-go/v3"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -30,7 +31,7 @@ func testWorkerPoolTransactHTTPSuccess(t *testing.T) {
 				}), zapcore.AddSync(&b), zapcore.ErrorLevel),
 		)
 		target          = "http://localhost/foo"
-		expectedRequest = httptest.NewRequest("POST", target, nil).WithContext(context.WithValue(context.Background(), eventTypeContextKey{}, EventPrefix))
+		expectedRequest = httptest.NewRequest("POST", target, nil).WithContext(context.WithValue(context.Background(), schemeContextKey{}, wrp.SchemeEvent))
 		envelope        = outboundEnvelope{expectedRequest, func() {}}
 		dm              = new(mockCounter)
 		wp              = &WorkerPool{
@@ -48,7 +49,7 @@ func testWorkerPoolTransactHTTPSuccess(t *testing.T) {
 		}
 	)
 
-	dm.On("With", prometheus.Labels{eventLabel: EventPrefix, codeLabel: strconv.Itoa(http.StatusAccepted), reasonLabel: non202CodeReason, urlLabel: target}).Panic("Func dm.With should have not been called")
+	dm.On("With", prometheus.Labels{schemeLabel: wrp.SchemeEvent, codeLabel: strconv.Itoa(http.StatusAccepted), reasonLabel: non202CodeReason}).Panic("Func dm.With should have not been called")
 	dm.On("Add", 1.).Panic("Func dm.Add should have not been called")
 	require.NotPanics(func() { wp.transact(envelope) })
 	assert.Equal(b.Len(), 0)
@@ -58,7 +59,7 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 	var (
 		assert          = assert.New(t)
 		target          = "http://localhost/foo"
-		expectedRequest = httptest.NewRequest("POST", target, nil).WithContext(context.WithValue(context.Background(), eventTypeContextKey{}, EventPrefix))
+		expectedRequest = httptest.NewRequest("POST", target, nil).WithContext(context.WithValue(context.Background(), schemeContextKey{}, wrp.SchemeEvent))
 		envelope        = outboundEnvelope{expectedRequest, func() {}}
 		tests           = []struct {
 			description    string
@@ -160,7 +161,7 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 			)
 			dm := new(mockCounter)
 			tc.wp.droppedMessages = dm
-			dm.On("With", prometheus.Labels{eventLabel: EventPrefix, codeLabel: strconv.Itoa(tc.expectedCode), reasonLabel: tc.expectedReason, urlLabel: target}).Return().Once()
+			dm.On("With", prometheus.Labels{schemeLabel: wrp.SchemeEvent, codeLabel: strconv.Itoa(tc.expectedCode), reasonLabel: tc.expectedReason}).Return().Once()
 			dm.On("Add", 1.).Return().Once()
 			tc.wp.transact(envelope)
 			assert.Greater(b.Len(), 0)

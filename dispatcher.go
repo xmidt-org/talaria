@@ -25,5 +25,5 @@ type outboundEnvelope struct {
 	cancel  func()
 }
 
-// eventTypeContextKey is the internal key type for storing the event type
-type eventTypeContextKey struct{}
+// schemeContextKey is the internal key type for storing the event type
+type schemeContextKey struct{}

@@ -46,9 +46,8 @@ const (
 	qosLevelLabel  = "qos_level"
 	partnerIDLabel = "partner_id"
 	messageType    = "message_type"
-	urlLabel       = "url"
 	codeLabel      = "code"
-	eventLabel     = "event"
+	schemeLabel    = "scheme"
 )
 
 // label values
@@ -171,7 +170,7 @@ func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs erro
 			NativeHistogramMaxExemplars: -1,
 			NativeHistogramExemplarTTL:  time.Minute * 5,
 		},
-		[]string{eventLabel, codeLabel, reasonLabel, urlLabel}...,
+		[]string{schemeLabel, codeLabel, reasonLabel}...,
 	)
 	errs = errors.Join(errs, err)
 
@@ -180,7 +179,7 @@ func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs erro
 			Name: OutboundRequestCounter,
 			Help: "The count of outbound requests",
 		},
-		[]string{eventLabel, codeLabel, reasonLabel, urlLabel}...,
+		[]string{schemeLabel, codeLabel, reasonLabel}...,
 	)
 	errs = errors.Join(errs, err)
 
@@ -201,7 +200,7 @@ func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs erro
 			NativeHistogramMaxExemplars: -1,
 			NativeHistogramExemplarTTL:  time.Minute * 5,
 		},
-		[]string{eventLabel, codeLabel}...,
+		[]string{schemeLabel, codeLabel}...,
 	)
 	errs = errors.Join(errs, err)
 
@@ -210,7 +209,7 @@ func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs erro
 			Name: TotalOutboundEvents,
 			Help: "Total count of outbound events",
 		},
-		[]string{eventLabel, reasonLabel, urlLabel, outcomeLabel}...,
+		[]string{schemeLabel, reasonLabel, outcomeLabel}...,
 	)
 	errs = errors.Join(errs, err)
 
@@ -235,7 +234,7 @@ func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs erro
 			Name: OutboundDroppedMessageCounter,
 			Help: "The total count of messages dropped",
 		},
-		[]string{eventLabel, codeLabel, reasonLabel, urlLabel}...,
+		[]string{schemeLabel, codeLabel, reasonLabel}...,
 	)
 	errs = errors.Join(errs, err)
 
@@ -303,9 +302,9 @@ func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs erro
 
 func InstrumentOutboundSize(obs HistogramVec, next http.RoundTripper) promhttp.RoundTripperFunc {
 	return promhttp.RoundTripperFunc(func(request *http.Request) (*http.Response, error) {
-		eventType, ok := request.Context().Value(eventTypeContextKey{}).(string)
+		scheme, ok := request.Context().Value(schemeContextKey{}).(string)
 		if !ok {
-			eventType = unknown
+			scheme = unknown
 		}
 
 		response, err := next.RoundTrip(request)
@@ -318,9 +317,9 @@ func InstrumentOutboundSize(obs HistogramVec, next http.RoundTripper) promhttp.R
 				code = strconv.Itoa(response.StatusCode)
 			}
 
-			labels = prometheus.Labels{eventLabel: eventType, codeLabel: code}
+			labels = prometheus.Labels{schemeLabel: scheme, codeLabel: code}
 		} else {
-			labels = prometheus.Labels{eventLabel: eventType, codeLabel: strconv.Itoa(response.StatusCode)}
+			labels = prometheus.Labels{schemeLabel: scheme, codeLabel: strconv.Itoa(response.StatusCode)}
 		}
 
 		obs.With(labels).Observe(float64(size))
@@ -331,9 +330,9 @@ func InstrumentOutboundSize(obs HistogramVec, next http.RoundTripper) promhttp.R
 
 func InstrumentOutboundDuration(obs HistogramVec, next http.RoundTripper) promhttp.RoundTripperFunc {
 	return promhttp.RoundTripperFunc(func(request *http.Request) (*http.Response, error) {
-		eventType, ok := request.Context().Value(eventTypeContextKey{}).(string)
+		scheme, ok := request.Context().Value(schemeContextKey{}).(string)
 		if !ok {
-			eventType = unknown
+			scheme = unknown
 		}
 
 		start := time.Now()
@@ -347,9 +346,9 @@ func InstrumentOutboundDuration(obs HistogramVec, next http.RoundTripper) promht
 				code = strconv.Itoa(response.StatusCode)
 			}
 
-			labels = prometheus.Labels{eventLabel: eventType, codeLabel: code, reasonLabel: getDoErrReason(err), urlLabel: request.URL.String()}
+			labels = prometheus.Labels{schemeLabel: scheme, codeLabel: code, reasonLabel: getDoErrReason(err)}
 		} else {
-			labels = prometheus.Labels{eventLabel: eventType, codeLabel: strconv.Itoa(response.StatusCode), reasonLabel: expectedCodeReason, urlLabel: request.URL.String()}
+			labels = prometheus.Labels{schemeLabel: scheme, codeLabel: strconv.Itoa(response.StatusCode), reasonLabel: expectedCodeReason}
 			if response.StatusCode != http.StatusAccepted {
 				labels[reasonLabel] = non202CodeReason
 			}
@@ -363,9 +362,9 @@ func InstrumentOutboundDuration(obs HistogramVec, next http.RoundTripper) promht
 
 func InstrumentOutboundCounter(counter CounterVec, next http.RoundTripper) promhttp.RoundTripperFunc {
 	return promhttp.RoundTripperFunc(func(request *http.Request) (*http.Response, error) {
-		eventType, ok := request.Context().Value(eventTypeContextKey{}).(string)
+		scheme, ok := request.Context().Value(schemeContextKey{}).(string)
 		if !ok {
-			eventType = unknown
+			scheme = unknown
 		}
 
 		response, err := next.RoundTrip(request)
@@ -377,9 +376,9 @@ func InstrumentOutboundCounter(counter CounterVec, next http.RoundTripper) promh
 				code = strconv.Itoa(response.StatusCode)
 			}
 
-			labels = prometheus.Labels{eventLabel: eventType, codeLabel: code, reasonLabel: getDoErrReason(err), urlLabel: request.URL.String()}
+			labels = prometheus.Labels{schemeLabel: scheme, codeLabel: code, reasonLabel: getDoErrReason(err)}
 		} else {
-			labels = prometheus.Labels{eventLabel: eventType, codeLabel: strconv.Itoa(response.StatusCode), reasonLabel: noErrReason, urlLabel: request.URL.String()}
+			labels = prometheus.Labels{schemeLabel: scheme, codeLabel: strconv.Itoa(response.StatusCode), reasonLabel: noErrReason}
 			if response.StatusCode != http.StatusAccepted {
 				labels[reasonLabel] = non202CodeReason
 			}
