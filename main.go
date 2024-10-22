@@ -48,6 +48,7 @@ import (
 const (
 	applicationName  = "talaria"
 	tracingConfigKey = "tracing"
+	maxDeviceCount   = "max_device_count"
 )
 
 var (
@@ -91,6 +92,13 @@ func newDeviceManager(logger *zap.Logger, r xmetrics.Registry, tf *touchstone.Fa
 
 	deviceOptions.Filter = g
 	return device.NewManager(deviceOptions), g, watcher, nil
+}
+
+func newStaticMetrics(m device.Manager, r xmetrics.Registry) (err error) {
+	r.NewGaugeFunc(maxDeviceCount, func() float64 {
+		return float64(m.MaxDevices())
+	})
+	return
 }
 
 func loadTracing(v *viper.Viper, appName string) (candlelight.Tracing, error) {
@@ -164,6 +172,13 @@ func talaria(arguments []string) int {
 		logger.Error("unable to create device manager", zap.Error(err))
 		return 2
 	}
+
+	err = newStaticMetrics(manager, metricsRegistry)
+	if err != nil {
+		logger.Error("unable to register static metrics", zap.Error(err))
+		return 6
+	}
+
 	var log = &adapter.Logger{
 		Logger: logger,
 	}
