@@ -144,5 +144,5 @@ func getDoErrReason(err error) string {
 		}
 	}
 
-	return genericDoReason
+	return unknown
 }
