@@ -314,9 +314,5 @@ func getDroppedMessageReason(err error) string {
 	}
 
 	// check for http `Do` related errors
-	if reason := getDoErrReason(err); reason != genericDoReason {
-		return reason
-	}
-
-	return unknown
+	return getDoErrReason(err)
 }

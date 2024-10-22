@@ -70,7 +70,6 @@ const (
 	unroutableDestinationReason           = "unroutable_destination"
 	encodeErrReason                       = "encoding_err"
 	fullQueueReason                       = "full outbound queue"
-	genericDoReason                       = "do_error"
 	deadlineExceededReason                = "context_deadline_exceeded"
 	contextCanceledReason                 = "context_canceled"
 	addressErrReason                      = "address_error"
