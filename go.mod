@@ -15,7 +15,7 @@ require (
 	github.com/spf13/cast v1.7.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.19.0
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/thedevsaddam/gojsonq/v2 v2.5.2
 	github.com/xmidt-org/bascule v0.11.6
 	github.com/xmidt-org/candlelight v0.1.21
