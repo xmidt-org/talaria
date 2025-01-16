@@ -36,6 +36,7 @@ func statusMetadata(d device.Interface) map[string]string {
 		metadata["/compliance"] = convey.MissingFields.String()
 	}
 
+	metadata["/hw-deviceid"] = string(d.ID())
 	return metadata
 }
 
