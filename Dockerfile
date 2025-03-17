@@ -45,11 +45,11 @@ RUN     mkdir /etc/talaria/ \
 
 USER nobody
 
-#ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/entrypoint.sh"]
 
 EXPOSE 6100
 EXPOSE 6101
 EXPOSE 6102
 EXPOSE 6103
 
-ENTRYPOINT ["/talaria"]
+CMD ["/talaria"]
