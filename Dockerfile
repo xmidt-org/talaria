@@ -45,7 +45,7 @@ RUN     mkdir /etc/talaria/ \
 
 USER nobody
 
-#ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/entrypoint.sh"]
 
 EXPOSE 6100
 EXPOSE 6101
