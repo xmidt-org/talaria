@@ -52,4 +52,4 @@ EXPOSE 6101
 EXPOSE 6102
 EXPOSE 6103
 
-CMD ["/talaria"]
+ENTRYPOINT ["/talaria"]
