@@ -97,7 +97,7 @@ func StartControlServer(logger *zap.Logger, manager device.Manager, deviceGate d
 		otelmux.WithTracerProvider(tracing.TracerProvider()),
 	}
 
-	r.Use(otelmux.Middleware("control", otelMuxOptions...), candlelight.EchoFirstTraceNodeInfo(tracing.Propagator(), true))
+	r.Use(otelmux.Middleware("control", otelMuxOptions...), candlelight.EchoFirstTraceNodeInfo(tracing, true))
 
 	apiHandler.Handle(gatePath, &gate.Lever{Gate: g, Parameter: "open"}).Methods("POST", "PUT", "PATCH")
 
