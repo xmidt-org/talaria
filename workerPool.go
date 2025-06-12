@@ -1,38 +1,31 @@
-/**
- * Copyright 2017 Comcast Cable Communications Management, LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- */
+// SPDX-FileCopyrightText: 2017 Comcast Cable Communications Management, LLC
+// SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
+	"context"
+	"errors"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
 	"sync"
 
-	"github.com/go-kit/kit/metrics"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
 
 // WorkerPool describes a pool of goroutines that dispatch http.Request objects to
 // a transactor function
 type WorkerPool struct {
-	logger         *zap.Logger
-	outbounds      <-chan outboundEnvelope
-	workerPoolSize uint
-	queueSize      metrics.Gauge
-	transactor     func(*http.Request) (*http.Response, error)
+	logger          *zap.Logger
+	outbounds       <-chan outboundEnvelope
+	workerPoolSize  uint
+	queueSize       prometheus.Gauge
+	droppedMessages CounterVec
+	transactor      func(*http.Request) (*http.Response, error)
 
 	runOnce sync.Once
 }
@@ -40,10 +33,11 @@ type WorkerPool struct {
 func NewWorkerPool(om OutboundMeasures, o *Outbounder, outbounds <-chan outboundEnvelope) *WorkerPool {
 	logger := o.logger()
 	return &WorkerPool{
-		logger:         logger,
-		outbounds:      outbounds,
-		workerPoolSize: o.workerPoolSize(),
-		queueSize:      om.QueueSize,
+		logger:          logger,
+		outbounds:       outbounds,
+		workerPoolSize:  o.workerPoolSize(),
+		queueSize:       om.QueueSize,
+		droppedMessages: om.DroppedMessages,
 		transactor: (&http.Client{
 			Transport: NewOutboundRoundTripper(om, o),
 			Timeout:   o.clientTimeout(),
@@ -66,22 +60,41 @@ func (wp *WorkerPool) Run() {
 func (wp *WorkerPool) transact(e outboundEnvelope) {
 	defer e.cancel()
 
+	scheme, ok := e.request.Context().Value(schemeContextKey{}).(string)
+	if !ok {
+		scheme = unknown
+	}
+
 	// bail out early if the request has been on the queue too long
 	if err := e.request.Context().Err(); err != nil {
-		wp.logger.Error("Outbound message expired while on queue", zap.Error(err))
+		reason := getDroppedMessageReason(err)
+		wp.droppedMessages.With(prometheus.Labels{schemeLabel: scheme, codeLabel: messageDroppedCode, reasonLabel: reason}).Add(1)
+		wp.logger.Error("Outbound message expired while on queue", zap.String(schemeLabel, scheme), zap.String("reason", reason), zap.Error(err))
+
 		return
 	}
 
 	response, err := wp.transactor(e.request)
 	if err != nil {
-		wp.logger.Error("HTTP transaction error", zap.Error(err))
+		reason := getDroppedMessageReason(err)
+		code := messageDroppedCode
+		if response != nil {
+			code = strconv.Itoa(response.StatusCode)
+		}
+
+		wp.droppedMessages.With(prometheus.Labels{schemeLabel: scheme, codeLabel: code, reasonLabel: reason}).Add(1)
+		wp.logger.Error("HTTP transaction error", zap.String(schemeLabel, scheme), zap.String(codeLabel, code), zap.String(reasonLabel, reason), zap.Error(err))
+
 		return
 	}
 
-	if response.StatusCode < 400 {
-		wp.logger.Debug("HTTP response", zap.String("status", response.Status), zap.Any("url", e.request.URL))
-	} else {
-		wp.logger.Error("HTTP response", zap.String("status", response.Status), zap.Any("url", e.request.URL))
+	code := strconv.Itoa(response.StatusCode)
+	switch response.StatusCode {
+	case http.StatusAccepted:
+		wp.logger.Debug("HTTP response", zap.String("status", response.Status), zap.String(schemeLabel, scheme), zap.String(codeLabel, code), zap.String(reasonLabel, expectedCodeReason))
+	default:
+		wp.droppedMessages.With(prometheus.Labels{schemeLabel: scheme, codeLabel: code, reasonLabel: non202CodeReason}).Add(1)
+		wp.logger.Warn("HTTP response", zap.String(schemeLabel, scheme), zap.String(codeLabel, code), zap.String(reasonLabel, non202CodeReason))
 	}
 
 	io.Copy(io.Discard, response.Body)
@@ -95,4 +108,41 @@ func (wp *WorkerPool) worker() {
 		wp.queueSize.Add(-1.0)
 		wp.transact(e)
 	}
+}
+
+func getDoErrReason(err error) string {
+	var d *net.DNSError
+	if err == nil {
+		return noErrReason
+	} else if errors.Is(err, context.DeadlineExceeded) {
+		return deadlineExceededReason
+	} else if errors.Is(err, context.Canceled) {
+		return contextCanceledReason
+	} else if errors.Is(err, &net.AddrError{}) {
+		return addressErrReason
+	} else if errors.Is(err, &net.ParseError{}) {
+		return parseAddrErrReason
+	} else if errors.Is(err, net.InvalidAddrError("")) {
+		return invalidAddrReason
+	} else if errors.As(err, &d) {
+		if d.IsNotFound {
+			return hostNotFoundReason
+		}
+		return dnsErrReason
+	} else if errors.Is(err, net.ErrClosed) {
+		return connClosedReason
+	} else if errors.Is(err, &net.OpError{}) {
+		return opErrReason
+	} else if errors.Is(err, net.UnknownNetworkError("")) {
+		return networkErrReason
+	}
+
+	// nolint: errorlint
+	if err, ok := err.(*url.Error); ok {
+		if strings.TrimSpace(strings.ToLower(err.Unwrap().Error())) == "eof" {
+			return connectionUnexpectedlyClosedEOFReason
+		}
+	}
+
+	return unknown
 }

@@ -1,19 +1,5 @@
-/**
- * Copyright 2017 Comcast Cable Communications Management, LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- */
+// SPDX-FileCopyrightText: 2017 Comcast Cable Communications Management, LLC
+// SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
@@ -28,12 +14,16 @@ import (
 	"syscall"
 
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"github.com/xmidt-org/bascule/basculehelper"
 	"github.com/xmidt-org/candlelight"
+	"github.com/xmidt-org/touchstone"
+
+	// nolint:staticcheck
+	"github.com/xmidt-org/webpa-common/v2/xmetrics"
 
 	"github.com/xmidt-org/webpa-common/v2/adapter"
 	// nolint:staticcheck
@@ -48,11 +38,11 @@ import (
 	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/service"
 	// nolint:staticcheck
+	"github.com/xmidt-org/webpa-common/v2/service/accessor"
 	"github.com/xmidt-org/webpa-common/v2/service/monitor"
+
 	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/service/servicecfg"
-	// nolint:staticcheck
-	"github.com/xmidt-org/webpa-common/v2/xmetrics"
 	"github.com/xmidt-org/webpa-common/v2/xresolver/consul"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 )
@@ -60,12 +50,13 @@ import (
 const (
 	applicationName  = "talaria"
 	tracingConfigKey = "tracing"
+	maxDeviceCount   = "max_device_count"
 )
 
 var (
-	GitCommit = "undefined"
-	Version   = "undefined"
-	BuildTime = "undefined"
+	Commit  = "undefined"
+	Version = "undefined"
+	Date    = "undefined"
 )
 
 func setupDefaultConfigValues(v *viper.Viper) {
@@ -73,7 +64,7 @@ func setupDefaultConfigValues(v *viper.Viper) {
 	v.SetDefault(RehasherServicesConfigKey, []string{applicationName})
 }
 
-func newDeviceManager(logger *zap.Logger, r xmetrics.Registry, v *viper.Viper) (device.Manager, devicegate.Interface, *consul.ConsulWatcher, error) {
+func newDeviceManager(logger *zap.Logger, r xmetrics.Registry, tf *touchstone.Factory, v *viper.Viper) (device.Manager, devicegate.Interface, *consul.ConsulWatcher, error) {
 	deviceOptions, err := device.NewOptions(logger, v.Sub(device.DeviceManagerKey))
 	if err != nil {
 		return nil, nil, nil, err
@@ -84,7 +75,12 @@ func newDeviceManager(logger *zap.Logger, r xmetrics.Registry, v *viper.Viper) (
 		return nil, nil, nil, err
 	}
 
-	outboundListeners, err := outbounder.Start(NewOutboundMeasures(r))
+	om, err := NewOutboundMeasures(tf)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to get OutboundMeasures: %s", err)
+	}
+
+	outboundListeners, err := outbounder.Start(om)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -98,6 +94,13 @@ func newDeviceManager(logger *zap.Logger, r xmetrics.Registry, v *viper.Viper) (
 
 	deviceOptions.Filter = g
 	return device.NewManager(deviceOptions), g, watcher, nil
+}
+
+func newStaticMetrics(m device.Manager, r xmetrics.Registry) (err error) {
+	r.NewGaugeFunc(maxDeviceCount, func() float64 {
+		return float64(m.MaxDevices())
+	})
+	return
 }
 
 func loadTracing(v *viper.Viper, appName string) (candlelight.Tracing, error) {
@@ -127,7 +130,7 @@ func talaria(arguments []string) int {
 		f = pflag.NewFlagSet(applicationName, pflag.ContinueOnError)
 		v = viper.New()
 
-		logger, metricsRegistry, webPA, err = server.Initialize(applicationName, arguments, f, v, Metrics, device.Metrics, rehasher.Metrics, service.Metrics, basculehelper.AuthValidationMetrics)
+		logger, metricsRegistry, webPA, err = server.Initialize(applicationName, arguments, f, v, device.Metrics, rehasher.Metrics, service.Metrics)
 	)
 
 	if parseErr, done := printVersion(f, arguments); done {
@@ -154,11 +157,30 @@ func talaria(arguments []string) int {
 	}
 	logger.Info("tracing status", zap.Bool("enabled", !tracing.IsNoop()))
 
-	manager, filterGate, watcher, err := newDeviceManager(logger, metricsRegistry, v)
+	promReg, ok := metricsRegistry.(prometheus.Registerer)
+	if !ok {
+		fmt.Fprintf(os.Stderr, "failed to get prometheus registerer")
+
+		return 1
+	}
+
+	var tsConfig touchstone.Config
+	// Get touchstone & zap configurations
+	v.UnmarshalKey("touchstone", &tsConfig)
+	tf := touchstone.NewFactory(tsConfig, logger, promReg)
+
+	manager, filterGate, watcher, err := newDeviceManager(logger, metricsRegistry, tf, v)
 	if err != nil {
 		logger.Error("unable to create device manager", zap.Error(err))
 		return 2
 	}
+
+	err = newStaticMetrics(manager, metricsRegistry)
+	if err != nil {
+		logger.Error("unable to register static metrics", zap.Error(err))
+		return 6
+	}
+
 	var log = &adapter.Logger{
 		Logger: logger,
 	}
@@ -168,17 +190,17 @@ func talaria(arguments []string) int {
 		return 4
 	}
 
-	controlConstructor, err := StartControlServer(logger, manager, filterGate, metricsRegistry, v, tracing)
+	controlConstructor, err := StartControlServer(logger, manager, filterGate, tf, v, tracing)
 	if err != nil {
 		logger.Error("unable to create control server", zap.Error(err))
 		return 3
 	}
 
 	health := webPA.Health.NewHealth(logger, devicehealth.Options...)
-	var a *service.UpdatableAccessor
+	var a *accessor.UpdatableAccessor
 	if e != nil {
 		// service discovery is optional
-		a = new(service.UpdatableAccessor)
+		a = new(accessor.UpdatableAccessor)
 	}
 
 	rootRouter := mux.NewRouter()
@@ -188,7 +210,7 @@ func talaria(arguments []string) int {
 	}
 	rootRouter.Use(otelmux.Middleware("primary", otelMuxOptions...), candlelight.EchoFirstTraceNodeInfo(tracing, true))
 
-	primaryHandler, err := NewPrimaryHandler(logger, manager, v, a, e, controlConstructor, metricsRegistry, rootRouter)
+	primaryHandler, err := NewPrimaryHandler(logger, manager, v, a, e, controlConstructor, tf, rootRouter)
 	if err != nil {
 		logger.Error("unable to start device management", zap.Error(err))
 		return 4
@@ -273,8 +295,8 @@ func printVersionInfo(writer io.Writer) {
 	fmt.Fprintf(writer, "%s:\n", applicationName)
 	fmt.Fprintf(writer, "  version: \t%s\n", Version)
 	fmt.Fprintf(writer, "  go version: \t%s\n", runtime.Version())
-	fmt.Fprintf(writer, "  built time: \t%s\n", BuildTime)
-	fmt.Fprintf(writer, "  git commit: \t%s\n", GitCommit)
+	fmt.Fprintf(writer, "  built time: \t%s\n", Date)
+	fmt.Fprintf(writer, "  git commit: \t%s\n", Commit)
 	fmt.Fprintf(writer, "  os/arch: \t%s/%s\n", runtime.GOOS, runtime.GOARCH)
 }
 

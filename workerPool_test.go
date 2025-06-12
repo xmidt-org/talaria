@@ -1,101 +1,177 @@
-/**
- * Copyright 2017 Comcast Cable Communications Management, LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- */
+// SPDX-FileCopyrightText: 2017 Comcast Cable Communications Management, LLC
+// SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
 	"bytes"
-	"errors"
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap/zaptest"
+	"github.com/stretchr/testify/require"
+	"github.com/xmidt-org/wrp-go/v3"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
-
-func testWorkerPoolTransactTransactorError(t *testing.T) {
-	var (
-		assert          = assert.New(t)
-		logger          = zaptest.NewLogger(t)
-		expectedRequest = httptest.NewRequest("POST", "/", nil)
-		envelope        = outboundEnvelope{expectedRequest, func() {}}
-
-		wp = &WorkerPool{
-			logger: logger,
-			transactor: func(actualRequest *http.Request) (*http.Response, error) {
-				assert.Equal(expectedRequest, actualRequest)
-				return nil, errors.New("expected error")
-			},
-		}
-	)
-
-	wp.transact(envelope)
-}
 
 func testWorkerPoolTransactHTTPSuccess(t *testing.T) {
 	var (
-		assert          = assert.New(t)
-		logger          = zaptest.NewLogger(t)
-		expectedRequest = httptest.NewRequest("POST", "/", nil)
+		b       bytes.Buffer
+		assert  = assert.New(t)
+		require = require.New(t)
+		logger  = zap.New(
+			zapcore.NewCore(zapcore.NewJSONEncoder(
+				zapcore.EncoderConfig{
+					MessageKey: "message",
+				}), zapcore.AddSync(&b), zapcore.ErrorLevel),
+		)
+		target          = "http://localhost/foo"
+		expectedRequest = httptest.NewRequest("POST", target, nil).WithContext(context.WithValue(context.Background(), schemeContextKey{}, wrp.SchemeEvent))
 		envelope        = outboundEnvelope{expectedRequest, func() {}}
-
-		wp = &WorkerPool{
+		dm              = new(mockCounter)
+		wp              = &WorkerPool{
 			logger: logger,
 			transactor: func(actualRequest *http.Request) (*http.Response, error) {
 				assert.Equal(expectedRequest, actualRequest)
 				return &http.Response{
-					Status:     "200 OK",
-					StatusCode: 200,
+					Status:     "202 Accepted",
+					StatusCode: http.StatusAccepted,
 					Body:       io.NopCloser(new(bytes.Buffer)),
+					Request:    httptest.NewRequest("POST", target, nil),
 				}, nil
 			},
+			droppedMessages: dm,
 		}
 	)
 
-	wp.transact(envelope)
+	dm.On("With", prometheus.Labels{schemeLabel: wrp.SchemeEvent, codeLabel: strconv.Itoa(http.StatusAccepted), reasonLabel: non202CodeReason}).Panic("Func dm.With should have not been called")
+	dm.On("Add", 1.).Panic("Func dm.Add should have not been called")
+	require.NotPanics(func() { wp.transact(envelope) })
+	assert.Equal(b.Len(), 0)
 }
 
 func testWorkerPoolTransactHTTPError(t *testing.T) {
 	var (
 		assert          = assert.New(t)
-		logger          = zaptest.NewLogger(t)
-		expectedRequest = httptest.NewRequest("POST", "/", nil)
+		target          = "http://localhost/foo"
+		expectedRequest = httptest.NewRequest("POST", target, nil).WithContext(context.WithValue(context.Background(), schemeContextKey{}, wrp.SchemeEvent))
 		envelope        = outboundEnvelope{expectedRequest, func() {}}
-
-		wp = &WorkerPool{
-			logger: logger,
-			transactor: func(actualRequest *http.Request) (*http.Response, error) {
-				assert.Equal(expectedRequest, actualRequest)
-				return &http.Response{
-					Status:     "500 It Burns!",
-					StatusCode: 500,
-					Body:       io.NopCloser(new(bytes.Buffer)),
-				}, nil
+		tests           = []struct {
+			description    string
+			wp             *WorkerPool
+			expectedCode   int
+			expectedReason string
+		}{
+			{
+				description: "failure 500",
+				wp: &WorkerPool{
+					transactor: func(actualRequest *http.Request) (*http.Response, error) {
+						assert.Equal(expectedRequest, actualRequest)
+						return &http.Response{
+							Status:     "500 It Burns!",
+							StatusCode: http.StatusInternalServerError,
+							Body:       io.NopCloser(new(bytes.Buffer)),
+							Request:    httptest.NewRequest("POST", target, nil),
+						}, nil
+					},
+				},
+				expectedCode:   http.StatusInternalServerError,
+				expectedReason: non202CodeReason,
+			},
+			{
+				description: "failure 415, caduceus /notify response case",
+				wp: &WorkerPool{
+					transactor: func(actualRequest *http.Request) (*http.Response, error) {
+						assert.Equal(expectedRequest, actualRequest)
+						return &http.Response{
+							Status:     "415",
+							StatusCode: http.StatusUnsupportedMediaType,
+							Body:       io.NopCloser(new(bytes.Buffer)),
+							Request:    httptest.NewRequest("POST", target, nil),
+						}, nil
+					},
+				},
+				expectedCode:   http.StatusUnsupportedMediaType,
+				expectedReason: non202CodeReason,
+			},
+			{
+				description: "failure 503, caduceus /notify response case",
+				wp: &WorkerPool{
+					transactor: func(actualRequest *http.Request) (*http.Response, error) {
+						assert.Equal(expectedRequest, actualRequest)
+						return &http.Response{
+							Status:     "503",
+							StatusCode: http.StatusServiceUnavailable,
+							Body:       io.NopCloser(new(bytes.Buffer)),
+							Request:    httptest.NewRequest("POST", target, nil),
+						}, nil
+					},
+				},
+				expectedCode:   http.StatusServiceUnavailable,
+				expectedReason: non202CodeReason,
+			},
+			{
+				description: "failure 400, caduceus /notify response case",
+				wp: &WorkerPool{
+					transactor: func(actualRequest *http.Request) (*http.Response, error) {
+						assert.Equal(expectedRequest, actualRequest)
+						return &http.Response{
+							Status:     "400",
+							StatusCode: http.StatusBadRequest,
+							Body:       io.NopCloser(new(bytes.Buffer)),
+							Request:    httptest.NewRequest("POST", target, nil),
+						}, nil
+					},
+				},
+				expectedCode:   http.StatusBadRequest,
+				expectedReason: non202CodeReason,
+			},
+			{
+				description: "failure 408 timeout, caduceus /notify response case",
+				wp: &WorkerPool{
+					transactor: func(actualRequest *http.Request) (*http.Response, error) {
+						assert.Equal(expectedRequest, actualRequest)
+						return &http.Response{
+							Status:     "408",
+							StatusCode: http.StatusRequestTimeout,
+							Body:       io.NopCloser(new(bytes.Buffer)),
+							Request:    httptest.NewRequest("POST", target, nil),
+						}, context.DeadlineExceeded
+					},
+				},
+				expectedCode:   http.StatusRequestTimeout,
+				expectedReason: deadlineExceededReason,
 			},
 		}
 	)
 
-	wp.transact(envelope)
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			var b bytes.Buffer
+			tc.wp.logger = zap.New(
+				zapcore.NewCore(zapcore.NewJSONEncoder(
+					zapcore.EncoderConfig{
+						MessageKey: "message",
+					}), zapcore.AddSync(&b), zapcore.WarnLevel),
+			)
+			dm := new(mockCounter)
+			tc.wp.droppedMessages = dm
+			dm.On("With", prometheus.Labels{schemeLabel: wrp.SchemeEvent, codeLabel: strconv.Itoa(tc.expectedCode), reasonLabel: tc.expectedReason}).Return().Once()
+			dm.On("Add", 1.).Return().Once()
+			tc.wp.transact(envelope)
+			assert.Greater(b.Len(), 0)
+			dm.AssertExpectations(t)
+		})
+	}
 }
 
 func TestWorkerPool(t *testing.T) {
 	t.Run("Transact", func(t *testing.T) {
-		t.Run("TransactorError", testWorkerPoolTransactTransactorError)
 		t.Run("HTTPSuccess", testWorkerPoolTransactHTTPSuccess)
 		t.Run("HTTPError", testWorkerPoolTransactHTTPError)
 	})

@@ -1,33 +1,41 @@
-/**
- * Copyright 2017 Comcast Cable Communications Management, LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- */
+// SPDX-FileCopyrightText: 2017 Comcast Cable Communications Management, LLC
+// SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
 	"context"
 	"crypto"
+	"fmt"
 	"unicode/utf8"
 
-	"github.com/go-kit/kit/metrics"
 	"github.com/golang-jwt/jwt"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/mock"
 	"github.com/xmidt-org/clortho"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/wrp-go/v3"
+
+	dto "github.com/prometheus/client_model/go"
 )
+
+type mockCollector struct {
+}
+
+func (m *mockCollector) Describe(chan<- *prometheus.Desc) {
+}
+func (m *mockCollector) Collect(chan<- prometheus.Metric) {
+}
+
+type mockMetric struct {
+}
+
+func (m *mockMetric) Desc() *prometheus.Desc {
+	return &prometheus.Desc{}
+}
+
+func (m *mockMetric) Write(*dto.Metric) error {
+	return nil
+}
 
 type mockURLFilter struct {
 	mock.Mock
@@ -83,6 +91,7 @@ func (parser *mockJWTParser) ParseJWT(token string, claims jwt.Claims, parseFunc
 
 // mockHistogram provides the mock implementation of the metrics.Histogram object
 type mockHistogram struct {
+	mockCollector
 	mock.Mock
 }
 
@@ -90,32 +99,98 @@ func (m *mockHistogram) Observe(value float64) {
 	m.Called(value)
 }
 
-func (m *mockHistogram) With(labelValues ...string) metrics.Histogram {
-	for _, v := range labelValues {
-		if !utf8.ValidString(v) {
-			panic("not UTF-8")
+func (m *mockHistogram) With(labelValues prometheus.Labels) prometheus.Observer {
+	for k, v := range labelValues {
+		if !utf8.ValidString(k) {
+			panic(fmt.Sprintf("key `%s`, value `%s`: key is not UTF-8", k, v))
+		} else if !utf8.ValidString(v) {
+			panic(fmt.Sprintf("key `%s`, value `%s`: value is not UTF-8", k, v))
 		}
 	}
 	m.Called(labelValues)
 	return m
 }
 
+func (m *mockHistogram) CurryWith(labels prometheus.Labels) (o prometheus.ObserverVec, err error) {
+	return m, nil
+}
+
+func (m *mockHistogram) GetMetricWith(labels prometheus.Labels) (o prometheus.Observer, err error) {
+	return m, nil
+}
+
+func (m *mockHistogram) GetMetricWithLabelValues(...string) (o prometheus.Observer, err error) {
+	return m, nil
+}
+
+func (m *mockHistogram) MustCurryWith(labels prometheus.Labels) (o prometheus.ObserverVec) {
+	return m
+}
+
+func (m *mockHistogram) WithLabelValues(lvs ...string) (o prometheus.Observer) {
+	return m
+}
+
 // mockCounter provides the mock implementation of the metrics.Counter object
 type mockCounter struct {
+	mockCollector
+	mockMetric
 	mock.Mock
+
+	// port over testCounter functionality
+	count      float64
+	labels     []string
+	labelPairs prometheus.Labels
 }
 
 func (m *mockCounter) Add(delta float64) {
+	m.count += delta
 	m.Called(delta)
 }
 
-func (m *mockCounter) With(labelValues ...string) metrics.Counter {
-	for _, v := range labelValues {
-		if !utf8.ValidString(v) {
-			panic("not UTF-8")
+func (m *mockCounter) Inc() {}
+
+func (m *mockCounter) With(labelPairs prometheus.Labels) prometheus.Counter {
+	for k, v := range labelPairs {
+		if !utf8.ValidString(k) {
+			panic(fmt.Sprintf("key `%s`, value `%s`: key is not UTF-8", k, v))
+		} else if !utf8.ValidString(v) {
+			panic(fmt.Sprintf("key `%s`, value `%s`: value is not UTF-8", k, v))
 		}
 	}
-	m.Called(labelValues)
+
+	m.labelPairs = labelPairs
+	m.Called(labelPairs)
+
+	return m
+}
+
+func (m *mockCounter) CurryWith(labels prometheus.Labels) (c *prometheus.CounterVec, err error) {
+	return &prometheus.CounterVec{}, nil
+}
+
+func (m *mockCounter) GetMetricWith(labels prometheus.Labels) (c prometheus.Counter, err error) {
+	return m, nil
+}
+
+func (m *mockCounter) GetMetricWithLabelValues(lvs ...string) (c prometheus.Counter, err error) {
+	return m, nil
+}
+
+func (m *mockCounter) MustCurryWith(labels prometheus.Labels) (c *prometheus.CounterVec) {
+	return &prometheus.CounterVec{}
+}
+
+func (m *mockCounter) WithLabelValues(lvs ...string) (c prometheus.Counter) {
+	// port over testCounter functionality
+	if len(lvs) != len(m.labels) {
+		panic(fmt.Sprintf("expected %d label values but got %d", len(m.labels), len(lvs)))
+	}
+
+	for i, l := range m.labels {
+		m.labelPairs[l] = lvs[i]
+	}
+
 	return m
 }
 

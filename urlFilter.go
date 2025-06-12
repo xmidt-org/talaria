@@ -1,24 +1,15 @@
-/**
- * Copyright 2017 Comcast Cable Communications Management, LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- */
+// SPDX-FileCopyrightText: 2017 Comcast Cable Communications Management, LLC
+// SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strings"
+)
+
+var (
+	ErrorURLSchemeNotAllowed = errors.New("url scheme not allowed")
 )
 
 // URLFilter represents a strategy for validating and possibly mutating URLs from devices.
@@ -62,7 +53,7 @@ func (uf *urlFilter) Filter(v string) (string, error) {
 
 	scheme := v[:position]
 	if !uf.allowedSchemes[v[:position]] {
-		return "", fmt.Errorf("Scheme not allowed: %s", scheme)
+		return "", fmt.Errorf("%w: %s", ErrorURLSchemeNotAllowed, scheme)
 	}
 
 	return v, nil

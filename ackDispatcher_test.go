@@ -1,19 +1,5 @@
-/**
- * Copyright 2017 Comcast Cable Communications Management, LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- */
+// SPDX-FileCopyrightText: 2017 Comcast Cable Communications Management, LLC
+// SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
@@ -21,6 +7,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -60,7 +47,7 @@ func testAckDispatcherOnDeviceEventQOSEventFailure(t *testing.T) {
 			mAckFailureLatency := new(mockHistogram)
 			p, mt, qosl := failure_case, failure_case, failure_case
 			// Setup labels for metrics
-			l := []string{qosLevelLabel, qosl, partnerIDLabel, p, messageType, mt}
+			l := prometheus.Labels{qosLevelLabel: qosl, partnerIDLabel: p, messageType: mt}
 			om := OutboundMeasures{
 				AckSuccess:        mAckSuccess,
 				AckFailure:        mAckFailure,
@@ -183,7 +170,7 @@ func testAckDispatcherOnDeviceEventQOSDeviceFailure(t *testing.T) {
 			require.True(ok)
 			// Setup labels for metrics
 			dm := genTestMetadata()
-			l := []string{qosLevelLabel, m.QualityOfService.Level().String(), partnerIDLabel, dm.PartnerIDClaim(), messageType, m.Type.FriendlyName()}
+			l := prometheus.Labels{qosLevelLabel: m.QualityOfService.Level().String(), partnerIDLabel: dm.PartnerIDClaim(), messageType: m.Type.FriendlyName()}
 			// Setup metrics for the dispatcher
 			om := OutboundMeasures{
 				AckSuccess:        mAckSuccess,
@@ -507,7 +494,7 @@ func testAckDispatcherOnDeviceEventQOSSuccess(t *testing.T) {
 			}
 
 			// Setup labels for metrics
-			l := []string{qosLevelLabel, qosl, partnerIDLabel, p, messageType, mt}
+			l := prometheus.Labels{qosLevelLabel: qosl, partnerIDLabel: p, messageType: mt}
 			// Setup metrics for the dispatcher
 			om := OutboundMeasures{
 				AckSuccess:        mAckSuccess,

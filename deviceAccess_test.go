@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2017 Comcast Cable Communications Management, LLC
+// SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
@@ -5,9 +7,7 @@ import (
 	"errors"
 	"testing"
 
-	// nolint:staticcheck
-
-	"github.com/go-kit/kit/metrics"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/xmidt-org/webpa-common/v2/device"
@@ -41,7 +41,7 @@ func testAuthorizeWRP(t *testing.T, testCases []deviceAccessTestCase, strict boo
 				mockDevice         = new(device.MockDevice)
 				mockBinOp          = new(mockBinOp)
 				testLogger         = zaptest.NewLogger(t)
-				counter            = newTestCounter()
+				counter            = mockCounter{labelPairs: make(map[string]string), labels: []string{reasonLabel, outcomeLabel}}
 				expectedLabels     = getLabelMaps(testCase.ExpectedError, testCase.IsFatal, strict, testCase.BaseLabelPairs)
 
 				wrpMsg = &wrp.Message{
@@ -67,12 +67,14 @@ func testAuthorizeWRP(t *testing.T, testCases []deviceAccessTestCase, strict boo
 				checks = getChecks(t, mockBinOp, testCase.IncompleteCheck, testCase.Authorized)
 			}
 
+			counter.On("With", expectedLabels).Return().Once()
+			counter.On("Add", 1.).Return().Once()
 			deviceAccessAuthority := &talariaDeviceAccess{
 				strict:             strict,
-				wrpMessagesCounter: counter,
+				wrpMessagesCounter: &counter,
 				deviceRegistry:     mockDeviceRegistry,
 				sep:                ">",
-				logger:        testLogger,
+				logger:             testLogger,
 				checks:             checks,
 			}
 
@@ -165,7 +167,7 @@ func TestAuthorizeWRP(t *testing.T) {
 	})
 }
 
-func getLabelMaps(err error, isFatal, strict bool, baseLabelPairs map[string]string) map[string]string {
+func getLabelMaps(err error, isFatal, strict bool, baseLabelPairs map[string]string) prometheus.Labels {
 	out := make(map[string]string)
 
 	for k, v := range baseLabelPairs {
@@ -180,28 +182,6 @@ func getLabelMaps(err error, isFatal, strict bool, baseLabelPairs map[string]str
 	out[outcomeLabel] = outcome
 
 	return out
-}
-
-type testCounter struct {
-	count      float64
-	labelPairs map[string]string
-}
-
-func (c *testCounter) Add(delta float64) {
-	c.count += delta
-}
-
-func (c *testCounter) With(labelValues ...string) metrics.Counter {
-	for i := 0; i < len(labelValues)-1; i += 2 {
-		c.labelPairs[labelValues[i]] = labelValues[i+1]
-	}
-	return c
-}
-
-func newTestCounter() *testCounter {
-	return &testCounter{
-		labelPairs: make(map[string]string),
-	}
 }
 
 func getTestDeviceMetadata() *device.Metadata {

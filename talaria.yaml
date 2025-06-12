@@ -1,4 +1,7 @@
 ---
+# SPDX-FileCopyrightText: 2017 Comcast Cable Communications Management, LLC
+# SPDX-License-Identifier: Apache-2.0
+
 # The unique fully-qualified-domain-name of the server.  It is provided to
 # the X-Talaria-Server header for showing what server fulfilled the request
 # sent.
@@ -311,7 +314,7 @@ device:
     # authKey is the basic auth token used for sending messages to the receiver.
     # (Optional) defaults to no auth token
     # WARNING: This is an example auth token. DO NOT use this in production.
-    authKey: YXV0aEhlYWRlcg==
+    authKey: dXNlcjpwYXNz
 
 # inbound configures the api inbound requests.
 # (Optional) defaults described below
@@ -319,11 +322,11 @@ inbound:
   # authKey is the basic auth token incoming api requests like /stat, and /devices
   # (Optional) defaults to no auth token
   # WARNING: This is an example auth token. DO NOT use this in production.
-  authKey: YXV0aEhlYWRlcg==
+  authKey: dXNlcjpwYXNz
 
-  # requestTimeout is the timeout for all inbound HTTP requests.
+  # The timeout for all inbound HTTP requests.
   # (Optional) defaults to 120s
-  requestTimeout: "120s"
+  timeout: "120s"
 
 ########################################
 #   Authorization Related Configuration
@@ -333,7 +336,7 @@ jwtValidator:
   Config:
     Resolve:
       # Template is a URI template used to fetch keys.  This template may
-	    # use a single parameter named keyID, e.g. http://keys.com/{keyID}.
+      # use a single parameter named keyID, e.g. http://keys.com/{keyID}.
       # This field is required and has no default.
       Template: "http://localhost/{key_name}"
 
@@ -581,10 +584,10 @@ tracing:
   # so that trace information is not written to stdout.
   # skipTraceExport: true
 
-  # endpoint is where trace information should be routed. Applies to otlp, zipkin, and jaegar. OTLP/gRPC uses port 4317 by default. 
+  # endpoint is where trace information should be routed. Applies to otlp, zipkin, and jaegar. OTLP/gRPC uses port 4317 by default.
   # OTLP/HTTP uses port 4318 by default.
   # endpoint: "http://localhost:9411/api/v2/spans"
-  
+
   # ParentBased and NoParent dictate if and when new spans should be created.
   # ParentBased = "ignore" (default), tracing is effectively turned off and the "NoParent" value is ignored
   # ParentBased = "honor", the sampling decision is made by the parent of the span
@@ -601,7 +604,7 @@ zap:
   # OutputPaths is a list of URLs or file paths to write logging output to.
   outputPaths:
     - stdout
-    # - /var/log/caduceus/caduceus.log
+    # - /var/log/talaria/talaria.log
 
   # Level is the minimum enabled logging level. Note that this is a dynamic
   # level, so calling Config.Level.SetLevel will atomically change the log
@@ -612,12 +615,12 @@ zap:
   # zapcore.EncoderConfig for details.
   errorOutputPaths:
     - stderr
-    # - /var/log/caduceus/caduceus.log
+    # - /var/log/talaria/talaria.log
 
   # DisableCaller stops annotating logs with the calling function's file
-	# name and line number. By default, all logs are annotated.
+  # name and line number. By default, all logs are annotated.
   disableCaller: true
-  
+
   # EncoderConfig sets options for the chosen encoder. See
   # zapcore.EncoderConfig for details.
   encoderConfig:
@@ -630,3 +633,7 @@ zap:
   # "console", as well as any third-party encodings registered via
   # RegisterEncoder.
   encoding: json
+
+#(Optional) failOpen determines if talaria should allow devices without authentication to connect or not
+#default is to allow for fail open
+failOpen: true

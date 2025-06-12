@@ -1,19 +1,5 @@
-/**
- * Copyright 2017 Comcast Cable Communications Management, LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- */
+// SPDX-FileCopyrightText: 2017 Comcast Cable Communications Management, LLC
+// SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
@@ -24,20 +10,15 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-kit/kit/metrics"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/viper"
 	"github.com/xmidt-org/bascule"
-	"github.com/xmidt-org/bascule/basculehelper"
 	"github.com/xmidt-org/clortho/clorthometrics"
 	"github.com/xmidt-org/clortho/clorthozap"
 	"github.com/xmidt-org/sallust"
 	"github.com/xmidt-org/touchstone"
-
-	// nolint:staticcheck
-	"github.com/xmidt-org/webpa-common/v2/xmetrics"
 	"go.uber.org/zap"
 
 	// nolint:staticcheck
@@ -48,10 +29,10 @@ import (
 
 	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/device"
-
 	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/service"
 	// nolint:staticcheck
+	"github.com/xmidt-org/webpa-common/v2/service/accessor"
 	"github.com/xmidt-org/webpa-common/v2/service/servicehttp"
 	"github.com/xmidt-org/webpa-common/v2/xhttp"
 	"github.com/xmidt-org/webpa-common/v2/xhttp/xfilter"
@@ -93,6 +74,10 @@ const (
 	// RehasherServicesConfigKey is the path to the services for whose events talaria's
 	// rehasher should listen to.
 	RehasherServicesConfigKey = "device.rehasher.services"
+
+	// FailOpenConfigKey is the path to the fail open boolean which will determine
+	// which route to take when a device tries to connect to talaria
+	FailOpenConfigKey = "failOpen"
 )
 
 // NoOpConstructor provides a transparent way for constructors that make up
@@ -137,8 +122,8 @@ func buildUserPassMap(logger *zap.Logger, encodedBasicAuthKeys []string) (userPa
 	return
 }
 
-func NewPrimaryHandler(logger *zap.Logger, manager device.Manager, v *viper.Viper, a service.Accessor, e service.Environment,
-	controlConstructor alice.Constructor, metricsRegistry xmetrics.Registry, r *mux.Router) (http.Handler, error) {
+func NewPrimaryHandler(logger *zap.Logger, manager device.Manager, v *viper.Viper, a accessor.Accessor, e service.Environment,
+	controlConstructor alice.Constructor, tf *touchstone.Factory, r *mux.Router) (http.Handler, error) {
 	var (
 		inboundTimeout = getInboundTimeout(v)
 		apiHandler     = r.PathPrefix(fmt.Sprintf("%s/{version:%s|%s}", baseURI, v2, version)).Subrouter()
@@ -149,9 +134,23 @@ func NewPrimaryHandler(logger *zap.Logger, manager device.Manager, v *viper.Vipe
 		deviceAuthRules  = bascule.Validators{} //auth rules for device registration endpoints
 		serviceAuthRules = bascule.Validators{} //auth rules for everything else
 
-		m        = basculehelper.NewAuthValidationMeasures(metricsRegistry)
-		listener = basculehelper.NewMetricListener(m)
 	)
+
+	authCounter, err := tf.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: basculehttp.AuthValidationOutcome,
+			Help: "Counter for success and failure reason results through bascule",
+		}, basculehttp.ServerLabel, basculehttp.OutcomeLabel)
+	if err != nil {
+		return nil, err
+	}
+
+	listener, err := basculehttp.NewMetricListener(
+		&basculehttp.AuthValidationMeasures{ValidationOutcome: authCounter},
+	)
+	if err != nil {
+		return nil, err
+	}
 
 	authConstructorOptions := []basculehttp.COption{
 		basculehttp.WithCLogger(getLogger),
@@ -179,21 +178,9 @@ func NewPrimaryHandler(logger *zap.Logger, manager device.Manager, v *viper.Vipe
 			return nil, errors.New("failed to create clortho reolver")
 		}
 
-		promReg, ok := metricsRegistry.(prometheus.Registerer)
-		if !ok {
-			return nil, errors.New("failed to get prometheus registerer")
-
-		}
-
-		var (
-			tsConfig touchstone.Config
-			zConfig  sallust.Config
-		)
-		// Get touchstone & zap configurations
-		v.UnmarshalKey("touchstone", &tsConfig)
+		var zConfig sallust.Config
 		v.UnmarshalKey("zap", &zConfig)
 		zlogger := zap.Must(zConfig.Build())
-		tf := touchstone.NewFactory(tsConfig, zlogger, promReg)
 		// Instantiate a metric listener for the resolver
 		cml, err := clorthometrics.NewListener(clorthometrics.WithFactory(tf))
 		if err != nil {
@@ -249,7 +236,19 @@ func NewPrimaryHandler(logger *zap.Logger, manager device.Manager, v *viper.Vipe
 			return nil, err
 		}
 
-		deviceAccessCheck, err := buildDeviceAccessCheck(config, logger, metricsRegistry.NewCounter(InboundWRPMessageCounter), manager)
+		inboundWRPMessageCounter, err := tf.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: InboundWRPMessageCounter,
+				Help: "Number of inbound WRP Messages successfully decoded and ready to route to device",
+			},
+			[]string{outcomeLabel, reasonLabel}...,
+		)
+		if err != nil {
+			logger.Error(fmt.Sprintf("Could not create %s metric.", InboundWRPMessageCounter))
+			return nil, err
+		}
+
+		deviceAccessCheck, err := buildDeviceAccessCheck(config, logger, inboundWRPMessageCounter, manager)
 		if err != nil {
 			return nil, err
 		}
@@ -328,20 +327,41 @@ func NewPrimaryHandler(logger *zap.Logger, manager device.Manager, v *viper.Vipe
 	}
 
 	// the secured variant of the device connect handler - compatible with v2 and v3
-	r.Handle(
-		fmt.Sprintf("%s/{version:%s|%s}/device", baseURI, v2, version),
-		deviceConnectChain.
-			Extend(versionCompatibleAuth).
-			Append(DeviceMetadataMiddleware(getLogger)).
-			Then(connectHandler),
-	).HeadersRegexp("Authorization", ".*")
+	// default functionality is to allow for talaria to accept devices with or without authorization
+	// failOpen must be set to false in config in order to require authorization from any device trying to connect
+	failOpen := true
+	if v.IsSet(FailOpenConfigKey) {
+		err := v.UnmarshalKey(FailOpenConfigKey, &failOpen)
+		if err != nil {
+			logger.Error("failOpen parse failure", zap.Error(err))
+			return nil, errors.New("failed parsing FailOpen boolean")
 
-	r.Handle(
-		fmt.Sprintf("%s/{version:%s|%s}/device", baseURI, v2, version),
-		deviceConnectChain.
-			Append(DeviceMetadataMiddleware(getLogger)).
-			Then(connectHandler),
-	)
+		}
+	}
+	if failOpen {
+		r.Handle(
+			fmt.Sprintf("%s/{version:%s|%s}/device", baseURI, v2, version),
+			deviceConnectChain.
+				Extend(versionCompatibleAuth).
+				Append(DeviceMetadataMiddleware(getLogger)).
+				Then(connectHandler),
+		).HeadersRegexp("Authorization", ".*")
+
+		r.Handle(
+			fmt.Sprintf("%s/{version:%s|%s}/device", baseURI, v2, version),
+			deviceConnectChain.
+				Append(DeviceMetadataMiddleware(getLogger)).
+				Then(connectHandler),
+		)
+	} else {
+		r.Handle(
+			fmt.Sprintf("%s/{version:%s|%s}/device", baseURI, v2, version),
+			deviceConnectChain.
+				Extend(versionCompatibleAuth).
+				Append(DeviceMetadataMiddleware(getLogger)).
+				Then(connectHandler),
+		)
+	}
 
 	apiHandler.Handle(
 		"/device/{deviceID}/stat",
@@ -358,7 +378,7 @@ func NewPrimaryHandler(logger *zap.Logger, manager device.Manager, v *viper.Vipe
 	return r, nil
 }
 
-func buildDeviceAccessCheck(config *deviceAccessCheckConfig, logger *zap.Logger, counter metrics.Counter, deviceRegistry device.Registry) (deviceAccess, error) {
+func buildDeviceAccessCheck(config *deviceAccessCheckConfig, logger *zap.Logger, counter *prometheus.CounterVec, deviceRegistry device.Registry) (deviceAccess, error) {
 
 	if len(config.Checks) < 1 {
 		logger.Error("Potential security misconfig. Include checks for deviceAccessCheck or disable it")

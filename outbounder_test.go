@@ -1,19 +1,5 @@
-/**
- * Copyright 2017 Comcast Cable Communications Management, LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- */
+// SPDX-FileCopyrightText: 2017 Comcast Cable Communications Management, LLC
+// SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
@@ -29,14 +15,13 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/xmidt-org/sallust"
+	"github.com/xmidt-org/touchstone"
 	"github.com/xmidt-org/webpa-common/v2/adapter"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/webpa-common/v2/event"
-	"go.uber.org/zap/zaptest"
-
-	// nolint:staticcheck
-	"github.com/xmidt-org/webpa-common/v2/xmetrics"
 	"github.com/xmidt-org/wrp-go/v3"
+	"go.uber.org/zap/zaptest"
 )
 
 func ExampleOutbounder() {
@@ -53,12 +38,6 @@ func ExampleOutbounder() {
 	)
 
 	defer server.Close()
-
-	metricsRegistry, err := xmetrics.NewRegistry(nil, Metrics)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
 
 	var (
 		// set the workerPoolSize to 1 so that output order is deterministic
@@ -87,7 +66,24 @@ func ExampleOutbounder() {
 		return
 	}
 
-	listeners, err := o.Start(NewOutboundMeasures(metricsRegistry))
+	cfg := touchstone.Config{
+		DefaultNamespace: "n",
+		DefaultSubsystem: "s",
+	}
+	_, pr, err := touchstone.New(cfg)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	tf := touchstone.NewFactory(cfg, sallust.Default(), pr)
+	om, err := NewOutboundMeasures(tf)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	listeners, err := o.Start(om)
 	if err != nil {
 		fmt.Println(err)
 		return

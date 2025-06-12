@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2017 Comcast Cable Communications Management, LLC
+// SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
@@ -24,7 +26,9 @@ func statusMetadata(d device.Interface) map[string]string {
 		wrpmeta.Field{From: "webpa-last-reconnect-reason", To: "/last-reconnect-reason"},
 		wrpmeta.Field{From: "webpa-protocol", To: "/protocol"},
 		wrpmeta.Field{From: "webpa-interface-used", To: "/interface-used"},
-		wrpmeta.Field{From: "boot-time-retry-wait", To: "/boot-time-retry-wait"}).
+		wrpmeta.Field{From: "boot-time-retry-wait", To: "/boot-time-retry-wait"},
+		wrpmeta.Field{From: "webpa-interface-label", To: "/webpa-interface-label"},
+		wrpmeta.Field{From: "wan-ipv4-address", To: "/wan-ipv4-address"}).
 		Set("/trust", strconv.Itoa(d.Metadata().TrustClaim())).
 		Build()
 
@@ -34,6 +38,7 @@ func statusMetadata(d device.Interface) map[string]string {
 		metadata["/compliance"] = convey.MissingFields.String()
 	}
 
+	metadata["/hw-deviceid"] = string(d.ID())
 	return metadata
 }
 
@@ -50,8 +55,8 @@ func onlinePayload(t time.Time, d device.Interface) []byte {
 
 func newOnlineMessage(source string, d device.Interface) (string, *wrp.Message) {
 	eventType := statusEventType(d.ID(), "online")
-
-	return eventType, &wrp.Message{
+	t := time.Now()
+	m := &wrp.Message{
 		Type:        wrp.SimpleEventMessageType,
 		Source:      source,
 		Destination: "event:" + eventType,
@@ -59,8 +64,11 @@ func newOnlineMessage(source string, d device.Interface) (string, *wrp.Message) 
 		PartnerIDs:  []string{d.Metadata().PartnerIDClaim()},
 		SessionID:   d.Metadata().SessionID(),
 		Metadata:    statusMetadata(d),
-		Payload:     onlinePayload(time.Now(), d),
+		Payload:     onlinePayload(t, d),
 	}
+	updateTimestampMetadata(m, t)
+
+	return m.FindEventStringSubMatch(), m
 }
 
 func offlinePayload(t time.Time, d device.Interface) []byte {
@@ -90,8 +98,8 @@ func offlinePayload(t time.Time, d device.Interface) []byte {
 
 func newOfflineMessage(source string, d device.Interface) (string, *wrp.Message) {
 	eventType := statusEventType(d.ID(), "offline")
-
-	return eventType, &wrp.Message{
+	t := time.Now()
+	m := &wrp.Message{
 		Type:        wrp.SimpleEventMessageType,
 		Source:      source,
 		Destination: "event:" + eventType,
@@ -99,6 +107,13 @@ func newOfflineMessage(source string, d device.Interface) (string, *wrp.Message)
 		PartnerIDs:  []string{d.Metadata().PartnerIDClaim()},
 		SessionID:   d.Metadata().SessionID(),
 		Metadata:    statusMetadata(d),
-		Payload:     offlinePayload(time.Now(), d),
+		Payload:     offlinePayload(t, d),
 	}
+	updateTimestampMetadata(m, t)
+
+	return m.FindEventStringSubMatch(), m
+}
+
+func updateTimestampMetadata(m *wrp.Message, t time.Time) {
+	m.Metadata[device.WRPTimestampMetadataKey] = t.Format(time.RFC3339Nano)
 }

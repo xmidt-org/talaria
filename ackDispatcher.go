@@ -1,19 +1,5 @@
-/**
- * Copyright 2017 Comcast Cable Communications Management, LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- */
+// SPDX-FileCopyrightText: 2017 Comcast Cable Communications Management, LLC
+// SPDX-License-Identifier: Apache-2.0
 package main
 
 import (
@@ -21,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/go-kit/kit/metrics"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"go.uber.org/zap"
 
@@ -40,10 +26,10 @@ type ackDispatcher struct {
 	hostname          string
 	logger            *zap.Logger
 	timeout           time.Duration
-	AckSuccess        metrics.Counter
-	AckFailure        metrics.Counter
-	AckSuccessLatency metrics.Histogram
-	AckFailureLatency metrics.Histogram
+	AckSuccess        CounterVec
+	AckFailure        CounterVec
+	AckSuccessLatency HistogramVec
+	AckFailureLatency HistogramVec
 }
 
 // NewAckDispatcher is an ackDispatcher factory which processes outbound events
@@ -144,33 +130,33 @@ func (d *ackDispatcher) OnDeviceEvent(event *device.Event) {
 	p := dm.PartnerIDClaim()
 	t := m.Type.FriendlyName()
 	// Metric labels
-	ls := []string{qosLevelLabel, l.String(), partnerIDLabel, p, messageType, t}
+	ls := prometheus.Labels{qosLevelLabel: l.String(), partnerIDLabel: p, messageType: t}
 	ctx, cancel := context.WithTimeout(context.Background(), d.timeout)
 	defer cancel()
 
 	// Observe the latency of sending an ack to the source device
 	ackFailure := false
 	defer func(s time.Time) {
-		d.recordAckLatency(s, ackFailure, ls...)
+		d.recordAckLatency(s, ackFailure, ls)
 	}(time.Now())
 
 	if _, err := event.Device.Send(r.WithContext(ctx)); err != nil {
 		d.logger.Error("Error dispatching QOS ack", zap.Any("qosLevel", l), zap.Any("partnerID", p), zap.Any("messageType", t), zap.Error(err))
-		d.AckFailure.With(ls...).Add(1)
+		d.AckFailure.With(ls).Add(1)
 		ackFailure = true
 		return
 	}
 
-	d.AckSuccess.With(ls...).Add(1)
+	d.AckSuccess.With(ls).Add(1)
 }
 
 // recordAckLatency records the latency for both successful and failed acks
-func (d *ackDispatcher) recordAckLatency(s time.Time, f bool, l ...string) {
+func (d *ackDispatcher) recordAckLatency(s time.Time, f bool, l prometheus.Labels) {
 	switch {
 	case f:
-		d.AckFailureLatency.With(l...).Observe(time.Since(s).Seconds())
+		d.AckFailureLatency.With(l).Observe(time.Since(s).Seconds())
 
 	default:
-		d.AckSuccessLatency.With(l...).Observe(time.Since(s).Seconds())
+		d.AckSuccessLatency.With(l).Observe(time.Since(s).Seconds())
 	}
 }
