@@ -38,7 +38,9 @@ import (
 	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/service"
 	// nolint:staticcheck
+	"github.com/xmidt-org/webpa-common/v2/service/accessor"
 	"github.com/xmidt-org/webpa-common/v2/service/monitor"
+
 	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/service/servicecfg"
 	"github.com/xmidt-org/webpa-common/v2/xresolver/consul"
@@ -195,10 +197,10 @@ func talaria(arguments []string) int {
 	}
 
 	health := webPA.Health.NewHealth(logger, devicehealth.Options...)
-	var a *service.UpdatableAccessor
+	var a *accessor.UpdatableAccessor
 	if e != nil {
 		// service discovery is optional
-		a = new(service.UpdatableAccessor)
+		a = new(accessor.UpdatableAccessor)
 	}
 
 	rootRouter := mux.NewRouter()
@@ -206,7 +208,7 @@ func talaria(arguments []string) int {
 		otelmux.WithPropagators(tracing.Propagator()),
 		otelmux.WithTracerProvider(tracing.TracerProvider()),
 	}
-	rootRouter.Use(otelmux.Middleware("primary", otelMuxOptions...), candlelight.EchoFirstTraceNodeInfo(tracing.Propagator(), true))
+	rootRouter.Use(otelmux.Middleware("primary", otelMuxOptions...), candlelight.EchoFirstTraceNodeInfo(tracing, true))
 
 	primaryHandler, err := NewPrimaryHandler(logger, manager, v, a, e, controlConstructor, tf, rootRouter)
 	if err != nil {

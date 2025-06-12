@@ -32,6 +32,7 @@ import (
 	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/service"
 	// nolint:staticcheck
+	"github.com/xmidt-org/webpa-common/v2/service/accessor"
 	"github.com/xmidt-org/webpa-common/v2/service/servicehttp"
 	"github.com/xmidt-org/webpa-common/v2/xhttp"
 	"github.com/xmidt-org/webpa-common/v2/xhttp/xfilter"
@@ -121,7 +122,7 @@ func buildUserPassMap(logger *zap.Logger, encodedBasicAuthKeys []string) (userPa
 	return
 }
 
-func NewPrimaryHandler(logger *zap.Logger, manager device.Manager, v *viper.Viper, a service.Accessor, e service.Environment,
+func NewPrimaryHandler(logger *zap.Logger, manager device.Manager, v *viper.Viper, a accessor.Accessor, e service.Environment,
 	controlConstructor alice.Constructor, tf *touchstone.Factory, r *mux.Router) (http.Handler, error) {
 	var (
 		inboundTimeout = getInboundTimeout(v)
