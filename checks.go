@@ -17,9 +17,9 @@ type parsedCheck struct {
 }
 
 var (
-	errNameRequired                    = errors.New("Name is required")
-	errDeviceCredPathRequired          = errors.New("DeviceCredentialPath is required")
-	errInputValueOrWRPCredPathRequired = errors.New("Either InputValue or WRPCredentialPath is required")
+	errNameRequired                    = errors.New("name is required")
+	errDeviceCredPathRequired          = errors.New("deviceCredentialPath is required")
+	errInputValueOrWRPCredPathRequired = errors.New("either InputValue or WRPCredentialPath is required")
 )
 
 func parseDeviceAccessCheck(config deviceAccessCheck) (*parsedCheck, error) {

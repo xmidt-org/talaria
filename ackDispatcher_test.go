@@ -90,7 +90,7 @@ func testAckDispatcherOnDeviceEventQOSDeviceFailure(t *testing.T) {
 	var (
 		expectedStatus                  int64 = 3471
 		expectedRequestDeliveryResponse int64 = 34
-		expectedIncludeSpans            bool  = true
+		expectedIncludeSpans                  = true
 	)
 
 	tests := []struct {
@@ -251,7 +251,7 @@ func testAckDispatcherOnDeviceEventQOSSuccess(t *testing.T) {
 	var (
 		expectedStatus                  int64 = 3471
 		expectedRequestDeliveryResponse int64 = 34
-		expectedIncludeSpans            bool  = true
+		expectedIncludeSpans                  = true
 	)
 
 	tests := []struct {
