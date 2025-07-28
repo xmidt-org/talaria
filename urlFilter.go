@@ -38,7 +38,7 @@ func NewURLFilter(o *Outbounder) (URLFilter, error) {
 
 	if !uf.allowedSchemes[uf.defaultScheme] {
 		return nil, fmt.Errorf(
-			"Allowed schemes %v do not include the default scheme %s", uf.allowedSchemes, uf.defaultScheme,
+			"allowed schemes %v do not include the default scheme %s", uf.allowedSchemes, uf.defaultScheme,
 		)
 	}
 
