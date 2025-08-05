@@ -59,6 +59,6 @@ Files: docs/getting_started.md
 Copyright: SPDX-FileCoyprightText: 2017 Comcast Cable Communications Management, LLC
 License: Apache-2.0
 
-Files: github.com/xmidt-org/webpa-common/v2/semaphore.dep.yml
+Files: /home/runner/work/talaria/talaria/.licenses/go/github.com/xmidt-org/webpa-common/v2/semaphore.dep.yml
 Copyright: SPDX-FileCoyprightText: 2017 Comcast Cable Communications Management, LLC
 License: Apache-2.0
