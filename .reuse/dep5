@@ -56,5 +56,9 @@ Copyright: SPDX-FileCopyrightText: 2017 Comcast Cable Communications Management,
 License: Apache-2.0
 
 Files: docs/getting_started.md
-Copyright: SPDX-FileCopyrightText: 2017 Comcast Cable Communications Management, LLC
+Copyright: SPDX-FileCoyprightText: 2017 Comcast Cable Communications Management, LLC
+License: Apache-2.0
+
+Files: github.com/xmidt-org/webpa-common/v2/semaphore.dep.yml
+Copyright: SPDX-FileCoyprightText: 2017 Comcast Cable Communications Management, LLC
 License: Apache-2.0
