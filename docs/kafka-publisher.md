@@ -1,3 +1,5 @@
+<-- SPDX-FileCopyrightText: 2025 Comcast Cable Communications Management, LLC
+SPDX-License-Identifier: Apache-2.0 -->
 # Kafka Publisher Integration
 
 This document describes the Kafka publisher integration in Talaria using the [wrpkafka](https://github.com/xmidt-org/wrpkafka) library.
