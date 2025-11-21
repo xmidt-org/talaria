@@ -45,12 +45,13 @@ type eventDispatcher struct {
 	droppedMessages  CounterVec
 	outboundEvents   CounterVec
 	outbounds        chan<- outboundEnvelope
+	kafkaPublisher   Publisher
 }
 
 // NewEventDispatcher is an eventDispatcher factory which sends envelopes via
 // the returned channel. The channel may be used to spawn one or more workers
 // to process the envelopes.
-func NewEventDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFilter) (Dispatcher, <-chan outboundEnvelope, error) {
+func NewEventDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFilter, kafkaPublisher Publisher) (Dispatcher, <-chan outboundEnvelope, error) {
 	if urlFilter == nil {
 		var err error
 		urlFilter, err = NewURLFilter(o)
@@ -68,6 +69,11 @@ func NewEventDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFilter)
 
 	logger.Info("eventMap created", zap.Any("eventMap", eventMap))
 
+	// Default to noop publisher if not provided
+	if kafkaPublisher == nil {
+		kafkaPublisher = &noopPublisher{}
+	}
+
 	return &eventDispatcher{
 		logger:           logger,
 		urlFilter:        urlFilter,
@@ -80,6 +86,7 @@ func NewEventDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFilter)
 		droppedMessages:  om.DroppedMessages,
 		outboundEvents:   om.OutboundEvents,
 		outbounds:        outbounds,
+		kafkaPublisher:   kafkaPublisher,
 	}, outbounds, nil
 }
 
@@ -115,6 +122,15 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 		_, err = d.encodeAndDispatchEvent(eventType, wrp.Msgpack, message)
 		if err != nil {
 			d.logger.Error("Error dispatching online event", zap.Any("eventType", eventType), zap.Any("destination", message.Destination), zap.Error(err))
+		} else if d.kafkaPublisher.IsEnabled() {
+			// Publish Connect event to Kafka
+			kafkaErr := d.kafkaPublisher.Publish(context.Background(), message)
+			if kafkaErr != nil {
+				d.logger.Error("Failed to publish connect event to Kafka",
+					zap.String("destination", message.Destination),
+					zap.Error(kafkaErr),
+				)
+			}
 		}
 
 	case device.Disconnect:
@@ -123,6 +139,15 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 		_, err = d.encodeAndDispatchEvent(eventType, wrp.Msgpack, message)
 		if err != nil {
 			d.logger.Error("Error dispatching offline event", zap.Any("eventType", eventType), zap.Any("destination", message.Destination), zap.Error(err))
+		} else if d.kafkaPublisher.IsEnabled() {
+			// Publish Disconnect event to Kafka
+			kafkaErr := d.kafkaPublisher.Publish(context.Background(), message)
+			if kafkaErr != nil {
+				d.logger.Error("Failed to publish disconnect event to Kafka",
+					zap.String("destination", message.Destination),
+					zap.Error(kafkaErr),
+				)
+			}
 		}
 	case device.MessageReceived:
 		scheme, err = d.routeMessageReceivedEvent(event)
@@ -131,6 +156,20 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 		}
 	default:
 		err = ErrorUnsupportedEvent
+	}
+
+	// Publish to Kafka if enabled and event was successfully processed
+	if scheme == wrp.SchemeEvent && err == nil && d.kafkaPublisher.IsEnabled() {
+		// Extract WRP message from event
+		if msg, ok := event.Message.(*wrp.Message); ok {
+			kafkaErr := d.kafkaPublisher.Publish(context.Background(), msg)
+			if kafkaErr != nil {
+				d.logger.Error("Failed to publish event to Kafka",
+					zap.String("destination", msg.Destination),
+					zap.Error(kafkaErr),
+				)
+			}
+		}
 	}
 
 	var outboundEventsLabels prometheus.Labels
@@ -246,6 +285,8 @@ func (d *eventDispatcher) dispatchEvent(eventType, contentType string, contents 
 			return url, err
 		}
 	}
+
+	// streamEvent
 
 	return url, nil
 }

@@ -42,7 +42,7 @@ func testEventDispatcherOnDeviceEventConnectEvent(t *testing.T) {
 
 	om, err := NewTestOutboundMeasures()
 	require.NoError(err)
-	dispatcher, outbounds, err := NewEventDispatcher(om, nil, nil)
+	dispatcher, outbounds, err := NewEventDispatcher(om, nil, nil, nil)
 	require.NotNil(dispatcher)
 	require.NotNil(outbounds)
 	require.NoError(err)
@@ -67,7 +67,7 @@ func testEventDispatcherOnDeviceEventDisconnectEvent(t *testing.T) {
 
 	om, err := NewTestOutboundMeasures()
 	require.NoError(err)
-	dispatcher, outbounds, err := NewEventDispatcher(om, nil, nil)
+	dispatcher, outbounds, err := NewEventDispatcher(om, nil, nil, nil)
 	require.NotNil(dispatcher)
 	require.NotNil(outbounds)
 	require.NoError(err)
@@ -94,7 +94,7 @@ func testEventDispatcherOnDeviceEventUnroutable(t *testing.T) {
 
 	om, err := NewTestOutboundMeasures()
 	require.NoError(err)
-	dispatcher, outbounds, err := NewEventDispatcher(om, nil, nil)
+	dispatcher, outbounds, err := NewEventDispatcher(om, nil, nil, nil)
 	require.NotNil(dispatcher)
 	require.NotNil(outbounds)
 	require.NoError(err)
@@ -115,7 +115,7 @@ func testEventDispatcherOnDeviceEventBadURLFilter(t *testing.T) {
 
 	om, err := NewTestOutboundMeasures()
 	require.NoError(err)
-	dispatcher, outbounds, err := NewEventDispatcher(om, &Outbounder{DefaultScheme: "bad"}, nil)
+	dispatcher, outbounds, err := NewEventDispatcher(om, &Outbounder{DefaultScheme: "bad"}, nil, nil)
 	assert.Nil(dispatcher)
 	assert.Nil(outbounds)
 	assert.Error(err)
@@ -206,7 +206,7 @@ func testEventDispatcherOnDeviceEventDispatchEvent(t *testing.T) {
 
 				om, err := NewTestOutboundMeasures()
 				require.NoError(err)
-				dispatcher, outbounds, err := NewEventDispatcher(om, record.outbounder, urlFilter)
+				dispatcher, outbounds, err := NewEventDispatcher(om, record.outbounder, urlFilter, nil)
 				require.NotNil(dispatcher)
 				require.NotNil(outbounds)
 				require.NoError(err)
@@ -271,7 +271,7 @@ func testEventDispatcherOnDeviceEventFullQueue(t *testing.T) {
 	require.NoError(err)
 	dm := new(mockCounter)
 	om.DroppedMessages = dm
-	d, _, err := NewEventDispatcher(om, outbounder, nil)
+	d, _, err := NewEventDispatcher(om, outbounder, nil, nil)
 
 	require.NotNil(d)
 	require.NoError(err)
@@ -362,7 +362,7 @@ func testEventDispatcherEventTypes(t *testing.T) {
 
 			om, err := NewTestOutboundMeasures()
 			require.NoError(err)
-			dispatcher, outbounds, err := NewEventDispatcher(om, &o, nil)
+			dispatcher, outbounds, err := NewEventDispatcher(om, &o, nil, nil)
 			require.NotNil(dispatcher)
 			require.NotNil(outbounds)
 			require.NoError(err)
@@ -405,7 +405,7 @@ func testEventDispatcherOnDeviceEventFilterError(t *testing.T) {
 
 	om, err := NewTestOutboundMeasures()
 	require.NoError(err)
-	dispatcher, outbounds, err := NewEventDispatcher(om, &o, urlFilter)
+	dispatcher, outbounds, err := NewEventDispatcher(om, &o, urlFilter, nil)
 	require.NotNil(dispatcher)
 	require.NotNil(outbounds)
 	require.NoError(err)
@@ -491,7 +491,7 @@ func testEventDispatcherOnDeviceEventDispatchTo(t *testing.T) {
 
 			om, err := NewTestOutboundMeasures()
 			require.NoError(err)
-			dispatcher, outbounds, err := NewEventDispatcher(om, record.outbounder, urlFilter)
+			dispatcher, outbounds, err := NewEventDispatcher(om, record.outbounder, urlFilter, nil)
 			require.NotNil(dispatcher)
 			require.NotNil(outbounds)
 			require.NoError(err)
@@ -546,7 +546,7 @@ func testEventDispatcherOnDeviceEventNilEventError(t *testing.T) {
 	o.Logger = logger
 	om, err := NewTestOutboundMeasures()
 	require.NoError(err)
-	dp, _, err := NewEventDispatcher(om, o, nil)
+	dp, _, err := NewEventDispatcher(om, o, nil, nil)
 	require.NotNil(dp)
 	require.NoError(err)
 	// Purge init logs
@@ -563,7 +563,7 @@ func testEventDispatcherOnDeviceEventEventMapError(t *testing.T) {
 	o := &Outbounder{EventEndpoints: map[string]interface{}{"bad": -17.6}}
 	om, err := NewTestOutboundMeasures()
 	require.NoError(err)
-	dp, _, err := NewEventDispatcher(om, o, nil)
+	dp, _, err := NewEventDispatcher(om, o, nil, nil)
 	assert.Nil(dp)
 	assert.Error(err)
 }
@@ -673,7 +673,7 @@ func testEventDispatcherMetrics(t *testing.T) {
 
 			om.DroppedMessages = dropMessagesCounter
 			om.OutboundEvents = outboundEventsCounter
-			dispatcher, outbounds, err := NewEventDispatcher(om, &o, nil)
+			dispatcher, outbounds, err := NewEventDispatcher(om, &o, nil, nil)
 
 			require.NotNil(dispatcher)
 			require.NotNil(outbounds)
