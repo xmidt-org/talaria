@@ -93,12 +93,21 @@ type Publisher interface {
 	IsEnabled() bool
 }
 
+// wrpKafkaPublisher is an interface that wraps wrpkafka.Publisher methods we need
+// This allows us to mock the wrpkafka.Publisher for testing
+type wrpKafkaPublisher interface {
+	Start() error
+	Stop(ctx context.Context)
+	Produce(ctx context.Context, msg *wrpv5.Message) (wrpkafka.Outcome, error)
+}
+
 // kafkaPublisher implements the Publisher interface using wrpkafka
 type kafkaPublisher struct {
-	config    *KafkaConfig
-	logger    *zap.Logger
-	publisher *wrpkafka.Publisher
-	started   bool
+	config           *KafkaConfig
+	logger           *zap.Logger
+	publisher        wrpKafkaPublisher
+	started          bool
+	publisherFactory func(*KafkaConfig) (wrpKafkaPublisher, error) // for testing
 }
 
 // NewKafkaPublisher creates a new Kafka publisher from Viper configuration
@@ -157,9 +166,71 @@ func NewKafkaPublisher(logger *zap.Logger, v *viper.Viper) (Publisher, error) {
 	)
 
 	return &kafkaPublisher{
-		config: &config,
-		logger: logger,
+		config:           &config,
+		logger:           logger,
+		publisherFactory: defaultPublisherFactory,
 	}, nil
+}
+
+// defaultPublisherFactory creates a real wrpkafka.Publisher
+func defaultPublisherFactory(config *KafkaConfig) (wrpKafkaPublisher, error) {
+	// Configure initial dynamic config for wrpkafka
+	// Since we're publishing to a single topic, we use a catch-all pattern
+	if len(config.InitialDynamicConfig.TopicMap) == 0 {
+		config.InitialDynamicConfig.TopicMap = []wrpkafka.TopicRoute{
+			{
+				Pattern: "*", // Catch-all pattern
+				Topic:   config.Topic,
+			},
+		}
+	}
+
+	// Create wrpkafka publisher
+	publisher := &wrpkafka.Publisher{
+		Brokers:              config.Brokers,
+		MaxBufferedRecords:   config.MaxBufferedRecords,
+		MaxBufferedBytes:     config.MaxBufferedBytes,
+		MaxRetries:           config.MaxRetries,
+		RequestTimeout:       config.RequestTimeout,
+		InitialDynamicConfig: config.InitialDynamicConfig,
+	}
+
+	// Configure TLS if enabled
+	if config.TLS.Enabled {
+		publisher.TLS = &tls.Config{
+			InsecureSkipVerify: config.TLS.InsecureSkipVerify,
+		}
+		// TODO: Add certificate loading if CertFile/KeyFile/CAFile are provided
+	}
+
+	// Configure SASL if mechanism is set
+	if config.SASL.Mechanism != "" {
+		var mechanism sasl.Mechanism
+
+		switch config.SASL.Mechanism {
+		case "PLAIN":
+			mechanism = plain.Auth{
+				User: config.SASL.Username,
+				Pass: config.SASL.Password,
+			}.AsMechanism()
+		case "SCRAM-SHA-256":
+			mechanism = scram.Auth{
+				User: config.SASL.Username,
+				Pass: config.SASL.Password,
+			}.AsSha256Mechanism()
+		case "SCRAM-SHA-512":
+			mechanism = scram.Auth{
+				User: config.SASL.Username,
+				Pass: config.SASL.Password,
+			}.AsSha512Mechanism()
+		default:
+			return nil, fmt.Errorf("unsupported SASL mechanism: %s", config.SASL.Mechanism)
+		}
+
+		publisher.SASL = mechanism
+	}
+
+	return publisher, nil
 }
 
 // Start initializes and starts the Kafka publisher
@@ -168,60 +239,10 @@ func (k *kafkaPublisher) Start() error {
 		return ErrKafkaAlreadyStarted
 	}
 
-	// Configure initial dynamic config for wrpkafka
-	// Since we're publishing to a single topic, we use a catch-all pattern
-	if len(k.config.InitialDynamicConfig.TopicMap) == 0 {
-		k.config.InitialDynamicConfig.TopicMap = []wrpkafka.TopicRoute{
-			{
-				Pattern: "*", // Catch-all pattern
-				Topic:   k.config.Topic,
-			},
-		}
-	}
-
-	// Create wrpkafka publisher
-	publisher := &wrpkafka.Publisher{
-		Brokers:              k.config.Brokers,
-		MaxBufferedRecords:   k.config.MaxBufferedRecords,
-		MaxBufferedBytes:     k.config.MaxBufferedBytes,
-		MaxRetries:           k.config.MaxRetries,
-		RequestTimeout:       k.config.RequestTimeout,
-		InitialDynamicConfig: k.config.InitialDynamicConfig,
-	}
-
-	// Configure TLS if enabled
-	if k.config.TLS.Enabled {
-		publisher.TLS = &tls.Config{
-			InsecureSkipVerify: k.config.TLS.InsecureSkipVerify,
-		}
-		// TODO: Add certificate loading if CertFile/KeyFile/CAFile are provided
-	}
-
-	// Configure SASL if mechanism is set
-	if k.config.SASL.Mechanism != "" {
-		var mechanism sasl.Mechanism
-
-		switch k.config.SASL.Mechanism {
-		case "PLAIN":
-			mechanism = plain.Auth{
-				User: k.config.SASL.Username,
-				Pass: k.config.SASL.Password,
-			}.AsMechanism()
-		case "SCRAM-SHA-256":
-			mechanism = scram.Auth{
-				User: k.config.SASL.Username,
-				Pass: k.config.SASL.Password,
-			}.AsSha256Mechanism()
-		case "SCRAM-SHA-512":
-			mechanism = scram.Auth{
-				User: k.config.SASL.Username,
-				Pass: k.config.SASL.Password,
-			}.AsSha512Mechanism()
-		default:
-			return fmt.Errorf("unsupported SASL mechanism: %s", k.config.SASL.Mechanism)
-		}
-
-		publisher.SASL = mechanism
+	// Create the wrpkafka publisher using the factory
+	publisher, err := k.publisherFactory(k.config)
+	if err != nil {
+		return fmt.Errorf("failed to create wrpkafka publisher: %w", err)
 	}
 
 	// Start the publisher
