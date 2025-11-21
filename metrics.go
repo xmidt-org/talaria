@@ -24,8 +24,10 @@ const (
 	OutboundRequestCounter             = "outbound_requests"
 	OutboundRequestSizeBytes           = "outbound_request_size"
 	TotalOutboundEvents                = "total_outbound_events"
+	KafkaTotalOutboundEvents           = "kafka_total_outbound_events"
 	OutboundQueueSize                  = "outbound_queue_size"
 	OutboundDroppedMessageCounter      = "outbound_dropped_messages"
+	KafkaOutboundDroppedMessageCounter = "kafka_outbound_dropped_messages"
 	OutboundRetries                    = "outbound_retries"
 	OutboundAckSuccessCounter          = "outbound_ack_success"
 	OutboundAckFailureCounter          = "outbound_ack_failure"
@@ -89,6 +91,7 @@ const (
 	noErrReason                           = "no_err"
 	expectedCodeReason                    = "expected_code"
 	non202CodeReason                      = "non202"
+	kafkaSendFailure                      = "kafka_send_failure"
 
 	// dropped message codes
 	messageDroppedCode = "message_dropped"
@@ -129,18 +132,20 @@ type GaugeVec interface {
 }
 
 type OutboundMeasures struct {
-	InFlight          prometheus.Gauge
-	RequestDuration   HistogramVec
-	RequestCounter    CounterVec
-	RequestSize       HistogramVec
-	OutboundEvents    CounterVec
-	QueueSize         prometheus.Gauge
-	Retries           prometheus.Counter
-	DroppedMessages   CounterVec
-	AckSuccess        CounterVec
-	AckFailure        CounterVec
-	AckSuccessLatency HistogramVec
-	AckFailureLatency HistogramVec
+	InFlight             prometheus.Gauge
+	RequestDuration      HistogramVec
+	RequestCounter       CounterVec
+	RequestSize          HistogramVec
+	OutboundEvents       CounterVec
+	QueueSize            prometheus.Gauge
+	Retries              prometheus.Counter
+	DroppedMessages      CounterVec
+	KafkaDroppedMessages CounterVec
+	KafkaOutboundEvents  CounterVec
+	AckSuccess           CounterVec
+	AckFailure           CounterVec
+	AckSuccessLatency    HistogramVec
+	AckFailureLatency    HistogramVec
 }
 
 func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs error) {
@@ -212,6 +217,15 @@ func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs erro
 	)
 	errs = errors.Join(errs, err)
 
+	om.KafkaOutboundEvents, err = tf.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: KafkaTotalOutboundEvents,
+			Help: "Total count of kafkaoutbound events",
+		},
+		[]string{schemeLabel, reasonLabel, outcomeLabel}...,
+	)
+	errs = errors.Join(errs, err)
+
 	om.QueueSize, err = tf.NewGauge(
 		prometheus.GaugeOpts{
 			Name: OutboundQueueSize,
@@ -232,6 +246,15 @@ func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs erro
 		prometheus.CounterOpts{
 			Name: OutboundDroppedMessageCounter,
 			Help: "The total count of messages dropped",
+		},
+		[]string{schemeLabel, codeLabel, reasonLabel}...,
+	)
+	errs = errors.Join(errs, err)
+
+	om.KafkaDroppedMessages, err = tf.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: KafkaOutboundDroppedMessageCounter,
+			Help: "The total count of kafka messages dropped",
 		},
 		[]string{schemeLabel, codeLabel, reasonLabel}...,
 	)
