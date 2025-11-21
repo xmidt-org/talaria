@@ -13,6 +13,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/xmidt-org/webpa-common/v2/convey"
 	"github.com/xmidt-org/webpa-common/v2/device"
@@ -718,6 +719,294 @@ func testEventDispatcherMetrics(t *testing.T) {
 	}
 }
 
+func testEventDispatcherKafkaIntegration(t *testing.T) {
+	tests := []struct {
+		description           string
+		event                 device.Event
+		kafkaEnabled          bool
+		kafkaPublishErr       error
+		expectKafkaPublish    bool
+		expectedKafkaDropped  bool
+		expectedKafkaOutbound bool
+	}{
+		{
+			description: "Connect event publishes to Kafka when enabled",
+			event: device.Event{
+				Type: device.Connect,
+			},
+			kafkaEnabled:          true,
+			expectKafkaPublish:    true,
+			expectedKafkaOutbound: true,
+		},
+		{
+			description: "Connect event skips Kafka when disabled",
+			event: device.Event{
+				Type: device.Connect,
+			},
+			kafkaEnabled:       false,
+			expectKafkaPublish: false,
+		},
+		{
+			description: "Disconnect event publishes to Kafka when enabled",
+			event: device.Event{
+				Type: device.Disconnect,
+			},
+			kafkaEnabled:          true,
+			expectKafkaPublish:    true,
+			expectedKafkaOutbound: true,
+		},
+		{
+			description: "Disconnect event skips Kafka when disabled",
+			event: device.Event{
+				Type: device.Disconnect,
+			},
+			kafkaEnabled:       false,
+			expectKafkaPublish: false,
+		},
+		{
+			description: "MessageReceived event:// publishes to Kafka when enabled",
+			event: device.Event{
+				Type:    device.MessageReceived,
+				Message: &wrp.Message{Destination: "event:iot"},
+			},
+			kafkaEnabled:          true,
+			expectKafkaPublish:    true,
+			expectedKafkaOutbound: true,
+		},
+		{
+			description: "MessageReceived event:// skips Kafka when disabled",
+			event: device.Event{
+				Type:    device.MessageReceived,
+				Message: &wrp.Message{Destination: "event:iot"},
+			},
+			kafkaEnabled:       false,
+			expectKafkaPublish: false,
+		},
+		{
+			description: "MessageReceived dns:// does not publish to Kafka",
+			event: device.Event{
+				Type:    device.MessageReceived,
+				Message: &wrp.Message{Destination: "dns:foobar.com"},
+			},
+			kafkaEnabled:       true,
+			expectKafkaPublish: false, // DNS scheme doesn't publish to Kafka (only event:// scheme does)
+		},
+		{
+			description: "Kafka publish error increments dropped counter",
+			event: device.Event{
+				Type: device.Connect,
+			},
+			kafkaEnabled:         true,
+			kafkaPublishErr:      fmt.Errorf("kafka error"),
+			expectKafkaPublish:   true,
+			expectedKafkaDropped: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			var (
+				assert                = assert.New(t)
+				require               = require.New(t)
+				d                     = new(device.MockDevice)
+				deviceMetadata        = genTestMetadata()
+				mockPub               = new(mockPublisher)
+				urlFilter             *mockURLFilter
+				expectIsEnabledCalled = true
+				o                     = &Outbounder{
+					Method:         "POST",
+					EventEndpoints: map[string]interface{}{"default": []string{"http://nowhere.com"}},
+				}
+				kafkaDroppedCounter   = new(mockCounter)
+				kafkaOutboundCounter  = new(mockCounter)
+				outboundEventsCounter = new(mockCounter)
+			)
+
+			// Setup URL filter for dns:// destinations
+			if tc.event.Type == device.MessageReceived {
+				if msg, ok := tc.event.Message.(*wrp.Message); ok {
+					locator, _ := wrp.ParseLocator(msg.Destination)
+					if locator.Scheme == wrp.SchemeDNS {
+						urlFilter = new(mockURLFilter)
+						urlFilter.On("Filter", mock.Anything).Return("http://foobar.com", nil).Maybe()
+						// For DNS scheme, IsEnabled() is never checked (only for event:// scheme)
+						expectIsEnabledCalled = false
+					}
+				}
+			}
+
+			// Setup device mocks for Connect/Disconnect events
+			switch tc.event.Type {
+			case device.Connect:
+				d.On("ID").Return(device.ID("mac:123412341234"))
+				d.On("Metadata").Return(deviceMetadata)
+				d.On("Convey").Return(convey.C(nil))
+			case device.Disconnect:
+				d.On("ID").Return(device.ID("mac:123412341234"))
+				d.On("Metadata").Return(deviceMetadata)
+				d.On("Convey").Return(convey.C(nil))
+				d.On("Statistics").Return(device.NewStatistics(nil, time.Now()))
+				d.On("CloseReason").Return(device.CloseReason{})
+			}
+
+			// Setup Kafka publisher mock
+			if expectIsEnabledCalled {
+				mockPub.On("IsEnabled").Return(tc.kafkaEnabled)
+			}
+			if tc.expectKafkaPublish {
+				mockPub.On("Publish", mock.Anything, mock.AnythingOfType("*wrp.Message")).Return(tc.kafkaPublishErr)
+			}
+
+			// Setup metrics
+			om, err := NewTestOutboundMeasures()
+			require.NoError(err)
+			om.KafkaDroppedMessages = kafkaDroppedCounter
+			om.KafkaOutboundEvents = kafkaOutboundCounter
+			om.OutboundEvents = outboundEventsCounter
+
+			// Setup regular outbound event expectations (for HTTP dispatch)
+			outboundEventsCounter.On("With", mock.AnythingOfType("prometheus.Labels")).Return().Maybe()
+			outboundEventsCounter.On("Add", 1.0).Return().Maybe()
+
+			// Create dispatcher
+			dispatcher, outbounds, err := NewEventDispatcher(om, o, urlFilter, mockPub)
+			require.NotNil(dispatcher)
+			require.NotNil(outbounds)
+			require.NoError(err)
+
+			// Setup metric expectations
+			if tc.expectedKafkaDropped {
+				kafkaDroppedCounter.On("With", prometheus.Labels{
+					schemeLabel: wrp.SchemeEvent,
+					codeLabel:   messageDroppedCode,
+					reasonLabel: kafkaSendFailure,
+				}).Return().Once()
+				kafkaDroppedCounter.On("Add", 1.0).Return().Once()
+			}
+
+			if tc.expectedKafkaOutbound {
+				kafkaOutboundCounter.On("With", prometheus.Labels{
+					schemeLabel:  wrp.SchemeEvent,
+					reasonLabel:  noErrReason,
+					outcomeLabel: successOutcome,
+				}).Return().Once()
+				kafkaOutboundCounter.On("Add", 1.0).Return().Once()
+			}
+
+			// Execute
+			tc.event.Device = d
+			dispatcher.OnDeviceEvent(&tc.event)
+
+			// Verify
+			d.AssertExpectations(t)
+			mockPub.AssertExpectations(t)
+			if tc.expectedKafkaDropped {
+				kafkaDroppedCounter.AssertExpectations(t)
+			}
+			if tc.expectedKafkaOutbound {
+				kafkaOutboundCounter.AssertExpectations(t)
+			}
+
+			// Clean up outbounds channel
+			for len(outbounds) > 0 {
+				e := <-outbounds
+				e.cancel()
+				assert.NotNil(e)
+			}
+		})
+	}
+}
+
+func testEventDispatcherSendToKafka(t *testing.T) {
+	tests := []struct {
+		description            string
+		publishErr             error
+		expectDroppedMetric    bool
+		expectOutboundMetric   bool
+		expectedDroppedLabels  prometheus.Labels
+		expectedOutboundLabels prometheus.Labels
+	}{
+		{
+			description:          "Successful Kafka publish",
+			publishErr:           nil,
+			expectOutboundMetric: true,
+			expectedOutboundLabels: prometheus.Labels{
+				schemeLabel:  wrp.SchemeEvent,
+				reasonLabel:  noErrReason,
+				outcomeLabel: successOutcome,
+			},
+		},
+		{
+			description:         "Failed Kafka publish",
+			publishErr:          fmt.Errorf("kafka connection failed"),
+			expectDroppedMetric: true,
+			expectedDroppedLabels: prometheus.Labels{
+				schemeLabel: wrp.SchemeEvent,
+				codeLabel:   messageDroppedCode,
+				reasonLabel: kafkaSendFailure,
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			var (
+				require              = require.New(t)
+				mockPub              = new(mockPublisher)
+				kafkaDroppedCounter  = new(mockCounter)
+				kafkaOutboundCounter = new(mockCounter)
+			)
+
+			// Setup publisher mock
+			mockPub.On("Publish", mock.Anything, mock.AnythingOfType("*wrp.Message")).Return(tc.publishErr)
+
+			// Setup metrics
+			om, err := NewTestOutboundMeasures()
+			require.NoError(err)
+			om.KafkaDroppedMessages = kafkaDroppedCounter
+			om.KafkaOutboundEvents = kafkaOutboundCounter
+
+			// Setup metric expectations
+			if tc.expectDroppedMetric {
+				kafkaDroppedCounter.On("With", tc.expectedDroppedLabels).Return().Once()
+				kafkaDroppedCounter.On("Add", 1.0).Return().Once()
+			}
+
+			if tc.expectOutboundMetric {
+				kafkaOutboundCounter.On("With", tc.expectedOutboundLabels).Return().Once()
+				kafkaOutboundCounter.On("Add", 1.0).Return().Once()
+			}
+
+			// Create dispatcher
+			dispatcher := &eventDispatcher{
+				kafkaPublisher:       mockPub,
+				kafkaDroppedMessages: kafkaDroppedCounter,
+				kafkaOutboundEvents:  kafkaOutboundCounter,
+				logger:               zap.NewNop(),
+			}
+
+			// Create test message
+			msg := &wrp.Message{
+				Type:        wrp.SimpleEventMessageType,
+				Source:      "test-source",
+				Destination: "mac:112233445566",
+			}
+
+			// Execute
+			dispatcher.sendToKafka(msg)
+
+			// Verify
+			mockPub.AssertExpectations(t)
+			if tc.expectDroppedMetric {
+				kafkaDroppedCounter.AssertExpectations(t)
+			}
+			if tc.expectOutboundMetric {
+				kafkaOutboundCounter.AssertExpectations(t)
+			}
+		})
+	}
+}
+
 func TestEventDispatcherOnDeviceEvent(t *testing.T) {
 	tests := []struct {
 		description string
@@ -735,6 +1024,8 @@ func TestEventDispatcherOnDeviceEvent(t *testing.T) {
 		{"NilEventError", testEventDispatcherOnDeviceEventNilEventError},
 		{"EventMapError", testEventDispatcherOnDeviceEventEventMapError},
 		{"EventDispatcherMetrics", testEventDispatcherMetrics},
+		{"KafkaIntegration", testEventDispatcherKafkaIntegration},
+		{"SendToKafka", testEventDispatcherSendToKafka},
 	}
 
 	for _, tc := range tests {

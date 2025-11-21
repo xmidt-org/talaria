@@ -17,25 +17,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// mockWrpKafkaPublisher is a mock implementation of wrpKafkaPublisher interface
-type mockWrpKafkaPublisher struct {
-	mock.Mock
-}
-
-func (m *mockWrpKafkaPublisher) Start() error {
-	args := m.Called()
-	return args.Error(0)
-}
-
-func (m *mockWrpKafkaPublisher) Stop(ctx context.Context) {
-	m.Called(ctx)
-}
-
-func (m *mockWrpKafkaPublisher) Produce(ctx context.Context, msg *wrpv5.Message) (wrpkafka.Outcome, error) {
-	args := m.Called(ctx, msg)
-	return args.Get(0).(wrpkafka.Outcome), args.Error(1)
-}
-
 // TestKafkaPublisher_Start tests the Start method with various scenarios
 func TestKafkaPublisher_Start(t *testing.T) {
 	tests := []struct {
