@@ -96,6 +96,7 @@ func NewEventDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFilter,
 
 // OnDeviceEvent is the device.Listener function that processes outbound events.
 func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
+	d.logger.Debug("Received device event", zap.Any("event", event))
 	// TODO improve how we test dispatchEvent & dispatchTo
 	var (
 		err    error
@@ -122,6 +123,7 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 
 	switch event.Type {
 	case device.Connect:
+		d.logger.Debug("Processing connect event")
 		scheme = wrp.SchemeEvent
 		eventType, message := newOnlineMessage(d.source, event.Device)
 		_, err = d.encodeAndDispatchEvent(eventType, wrp.Msgpack, message)
@@ -129,6 +131,7 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 			d.logger.Error("Error dispatching online event", zap.Any("eventType", eventType), zap.Any("destination", message.Destination), zap.Error(err))
 		} else if d.kafkaPublisher.IsEnabled() {
 			// Publish Connect event to Kafka
+			d.logger.Debug("Publishing connect event to Kafka", zap.Any("destination", message.Destination))
 			d.sendToKafka(message)
 		}
 

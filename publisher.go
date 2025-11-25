@@ -273,6 +273,7 @@ func (k *kafkaPublisher) Stop(ctx context.Context) error {
 // Publish sends a WRP message to Kafka
 func (k *kafkaPublisher) Publish(ctx context.Context, msg *wrp.Message) error {
 	if !k.started {
+		k.logger.Debug("Kafka is not started, cannot publish message")
 		return ErrKafkaNotStarted
 	}
 

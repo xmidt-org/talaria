@@ -16,10 +16,11 @@ require (
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
+	github.com/testcontainers/testcontainers-go v0.40.0
 	github.com/testcontainers/testcontainers-go/modules/kafka v0.40.0
 	github.com/thedevsaddam/gojsonq/v2 v2.5.2
 	github.com/twmb/franz-go v1.20.4
-	github.com/xmidt-org/bascule v1.1.0
+	github.com/xmidt-org/bascule v0.11.7
 	github.com/xmidt-org/candlelight v0.2.1
 	github.com/xmidt-org/clortho v0.0.4
 	github.com/xmidt-org/httpaux v0.4.2
@@ -125,7 +126,6 @@ require (
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
-	github.com/testcontainers/testcontainers-go v0.40.0 // indirect
 	github.com/tinylib/msgp v1.5.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
