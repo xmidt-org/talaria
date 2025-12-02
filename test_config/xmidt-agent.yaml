@@ -9,12 +9,12 @@ xmidt_credentials:
   file_name: outputJwt.txt
   file_permissions: 0777
   http_client:
-    tls:
-      insecure_skip_verify: true
-      certificates: 
-        - certificate_file: certs/cert.pem
-          key_file:         certs/key.pem
-      min_version: 771 # 0x0303, the TLS 1.2 version uint16
+    # tls:
+    #   insecure_skip_verify: true
+    #   certificates: 
+    #     - certificate_file: certs/cert.pem
+    #       key_file:         certs/key.pem
+    #   min_version: 771 # 0x0303, the TLS 1.2 version uint16
 identity:
   device_id: mac:4ca161000109
   serial_number: 1800deadbeef
@@ -49,4 +49,4 @@ storage:
   durable: ~/local-rdk-testing/durable
 mock_tr_181:
   enabled: true
-  file_path: /mock_tr181.json
+  file_path: test_config/mock_tr181.json

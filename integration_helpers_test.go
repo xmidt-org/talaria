@@ -213,7 +213,7 @@ func setupTalaria(t *testing.T, kafkaBroker string) func() {
 
 	// 3. Start Talaria as a subprocess
 	//talariaCmd := exec.Command("./talaria-test", "--file", "./talaria-test.yaml")
-	talariaCmd := exec.Command("./talaria-test", )
+	talariaCmd := exec.Command("./talaria-test")
 	talariaCmd.Dir = "."
 
 	// Set environment variables
@@ -541,7 +541,7 @@ func setupXmidtAgent(t *testing.T) *testcontainers.Container {
 		//WaitingFor:   wait.ForLog("This is a configuration file."),
 		Files: []testcontainers.ContainerFile{
 			{
-				HostFilePath:      "./xmidt-agent.yaml",
+				HostFilePath:      "test_config/xmidt-agent.yaml",
 				ContainerFilePath: "/etc/xmidt-agent/xmidt-agent.yaml",
 				FileMode:          0644, // Optional: specify file permissions in the container
 			},

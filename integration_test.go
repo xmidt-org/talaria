@@ -27,19 +27,18 @@ func TestIntegration_ReceiveEvent(t *testing.T) {
 	_, broker := setupKafka(t)
 	t.Logf("Kafka broker started at: %s", broker)
 
-	// 2. Start Talaria with the dynamic Kafka broker
+	// 2. Start supporting services
+	_ = setupThemis(t)
+
+	// 3. Start Talaria with the dynamic Kafka broker
 	cleanupTalaria := setupTalaria(t, broker)
 	defer cleanupTalaria()
-
-	// 3. Start supporting services
-	_ = setupThemis(t)
 
 	time.Sleep(3 * time.Second) // Give services time to initialize
 
 	_ = setupXmidtAgent(t)
 
-	time.Sleep(3 * time.Second) // Wait for agent to connect and events to be published
-
+	//time.Sleep(30 * time.Second) // Wait for agent to connect and events to be published
 	// 4. Verify messages in Kafka
 	records := consumeMessages(t, broker, "device-events", messageConsumeWait)
 	require.Len(t, records, 1, "Expected exactly 1 message in Kafka")
