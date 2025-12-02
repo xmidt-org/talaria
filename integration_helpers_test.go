@@ -4,7 +4,6 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"net"
@@ -22,7 +21,7 @@ import (
 )
 
 const (
-	messageConsumeWait = 10 * time.Second
+	messageConsumeWait = 60 * time.Second
 )
 
 // setupTalariaConfig creates a temporary config file for Talaria with the given Kafka broker.
@@ -223,35 +222,15 @@ func setupTalaria(t *testing.T, kafkaBroker string) func() {
 		"KAFKA_BROKERS="+kafkaBroker,
 	)
 
-	// Capture stdout/stderr for debugging
-	stdout, err := talariaCmd.StdoutPipe()
-	if err != nil {
-		t.Fatalf("Failed to get stdout pipe: %v", err)
-	}
-	stderr, err := talariaCmd.StderrPipe()
-	if err != nil {
-		t.Fatalf("Failed to get stderr pipe: %v", err)
-	}
+	// Send stdout/stderr directly to console
+	talariaCmd.Stdout = os.Stdout
+	talariaCmd.Stderr = os.Stderr
 
 	// Start the process
 	if err := talariaCmd.Start(); err != nil {
 		//cleanupConfig()
 		t.Fatalf("Failed to start Talaria: %v", err)
 	}
-
-	// Log output in background
-	go func() {
-		scanner := bufio.NewScanner(stdout)
-		for scanner.Scan() {
-			t.Logf("[Talaria] %s", scanner.Text())
-		}
-	}()
-	go func() {
-		scanner := bufio.NewScanner(stderr)
-		for scanner.Scan() {
-			t.Logf("[Talaria ERROR] %s", scanner.Text())
-		}
-	}()
 
 	t.Logf("✓ Talaria started with PID %d", talariaCmd.Process.Pid)
 

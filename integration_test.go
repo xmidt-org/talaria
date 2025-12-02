@@ -36,6 +36,7 @@ func TestIntegration_ReceiveEvent(t *testing.T) {
 
 	time.Sleep(3 * time.Second) // Give services time to initialize
 
+	// this never connects to talaria, so no events are generated
 	_ = setupXmidtAgent(t)
 
 	//time.Sleep(30 * time.Second) // Wait for agent to connect and events to be published
