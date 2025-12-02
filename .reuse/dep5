@@ -58,3 +58,7 @@ License: Apache-2.0
 Files: docs/getting_started.md
 Copyright: SPDX-FileCopyrightText: 2017 Comcast Cable Communications Management, LLC
 License: Apache-2.0
+
+Files: test_config/mock_tr181.json
+Copyright: SPDX-FileCopyrightText: 2025 Comcast Cable Communications Management, LLC
+License: Apache-2.0
