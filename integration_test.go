@@ -19,7 +19,7 @@ import (
 // - Verification of message content in Kafka
 // DO NOT ENABLE - not working because xmidt-agent is running in a test-container and
 // is therefore still not able to connect with talaria which is running on the host.
-// This is just a single test for now, but more can be added via table tests later. 
+// This is just a single test for now, but more can be added via table tests later.
 func TestIntegration_ReceiveEvent(t *testing.T) {
 	// Disable Ryuk (testcontainers reaper) to avoid port mapping issues
 	t.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
