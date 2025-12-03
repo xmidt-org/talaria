@@ -3,9 +3,9 @@
 ---
 websocket:
   url_path: api/v2/device
-  back_up_url: http://localhost:6200
+  back_up_url: http://host.docker.internal:6200
 xmidt_credentials:
-  url: http://localhost:6501/issue
+  url: http://themis:6501/issue
   file_name: outputJwt.txt
   file_permissions: 0777
   http_client:

@@ -370,44 +370,44 @@ func setupKafka(t *testing.T) (*kafka.KafkaContainer, string) {
 	return kafkaContainer, broker
 }
 
-// waitForKafka attempts to connect to Kafka broker until it responds or timeout.
-func waitForKafka(ctx context.Context, t *testing.T, broker string) error {
-	t.Helper()
+// // waitForKafka attempts to connect to Kafka broker until it responds or timeout.
+// func waitForKafka(ctx context.Context, t *testing.T, broker string) error {
+// 	t.Helper()
 
-	t.Logf("Waiting for Kafka broker at %s to be ready...", broker)
-	deadline := time.Now().Add(60 * time.Second) // Increased timeout
-	var lastErr error
+// 	t.Logf("Waiting for Kafka broker at %s to be ready...", broker)
+// 	deadline := time.Now().Add(60 * time.Second) // Increased timeout
+// 	var lastErr error
 
-	for time.Now().Before(deadline) {
-		client, err := kgo.NewClient(
-			kgo.SeedBrokers(broker),
-			kgo.RequestTimeoutOverhead(10*time.Second),
-		)
-		if err != nil {
-			lastErr = fmt.Errorf("failed to create client: %w", err)
-			t.Logf("Kafka not ready yet (client creation failed): %v", err)
-			time.Sleep(2 * time.Second)
-			continue
-		}
+// 	for time.Now().Before(deadline) {
+// 		client, err := kgo.NewClient(
+// 			kgo.SeedBrokers(broker),
+// 			kgo.RequestTimeoutOverhead(10*time.Second),
+// 		)
+// 		if err != nil {
+// 			lastErr = fmt.Errorf("failed to create client: %w", err)
+// 			t.Logf("Kafka not ready yet (client creation failed): %v", err)
+// 			time.Sleep(2 * time.Second)
+// 			continue
+// 		}
 
-		// Try to ping broker to verify it's responsive
-		pingCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-		err = client.Ping(pingCtx)
-		cancel()
-		client.Close()
+// 		// Try to ping broker to verify it's responsive
+// 		pingCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+// 		err = client.Ping(pingCtx)
+// 		cancel()
+// 		client.Close()
 
-		if err == nil {
-			t.Log("✓ Kafka is ready and responsive!")
-			return nil
-		}
+// 		if err == nil {
+// 			t.Log("✓ Kafka is ready and responsive!")
+// 			return nil
+// 		}
 
-		lastErr = fmt.Errorf("ping failed: %w", err)
-		t.Logf("Kafka not ready yet (ping failed): %v", err)
-		time.Sleep(2 * time.Second)
-	}
+// 		lastErr = fmt.Errorf("ping failed: %w", err)
+// 		t.Logf("Kafka not ready yet (ping failed): %v", err)
+// 		time.Sleep(2 * time.Second)
+// 	}
 
-	return fmt.Errorf("kafka not ready after timeout: %w", lastErr)
-}
+// 	return fmt.Errorf("kafka not ready after timeout: %w", lastErr)
+// }
 
 // consumeMessages consumes messages from a Kafka topic with a timeout.
 // Returns all messages received before timeout.
@@ -514,8 +514,9 @@ func setupXmidtAgent(t *testing.T) *testcontainers.Container {
 	configureTestContainersForPodman(t)
 
 	req := testcontainers.ContainerRequest{
-		Image: "ghcr.io/xmidt-org/xmidt-agent:v0.9.5-amd64",
-		//ExposedPorts: []string{"9999/tcp"},
+		Image:        "ghcr.io/xmidt-org/xmidt-agent:v0.9.5-amd64",
+		Networks:     []string{"xmidt"},
+		ExposedPorts: []string{"6200/tcp"},
 		//Cmd:          []string{"sh", "-c", "cat /app/config.txt && sleep 60"}, // Command to read the file and keep container alive
 		//WaitingFor:   wait.ForLog("This is a configuration file."),
 		Files: []testcontainers.ContainerFile{
@@ -558,6 +559,8 @@ func setupThemis(t *testing.T) *testcontainers.Container {
 	req := testcontainers.ContainerRequest{
 		Image:        "ghcr.io/xmidt-org/themis",
 		ExposedPorts: []string{"6501/tcp"},
+		Hostname:     "themis",
+		Networks:     []string{"xmidt"},
 		//WaitingFor:   wait.ForLog("Listening on :6501"),
 	}
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
