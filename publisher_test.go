@@ -50,16 +50,6 @@ func TestNewKafkaPublisher(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name: "Missing topic returns error",
-			config: map[string]interface{}{
-				"kafka": map[string]interface{}{
-					"enabled": true,
-					"brokers": []string{"localhost:9092"},
-				},
-			},
-			expectError: true,
-		},
-		{
 			name: "Valid config creates publisher",
 			config: map[string]interface{}{
 				"kafka": map[string]interface{}{

@@ -61,6 +61,8 @@ type KafkaSASLConfig struct {
 type KafkaConfig struct {
 	// Enabled determines whether the Kafka publisher is enabled
 	Enabled bool `json:"enabled" yaml:"enabled"`
+	// Enabled determines whether the Kafka publisher is enabled
+	AllowAutoTopicCreation bool `json:"allow_auto_topic_creation"`
 	// Topic is the single Kafka topic to publish all messages to
 	Topic string `json:"topic" yaml:"topic"`
 	// Brokers is the list of Kafka broker addresses
@@ -138,10 +140,6 @@ func NewKafkaPublisher(logger *zap.Logger, v *viper.Viper) (Publisher, error) {
 		return nil, errors.New("kafka.brokers is required")
 	}
 
-	if config.Topic == "" {
-		return nil, errors.New("kafka.topic is required")
-	}
-
 	// Set defaults
 	if config.MaxBufferedRecords == 0 {
 		config.MaxBufferedRecords = 10000
@@ -158,11 +156,11 @@ func NewKafkaPublisher(logger *zap.Logger, v *viper.Viper) (Publisher, error) {
 
 	logger.Info("Creating Kafka publisher",
 		zap.Strings("brokers", config.Brokers),
-		zap.String("topic", config.Topic),
 		zap.Int("maxBufferedRecords", config.MaxBufferedRecords),
 		zap.Int("maxBufferedBytes", config.MaxBufferedBytes),
 		zap.Int("maxRetries", config.MaxRetries),
 		zap.Duration("requestTimeout", config.RequestTimeout),
+		zap.Any("dynamicConfig", config.InitialDynamicConfig),
 	)
 
 	return &kafkaPublisher{
@@ -174,33 +172,34 @@ func NewKafkaPublisher(logger *zap.Logger, v *viper.Viper) (Publisher, error) {
 
 // defaultPublisherFactory creates a real wrpkafka.Publisher
 func defaultPublisherFactory(config *KafkaConfig) (wrpKafkaPublisher, error) {
-	// Configure initial dynamic config for wrpkafka
-	// Since we're publishing to a single topic, we use a catch-all pattern
-	if len(config.InitialDynamicConfig.TopicMap) == 0 {
-		config.InitialDynamicConfig.TopicMap = []wrpkafka.TopicRoute{
-			{
-				Pattern: "*", // Catch-all pattern
-				Topic:   config.Topic,
-			},
-		}
-	}
+	// // Configure initial dynamic config for wrpkafka
+	// // Since we're publishing to a single topic, we use a catch-all pattern
+	// if len(config.InitialDynamicConfig.TopicMap) == 0 {
+	// 	config.InitialDynamicConfig.TopicMap = []wrpkafka.TopicRoute{
+	// 		{
+	// 			Pattern: "*", // Catch-all pattern
+	// 			Topic:   config.Topic,
+	// 		},
+	// 	}
+	// }
 
 	// Create wrpkafka publisher
 	publisher := &wrpkafka.Publisher{
-		Brokers:              config.Brokers,
-		MaxBufferedRecords:   config.MaxBufferedRecords,
-		MaxBufferedBytes:     config.MaxBufferedBytes,
-		MaxRetries:           config.MaxRetries,
-		RequestTimeout:       config.RequestTimeout,
-		InitialDynamicConfig: config.InitialDynamicConfig,
+		Brokers:                config.Brokers,
+		MaxBufferedRecords:     config.MaxBufferedRecords,
+		MaxBufferedBytes:       config.MaxBufferedBytes,
+		MaxRetries:             config.MaxRetries,
+		RequestTimeout:         config.RequestTimeout,
+		InitialDynamicConfig:   config.InitialDynamicConfig,
+		AllowAutoTopicCreation: config.AllowAutoTopicCreation,
 	}
 
 	// Configure TLS if enabled
 	if config.TLS.Enabled {
 		publisher.TLS = &tls.Config{
 			InsecureSkipVerify: config.TLS.InsecureSkipVerify,
+			// TODO Certificates: config.TLS.CAFile,
 		}
-		// TODO: Add certificate loading if CertFile/KeyFile/CAFile are provided
 	}
 
 	// Configure SASL if mechanism is set

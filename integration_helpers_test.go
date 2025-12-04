@@ -41,50 +41,48 @@ func newTestLogConsumer(t *testing.T, prefix string) *testLogConsumer {
 	return &testLogConsumer{t: t, prefix: prefix}
 }
 
-// setupTalariaEnv configures environment variables for Talaria to use the given Kafka broker.
-// Viper will automatically read these environment variables.
-// Returns a cleanup function to restore the original environment.
-func setupTalariaEnv(t *testing.T, kafkaBroker string) func() {
-	t.Helper()
+// // setupTalariaEnv configures environment variables for Talaria to use the given Kafka broker.
+// // Viper will automatically read these environment variables.
+// // Returns a cleanup function to restore the original environment.
+// func setupTalariaEnv(t *testing.T, kafkaBroker string) func() {
+// 	t.Helper()
 
-	// Viper uses environment variables with prefix matching the key path
-	// For nested config like kafka.brokers, we can set KAFKA_BROKERS
-	originalBrokers := os.Getenv("KAFKA_BROKERS")
-	originalEnabled := os.Getenv("KAFKA_ENABLED")
-	originalTopic := os.Getenv("KAFKA_TOPIC")
+// 	// Viper uses environment variables with prefix matching the key path
+// 	// For nested config like kafka.brokers, we can set KAFKA_BROKERS
+// 	originalBrokers := os.Getenv("KAFKA_BROKERS")
+// 	originalEnabled := os.Getenv("KAFKA_ENABLED")
+// 	originalTopic := os.Getenv("KAFKA_TOPIC")
 
-	os.Setenv("KAFKA_ENABLED", "true")
-	os.Setenv("KAFKA_TOPIC", "device-events")
-	os.Setenv("KAFKA_BROKERS", kafkaBroker)
+// 	os.Setenv("KAFKA_ENABLED", "true")
+// 	os.Setenv("KAFKA_TOPIC", "device-events")
+// 	os.Setenv("KAFKA_BROKERS", kafkaBroker)
 
-	t.Logf("Set Kafka environment: KAFKA_BROKERS=%s", kafkaBroker)
+// 	t.Logf("Set Kafka environment: KAFKA_BROKERS=%s", kafkaBroker)
 
-	cleanup := func() {
-		// Restore original values
-		if originalBrokers != "" {
-			os.Setenv("KAFKA_BROKERS", originalBrokers)
-		} else {
-			os.Unsetenv("KAFKA_BROKERS")
-		}
-		if originalEnabled != "" {
-			os.Setenv("KAFKA_ENABLED", originalEnabled)
-		} else {
-			os.Unsetenv("KAFKA_ENABLED")
-		}
-		if originalTopic != "" {
-			os.Setenv("KAFKA_TOPIC", originalTopic)
-		} else {
-			os.Unsetenv("KAFKA_TOPIC")
-		}
-	}
+// 	cleanup := func() {
+// 		// Restore original values
+// 		if originalBrokers != "" {
+// 			os.Setenv("KAFKA_BROKERS", originalBrokers)
+// 		} else {
+// 			os.Unsetenv("KAFKA_BROKERS")
+// 		}
+// 		if originalEnabled != "" {
+// 			os.Setenv("KAFKA_ENABLED", originalEnabled)
+// 		} else {
+// 			os.Unsetenv("KAFKA_ENABLED")
+// 		}
+// 		if originalTopic != "" {
+// 			os.Setenv("KAFKA_TOPIC", originalTopic)
+// 		} else {
+// 			os.Unsetenv("KAFKA_TOPIC")
+// 		}
+// 	}
 
-	return cleanup
-}
+// 	return cleanup
+// }
 
 // setupTalaria builds and starts Talaria as a subprocess with the given Kafka broker.
 // Returns a cleanup function to stop Talaria.
-// Environment variables are not working and viper won't use any file other than talaria.yaml,
-// so we modify the config file directly.
 func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string) func() {
 	t.Helper()
 
@@ -101,7 +99,8 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string) func()
 	t.Log("✓ Talaria built successfully")
 
 	// 2. Create a test config file with dynamic external service values
-	originalConfigFile := "talaria.yaml"
+	// (Gave up on getting environment variables to work)
+	originalConfigFile := "test_config/talaria.yaml"
 	testConfigFile := "talaria-test.yaml"
 
 	// read the original config
@@ -128,11 +127,8 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string) func()
 	}
 	t.Logf("Created test config file: %s", testConfigFile)
 
-	// 3. Start Talaria as a subprocess with the test config file
+	// 3. Start Talaria as a subprocess.  It will use talaria-test for the app name for viper
 	talariaCmd := exec.Command("./talaria-test")
-
-	// Set environment variables (though config file should take precedence now)
-	talariaCmd.Env = os.Environ()
 
 	t.Logf("Using JWT validator template: %s/{keyID}", themisKeysUrl)
 	t.Logf("Using Kafka broker: %s", kafkaBroker) // Send stdout/stderr directly to console
@@ -141,7 +137,6 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string) func()
 
 	// Start the process
 	if err := talariaCmd.Start(); err != nil {
-		//cleanupConfig()
 		t.Fatalf("Failed to start Talaria: %v", err)
 	}
 
@@ -151,7 +146,6 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string) func()
 	if err := waitForTalariaReady(t, 30*time.Second); err != nil {
 		talariaCmd.Process.Kill()
 		talariaCmd.Wait()
-		//cleanupConfig()
 		t.Fatalf("Talaria failed to start: %v", err)
 	}
 
@@ -219,17 +213,6 @@ func configureTestContainersForPodman(t *testing.T) {
 	// Nothing to do here.
 }
 
-func setupDevice(t *testing.T) {
-	t.Helper()
-
-	// Skip if running in short mode
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
-	// Environment variables are set by the Makefile before running tests.
-}
-
 // setupKafka starts Kafka using testcontainers and returns the container and broker address.
 // Automatically registers cleanup to stop Kafka when test completes.
 func setupKafka(t *testing.T) (*kafka.KafkaContainer, string) {
@@ -251,11 +234,6 @@ func setupKafka(t *testing.T) (*kafka.KafkaContainer, string) {
 	kafkaContainer, err := kafka.Run(ctx,
 		"confluentinc/confluent-local:7.5.0",
 		kafka.WithClusterID("test-cluster"),
-		// Wait for Kafka to be ready by checking the broker logs
-		// testcontainers.WithWaitStrategy(
-		// 	wait.ForLog(".*started \\(kafka.server.KafkaRaftServer\\).*").
-		// 		WithStartupTimeout(60*time.Second),
-		// ),
 	)
 	require.NoError(t, err, "Failed to start Kafka container")
 
@@ -267,7 +245,11 @@ func setupKafka(t *testing.T) (*kafka.KafkaContainer, string) {
 		t.Logf("Warning: Failed to start log producer for Kafka: %v", err)
 	} else {
 		kafkaContainer.FollowOutput(logConsumer)
+		t.Log("Kafka log streaming enabled")
 	}
+
+	// Give logs a moment to start streaming
+	time.Sleep(1 * time.Second)
 
 	t.Cleanup(func() {
 		t.Log("Stopping Kafka container...")
@@ -288,50 +270,8 @@ func setupKafka(t *testing.T) (*kafka.KafkaContainer, string) {
 	broker := brokers[0]
 	t.Logf("Kafka broker available at: %s", broker)
 
-	// Verify Kafka is accepting connections
-	//require.NoError(t, waitForKafka(ctx, t, broker))
-
 	return kafkaContainer, broker
 }
-
-// // waitForKafka attempts to connect to Kafka broker until it responds or timeout.
-// func waitForKafka(ctx context.Context, t *testing.T, broker string) error {
-// 	t.Helper()
-
-// 	t.Logf("Waiting for Kafka broker at %s to be ready...", broker)
-// 	deadline := time.Now().Add(60 * time.Second) // Increased timeout
-// 	var lastErr error
-
-// 	for time.Now().Before(deadline) {
-// 		client, err := kgo.NewClient(
-// 			kgo.SeedBrokers(broker),
-// 			kgo.RequestTimeoutOverhead(10*time.Second),
-// 		)
-// 		if err != nil {
-// 			lastErr = fmt.Errorf("failed to create client: %w", err)
-// 			t.Logf("Kafka not ready yet (client creation failed): %v", err)
-// 			time.Sleep(2 * time.Second)
-// 			continue
-// 		}
-
-// 		// Try to ping broker to verify it's responsive
-// 		pingCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-// 		err = client.Ping(pingCtx)
-// 		cancel()
-// 		client.Close()
-
-// 		if err == nil {
-// 			t.Log("✓ Kafka is ready and responsive!")
-// 			return nil
-// 		}
-
-// 		lastErr = fmt.Errorf("ping failed: %w", err)
-// 		t.Logf("Kafka not ready yet (ping failed): %v", err)
-// 		time.Sleep(2 * time.Second)
-// 	}
-
-// 	return fmt.Errorf("kafka not ready after timeout: %w", lastErr)
-// }
 
 // consumeMessages consumes messages from a Kafka topic with a timeout.
 // Returns all messages received before timeout.
@@ -351,6 +291,8 @@ func consumeMessages(t *testing.T, broker string, topic string, timeout time.Dur
 
 	var records []*kgo.Record
 	deadline := time.Now().Add(timeout)
+
+	fmt.Printf("Starting to consume messages from topic %s and broker %s...\n", topic, broker)
 
 	for time.Now().Before(deadline) {
 		fetches := client.PollFetches(ctx)
@@ -434,51 +376,6 @@ func setupDeviceSimulator(t *testing.T, themisURL string) *exec.Cmd {
 
 	return simCmd
 
-}
-
-// setupKafka starts Kafka using testcontainers and returns the container and broker address.
-// Automatically registers cleanup to stop Kafka when test completes.
-func setupXmidtAgent(t *testing.T) *testcontainers.Container {
-	t.Helper()
-
-	// Skip if running in short mode
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
-	ctx := context.Background()
-
-	// Configure testcontainers to use Podman if DOCKER_HOST is set
-	configureTestContainersForPodman(t)
-
-	req := testcontainers.ContainerRequest{
-		Image:        "ghcr.io/xmidt-org/xmidt-agent:v0.9.5-amd64",
-		Networks:     []string{"xmidt"},
-		ExposedPorts: []string{"6200/tcp"},
-		//Cmd:          []string{"sh", "-c", "cat /app/config.txt && sleep 60"}, // Command to read the file and keep container alive
-		//WaitingFor:   wait.ForLog("This is a configuration file."),
-		Files: []testcontainers.ContainerFile{
-			{
-				HostFilePath:      "test_config/xmidt-agent.yaml",
-				ContainerFilePath: "/etc/xmidt-agent/xmidt-agent.yaml",
-				FileMode:          0644, // Optional: specify file permissions in the container
-			},
-		},
-	}
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	require.NoError(t, err, "Failed to start Xmidt Agent container")
-
-	t.Cleanup(func() {
-		t.Log("Stopping Xmidt-Agent container...")
-		if err := container.Terminate(ctx); err != nil {
-			fmt.Printf("failed to terminate xmidt-agent: %v", err)
-		}
-	})
-
-	return &container
 }
 
 func setupThemis(t *testing.T) (*testcontainers.Container, string, string) {

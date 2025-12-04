@@ -16,7 +16,6 @@ import (
 //
 // Verifies:
 // - Device connect messages are published to Kafka
-// - Device disconnect messages are published to Kafka
 // - Message content in Kafka is correct
 //
 // This test uses the device-simulator to connect to Talaria and generate events.
