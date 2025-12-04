@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/kafka"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/xmidt-org/wrp-go/v5"
 )
@@ -24,130 +26,19 @@ const (
 	messageConsumeWait = 60 * time.Second
 )
 
-// setupTalariaConfig creates a temporary config file for Talaria with the given Kafka broker.
-// Returns the path to the config file and a cleanup function.
-func setupTalariaConfig(t *testing.T, kafkaBroker string) (string, func()) {
-	t.Helper()
+// testLogConsumer is a custom log consumer that sends container logs to the test logger
+type testLogConsumer struct {
+	t      *testing.T
+	prefix string
+}
 
-	// Create a temporary config file based on talaria.yaml
-	// but with the dynamic Kafka broker address
-	configContent := fmt.Sprintf(`---
-server: "talaria-test"
-build: "test"
-region: "test"
-flavor: "test"
+func (lc *testLogConsumer) Accept(l testcontainers.Log) {
+	// Log to test output with prefix
+	lc.t.Logf("[%s] %s", lc.prefix, string(l.Content))
+}
 
-primary:
-  address: ":6200"
-
-health:
-  address: ":6201"
-
-pprof:
-  address: ":6202"
-
-control:
-  address: ":6203"
-
-metric:
-  address: ":6204"
-  metricsOptions:
-    namespace: "xmidt"
-    subsystem: "talaria"
-
-log:
-  file: "stdout"
-  level: "DEBUG"
-  json: true
-
-device:
-  manager:
-    wrpSourceCheck:
-      type: monitor
-    upgrader:
-      handshakeTimeout: "10s"
-    maxDevices: 100
-    deviceMessageQueueSize: 1000
-    pingPeriod: "1m"
-    writeTimeout: "2m"
-    idlePeriod: "2m"
-
-  outbound:
-    method: "POST"
-    retries: 3
-    eventEndpoints:
-      default: http://localhost:6000/api/v4/notify
-    requestTimeout: "2m"
-    defaultScheme: "http"
-    allowedSchemes:
-      - "http"
-      - "https"
-    outboundQueueSize: 2000
-    workerPoolSize: 50
-    transport:
-      maxIdleConns: 0
-      maxIdleConnsPerHost: 100
-      idleConnTimeout: "120s"
-    clientTimeout: "2m"
-
-service:
-  defaultScheme: http
-  vnodeCount: 211
-  fixed:
-    - http://localhost:6200
-
-kafka:
-  enabled: true
-  topic: "device-events"
-  brokers:
-    - "%s"
-  maxBufferedRecords: 10000
-  maxBufferedBytes: 104857600
-  maxRetries: 3
-  requestTimeout: "30s"
-  tls:
-    enabled: false
-  sasl:
-    mechanism: ""
-  initialDynamicConfig:
-    topicMap:
-      - pattern: "*"
-        topic: "device-events"
-    compression: "snappy"
-
-zap:
-  outputPaths:
-    - stdout
-  level: debug
-  errorOutputPaths:
-    - stderr
-  disableCaller: true
-  encoderConfig:
-    messageKey: message
-    levelKey: key
-    callerKey: caller
-    levelEncoder: lowercase
-  encoding: json
-
-failOpen: true
-`, kafkaBroker)
-
-	// Write to temporary file
-	tmpFile, err := os.CreateTemp("", "talaria-test-*.yaml")
-	require.NoError(t, err, "Failed to create temp config file")
-
-	_, err = tmpFile.WriteString(configContent)
-	require.NoError(t, err, "Failed to write config file")
-
-	err = tmpFile.Close()
-	require.NoError(t, err, "Failed to close config file")
-
-	cleanup := func() {
-		os.Remove(tmpFile.Name())
-	}
-
-	t.Logf("Created Talaria config file: %s", tmpFile.Name())
-	return tmpFile.Name(), cleanup
+func newTestLogConsumer(t *testing.T, prefix string) *testLogConsumer {
+	return &testLogConsumer{t: t, prefix: prefix}
 }
 
 // setupTalariaEnv configures environment variables for Talaria to use the given Kafka broker.
@@ -192,7 +83,9 @@ func setupTalariaEnv(t *testing.T, kafkaBroker string) func() {
 
 // setupTalaria builds and starts Talaria as a subprocess with the given Kafka broker.
 // Returns a cleanup function to stop Talaria.
-func setupTalaria(t *testing.T, kafkaBroker string) func() {
+// Environment variables are not working and viper won't use any file other than talaria.yaml,
+// so we modify the config file directly.
+func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string) func() {
 	t.Helper()
 
 	ctx := context.Background()
@@ -207,22 +100,42 @@ func setupTalaria(t *testing.T, kafkaBroker string) func() {
 	}
 	t.Log("✓ Talaria built successfully")
 
-	// 2. Create a config file with dynamic Kafka broker
-	//configFile, cleanupConfig := setupTalariaConfig(t, kafkaBroker)
+	// 2. Create a test config file with dynamic external service values
+	originalConfigFile := "talaria.yaml"
+	testConfigFile := "talaria-test.yaml"
 
-	// 3. Start Talaria as a subprocess
-	//talariaCmd := exec.Command("./talaria-test", "--file", "./talaria-test.yaml")
+	// read the original config
+	originalContent, err := os.ReadFile(originalConfigFile)
+	if err != nil {
+		t.Fatalf("Failed to read original config: %v", err)
+	}
+
+	// replace just the JWT validator template and Kafka settings
+	configContent := string(originalContent)
+	configContent = strings.Replace(configContent,
+		`Template: "http://localhost:6500/keys/{keyID}"`,
+		fmt.Sprintf(`Template: "%s/{keyID}"`, themisKeysUrl),
+		1)
+	// Replace Kafka broker
+	configContent = strings.Replace(configContent,
+		`- (( grab $KAFKA_BROKERS || "http://localhost:9092" ))`,
+		fmt.Sprintf(`- "%s"`, kafkaBroker),
+		1)
+
+	// write the test config file
+	if err := os.WriteFile(testConfigFile, []byte(configContent), 0644); err != nil {
+		t.Fatalf("Failed to write test config: %v", err)
+	}
+	t.Logf("Created test config file: %s", testConfigFile)
+
+	// 3. Start Talaria as a subprocess with the test config file
 	talariaCmd := exec.Command("./talaria-test")
-	talariaCmd.Dir = "."
 
-	// Set environment variables
-	talariaCmd.Env = append(os.Environ(),
-		"KAFKA_ENABLED=true",
-		"KAFKA_TOPIC=device-events",
-		"KAFKA_BROKERS="+kafkaBroker,
-	)
+	// Set environment variables (though config file should take precedence now)
+	talariaCmd.Env = os.Environ()
 
-	// Send stdout/stderr directly to console
+	t.Logf("Using JWT validator template: %s/{keyID}", themisKeysUrl)
+	t.Logf("Using Kafka broker: %s", kafkaBroker) // Send stdout/stderr directly to console
 	talariaCmd.Stdout = os.Stdout
 	talariaCmd.Stderr = os.Stderr
 
@@ -270,11 +183,9 @@ func setupTalaria(t *testing.T, kafkaBroker string) func() {
 			}
 		}
 
-		// Clean up config file
-		//cleanupConfig()
-
-		// Remove test binary
+		// Remove test binary and config files
 		os.Remove("talaria-test")
+		os.Remove(testConfigFile)
 
 		t.Log("✓ Talaria stopped")
 	}
@@ -348,8 +259,21 @@ func setupKafka(t *testing.T) (*kafka.KafkaContainer, string) {
 	)
 	require.NoError(t, err, "Failed to start Kafka container")
 
+	// Create log consumer to stream Kafka logs to test output
+	logConsumer := newTestLogConsumer(t, "Kafka")
+
+	// Start streaming logs
+	if err := kafkaContainer.StartLogProducer(ctx); err != nil {
+		t.Logf("Warning: Failed to start log producer for Kafka: %v", err)
+	} else {
+		kafkaContainer.FollowOutput(logConsumer)
+	}
+
 	t.Cleanup(func() {
 		t.Log("Stopping Kafka container...")
+		if err := kafkaContainer.StopLogProducer(); err != nil {
+			t.Logf("Warning: Failed to stop log producer: %v", err)
+		}
 		if err := kafkaContainer.Terminate(ctx); err != nil {
 			t.Logf("Failed to terminate Kafka container: %v", err)
 		}
@@ -487,15 +411,29 @@ func verifyWRPMessage(t *testing.T, record *kgo.Record, expected *wrp.Message) {
 	require.Equal(t, expected.Source, string(record.Key), "Partition key should match Source")
 }
 
-// createTestMessage creates a WRP message for testing.
-func createTestMessage(eventType string, deviceID string, qos int64) *wrp.Message {
-	return &wrp.Message{
-		Type:             wrp.SimpleEventMessageType,
-		Source:           deviceID,
-		Destination:      "event:" + eventType + "/" + deviceID,
-		Payload:          []byte(`{"status":"online"}`),
-		QualityOfService: wrp.QOSValue(qos),
+func setupDeviceSimulator(t *testing.T, themisURL string) *exec.Cmd {
+	t.Log("Building device-simulator...")
+	buildCmd := exec.Command("go", "build", "-o", "device-simulator", ".")
+	buildCmd.Dir = "./cmd/device-simulator"
+	if output, err := buildCmd.CombinedOutput(); err != nil {
+		t.Logf("Build output: %s", string(output))
+		t.Fatalf("Failed to build device-simulator: %v", err)
 	}
+	t.Log("✓ Device-simulator built successfully")
+
+	simCmd := exec.Command("./device-simulator",
+		"-themis", themisURL,
+		"-talaria", "ws://localhost:6200/api/v2/device",
+		"-device-id", "mac:4ca161000109",
+		"-serial", "1800deadbeef",
+		"-ping-interval", "10s",
+	)
+	simCmd.Dir = "./cmd/device-simulator"
+	simCmd.Stdout = os.Stdout
+	simCmd.Stderr = os.Stderr
+
+	return simCmd
+
 }
 
 // setupKafka starts Kafka using testcontainers and returns the container and broker address.
@@ -543,7 +481,7 @@ func setupXmidtAgent(t *testing.T) *testcontainers.Container {
 	return &container
 }
 
-func setupThemis(t *testing.T) *testcontainers.Container {
+func setupThemis(t *testing.T) (*testcontainers.Container, string, string) {
 	t.Helper()
 
 	// Skip if running in short mode
@@ -557,24 +495,65 @@ func setupThemis(t *testing.T) *testcontainers.Container {
 	configureTestContainersForPodman(t)
 
 	req := testcontainers.ContainerRequest{
-		Image:        "ghcr.io/xmidt-org/themis",
-		ExposedPorts: []string{"6501/tcp"},
+		Image:        "ghcr.io/xmidt-org/themis:latest-amd64",
+		ExposedPorts: []string{"6500/tcp", "6501/tcp", "6502/tcp", "6503/tcp", "6504/tcp"},
 		Hostname:     "themis",
-		Networks:     []string{"xmidt"},
-		//WaitingFor:   wait.ForLog("Listening on :6501"),
+		WaitingFor:   wait.ForHTTP("/health").WithPort("6504/tcp").WithStartupTimeout(60 * time.Second),
+		Files: []testcontainers.ContainerFile{
+			{
+				HostFilePath:      "test_config/themis.yaml",
+				ContainerFilePath: "/etc/themis/themis.yaml",
+				FileMode:          0644, // Optional: specify file permissions in the container
+			},
+		},
 	}
+
+	t.Log("Starting Themis container...")
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	})
 	require.NoError(t, err, "Failed to start Themis container")
 
+	t.Log("Themis container started, setting up log streaming...")
+
+	// Create log consumer and start log producer
+	logConsumer := newTestLogConsumer(t, "Themis")
+	if err := container.StartLogProducer(ctx); err != nil {
+		t.Logf("Warning: Failed to start log producer for Themis: %v", err)
+	} else {
+		container.FollowOutput(logConsumer)
+		t.Log("Themis log streaming enabled")
+	}
+
+	// Get the mapped port for Themis
+	host, err := container.Host(ctx)
+	require.NoError(t, err, "Failed to get Themis host")
+
+	port, err := container.MappedPort(ctx, "6500")
+	require.NoError(t, err, "Failed to get Themis key port")
+
+	themisKeysUrl := fmt.Sprintf("http://%s:%s/keys", host, port.Port())
+	t.Logf("Themis keys available at: %s", themisKeysUrl)
+
+	port, err = container.MappedPort(ctx, "6501")
+	require.NoError(t, err, "Failed to get Themis issuer port")
+
+	themisIssuerUrl := fmt.Sprintf("http://%s:%s/issue", host, port.Port())
+	t.Logf("Themis issuer available at: %s", themisIssuerUrl)
+
+	// Give logs a moment to start streaming
+	time.Sleep(2 * time.Second)
+
 	t.Cleanup(func() {
 		t.Log("Stopping Themis container...")
+		if err := container.StopLogProducer(); err != nil {
+			t.Logf("Warning: Failed to stop log producer: %v", err)
+		}
 		if err := container.Terminate(ctx); err != nil {
 			fmt.Printf("failed to terminate container: %v", err)
 		}
 	})
 
-	return &container
+	return &container, themisIssuerUrl, themisKeysUrl
 }
