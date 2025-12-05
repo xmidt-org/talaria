@@ -171,12 +171,12 @@ func NewKafkaPublisher(logger *zap.Logger, v *viper.Viper) (Publisher, error) {
 	return &kafkaPublisher{
 		config:           &config,
 		logger:           logger,
-		publisherFactory: defaultPublisherFactory,
+		publisherFactory: publisherFactory,
 	}, nil
 }
 
-// defaultPublisherFactory creates a real wrpkafka.Publisher
-func defaultPublisherFactory(config *KafkaConfig) (wrpKafkaPublisher, error) {
+// publisherFactory creates a real wrpkafka.Publisher
+func publisherFactory(config *KafkaConfig) (wrpKafkaPublisher, error) {
 
 	// Create wrpkafka publisher
 	publisher := &wrpkafka.Publisher{
@@ -191,6 +191,9 @@ func defaultPublisherFactory(config *KafkaConfig) (wrpKafkaPublisher, error) {
 
 	// Configure TLS if enabled
 	if config.TLS.Enabled {
+		publisher.TLS = &tls.Config{
+			InsecureSkipVerify: config.TLS.InsecureSkipVerify,
+		}
 		caCertPool := x509.NewCertPool()
 		if !config.TLS.InsecureSkipVerify {
 			caCertPEM, err := os.ReadFile(config.TLS.CAFile)
@@ -200,10 +203,14 @@ func defaultPublisherFactory(config *KafkaConfig) (wrpKafkaPublisher, error) {
 			if !caCertPool.AppendCertsFromPEM(caCertPEM) {
 				return nil, fmt.Errorf("failed to append CA certificate to pool")
 			}
+			publisher.TLS.RootCAs = caCertPool
 		}
-		publisher.TLS = &tls.Config{
-			InsecureSkipVerify: config.TLS.InsecureSkipVerify,
-			RootCAs:            caCertPool,
+		if config.TLS.CertFile != "" && config.TLS.KeyFile != "" {
+			cert, err := tls.LoadX509KeyPair(config.TLS.CertFile, config.TLS.KeyFile)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load client certificate/key: %w", err)
+			}
+			publisher.TLS.Certificates = []tls.Certificate{cert}
 		}
 	}
 

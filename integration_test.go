@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/xmidt-org/wrp-go/v5"
 )
 
 // TestIntegration_ReceiveEvent tests basic event publishing to Kafka.
@@ -58,10 +59,11 @@ func TestIntegration_ReceiveOnlineEvent(t *testing.T) {
 	// 6. Verify messages in Kafka
 	records := consumeMessages(t, broker, "device-events", messageConsumeWait)
 	require.Len(t, records, 1, "Expected exactly 1 message in Kafka")
-	//verifyWRPMessage(t, records[0], msg)
-}
 
-// TODO - problems
-// unless wrp QOS is set to CriticalValue, the messages do not flush to kafka, even with a short linger
-// we don't want to modify talaria production code for conditional test stuff - how can we inject this?
-// we need allowAutoTopicCreation set to true, it's not coming through in the config
+	msg := &wrp.Message{
+		Type:        wrp.SimpleEventMessageType,
+		Source:      "dns:integration-test.talaria.com",
+		Destination: "event:device-status/mac:4ca161000109/online",
+	}
+	verifyWRPMessage(t, records[0], msg)
+}

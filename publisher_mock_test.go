@@ -497,7 +497,7 @@ func TestDefaultPublisherFactory(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			publisher, err := defaultPublisherFactory(tt.config)
+			publisher, err := publisherFactory(tt.config)
 
 			if tt.expectError {
 				assert.Error(t, err)

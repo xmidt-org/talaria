@@ -648,10 +648,6 @@ kafka:
    # Should NEVER be set to true in production. Set to testMode to true so messages flush immediately for testing purposes
   testMode: false
 
-  # topic is the single Kafka topic to publish all WRP messages to
-  # (Required if enabled is true)
-  topic: "wrp-events"
-
   # brokers is the list of Kafka broker addresses
   # (Required if enabled is true)
   brokers:
