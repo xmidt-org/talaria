@@ -63,7 +63,7 @@ type KafkaSASLConfig struct {
 type KafkaConfig struct {
 	// Enabled determines whether the Kafka publisher is enabled
 	Enabled bool `json:"enabled" yaml:"enabled"`
-	// Determines whether the Kafka publisher is in test mode
+	// Determines whether the Kafka publisher is in test mode and should immediately flush messages: should ALWAYS be false in production
 	TestMode bool `json:"testMode" yaml:"testMode"`
 	// Enabled determines whether the Kafka publisher is enabled
 	AllowAutoTopicCreation bool `json:"allow_auto_topic_creation"`
