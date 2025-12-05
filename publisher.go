@@ -63,8 +63,6 @@ type KafkaSASLConfig struct {
 type KafkaConfig struct {
 	// Enabled determines whether the Kafka publisher is enabled
 	Enabled bool `json:"enabled" yaml:"enabled"`
-	// Determines whether the Kafka publisher is in test mode and should immediately flush messages: should ALWAYS be false in production
-	TestMode bool `json:"testMode" yaml:"testMode"`
 	// Enabled determines whether the Kafka publisher is enabled
 	AllowAutoTopicCreation bool `json:"allow_auto_topic_creation"`
 	// Topic is the single Kafka topic to publish all messages to
@@ -294,11 +292,6 @@ func (k *kafkaPublisher) Publish(ctx context.Context, msg *wrp.Message) error {
 
 	// Convert wrp v3 message to v5 for wrpkafka
 	v5msg := convertV3ToV5(msg)
-
-	// *** find better way to do this - set QoS to Critical if in test mode so the message flushes immediately **
-	if k.config.TestMode {
-		v5msg.QualityOfService = wrpv5.QOSValue(wrp.QOSCriticalValue)
-	}
 
 	// Use wrpkafka to publish the message
 	outcome, err := k.publisher.Produce(ctx, v5msg)

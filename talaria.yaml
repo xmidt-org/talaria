@@ -645,9 +645,6 @@ kafka:
   # (Optional) defaults to false
   enabled: true
 
-   # Should NEVER be set to true in production. Set to testMode to true so messages flush immediately for testing purposes
-  testMode: false
-
   # brokers is the list of Kafka broker addresses
   # (Required if enabled is true)
   brokers:

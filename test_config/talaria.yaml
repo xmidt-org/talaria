@@ -648,9 +648,6 @@ kafka:
 
   allowAutoTopicCreation: true
 
-  # set to testMode so messages flush immediately for testing purposes
-  testMode: true
-
   topic: "device-events"
 
   # brokers is the list of Kafka broker addresses
@@ -728,7 +725,7 @@ kafka:
     # linger sets the batching delay - how long to wait before sending batched messages
     # Setting this to a low value (like 10ms) ensures messages are sent quickly
     # (Optional) defaults to 0 (no linger, send immediately when other conditions met)
-    linger: "10ms"
+    # linger: "10ms"  # COMMENTED OUT - use default 0 for immediate drain like wrpkafka tests
 
     # compression configures message compression
     # Supported values: none, gzip, snappy, lz4, zstd
