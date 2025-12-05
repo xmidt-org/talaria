@@ -5,8 +5,10 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/spf13/viper"
@@ -61,6 +63,8 @@ type KafkaSASLConfig struct {
 type KafkaConfig struct {
 	// Enabled determines whether the Kafka publisher is enabled
 	Enabled bool `json:"enabled" yaml:"enabled"`
+	// Determines whether the Kafka publisher is in test mode
+	TestMode bool `json:"testMode" yaml:"testMode"`
 	// Enabled determines whether the Kafka publisher is enabled
 	AllowAutoTopicCreation bool `json:"allow_auto_topic_creation"`
 	// Topic is the single Kafka topic to publish all messages to
@@ -156,6 +160,7 @@ func NewKafkaPublisher(logger *zap.Logger, v *viper.Viper) (Publisher, error) {
 
 	logger.Info("Creating Kafka publisher",
 		zap.Strings("brokers", config.Brokers),
+		zap.Bool("allowAutoTopicCreation", config.AllowAutoTopicCreation),
 		zap.Int("maxBufferedRecords", config.MaxBufferedRecords),
 		zap.Int("maxBufferedBytes", config.MaxBufferedBytes),
 		zap.Int("maxRetries", config.MaxRetries),
@@ -172,16 +177,6 @@ func NewKafkaPublisher(logger *zap.Logger, v *viper.Viper) (Publisher, error) {
 
 // defaultPublisherFactory creates a real wrpkafka.Publisher
 func defaultPublisherFactory(config *KafkaConfig) (wrpKafkaPublisher, error) {
-	// // Configure initial dynamic config for wrpkafka
-	// // Since we're publishing to a single topic, we use a catch-all pattern
-	// if len(config.InitialDynamicConfig.TopicMap) == 0 {
-	// 	config.InitialDynamicConfig.TopicMap = []wrpkafka.TopicRoute{
-	// 		{
-	// 			Pattern: "*", // Catch-all pattern
-	// 			Topic:   config.Topic,
-	// 		},
-	// 	}
-	// }
 
 	// Create wrpkafka publisher
 	publisher := &wrpkafka.Publisher{
@@ -196,9 +191,19 @@ func defaultPublisherFactory(config *KafkaConfig) (wrpKafkaPublisher, error) {
 
 	// Configure TLS if enabled
 	if config.TLS.Enabled {
+		caCertPool := x509.NewCertPool()
+		if !config.TLS.InsecureSkipVerify {
+			caCertPEM, err := os.ReadFile(config.TLS.CAFile)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read CA certificate file: %w", err)
+			}
+			if !caCertPool.AppendCertsFromPEM(caCertPEM) {
+				return nil, fmt.Errorf("failed to append CA certificate to pool")
+			}
+		}
 		publisher.TLS = &tls.Config{
 			InsecureSkipVerify: config.TLS.InsecureSkipVerify,
-			// TODO Certificates: config.TLS.CAFile,
+			RootCAs:            caCertPool,
 		}
 	}
 
@@ -282,6 +287,11 @@ func (k *kafkaPublisher) Publish(ctx context.Context, msg *wrp.Message) error {
 
 	// Convert wrp v3 message to v5 for wrpkafka
 	v5msg := convertV3ToV5(msg)
+
+	// *** find better way to do this - set QoS to Critical if in test mode so the message flushes immediately **
+	if k.config.TestMode {
+		v5msg.QualityOfService = wrpv5.QOSValue(wrp.QOSCriticalValue)
+	}
 
 	// Use wrpkafka to publish the message
 	outcome, err := k.publisher.Produce(ctx, v5msg)

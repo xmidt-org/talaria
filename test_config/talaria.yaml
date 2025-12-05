@@ -646,8 +646,12 @@ kafka:
   # (Optional) defaults to false
   enabled: true
 
-  allow_auto_topic_creation: true
+  allowAutoTopicCreation: true
 
+  # set to testMode so messages flush immediately for testing purposes
+  testMode: true
+
+  topic: "device-events"
 
   # brokers is the list of Kafka broker addresses
   # (Required if enabled is true)
@@ -656,11 +660,11 @@ kafka:
 
   # maxBufferedRecords is the maximum number of records the publisher can buffer
   # (Optional) defaults to 10000
-  maxBufferedRecords: 1
+  maxBufferedRecords: 10000
 
   # maxBufferedBytes is the maximum number of bytes the publisher can buffer
   # (Optional) defaults to 100MB (104857600 bytes)
-  maxBufferedBytes: 10
+  maxBufferedBytes: 104857600
 
   # maxRetries is the maximum number of retries for failed produce requests
   # (Optional) defaults to 3
@@ -668,7 +672,7 @@ kafka:
 
   # requestTimeout is the timeout for produce requests
   # (Optional) defaults to 30s
-  requestTimeout: "1s"
+  requestTimeout: "30s"
 
   # tls configures TLS for Kafka connections
   # (Optional) defaults to disabled

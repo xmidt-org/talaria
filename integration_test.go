@@ -60,3 +60,8 @@ func TestIntegration_ReceiveOnlineEvent(t *testing.T) {
 	require.Len(t, records, 1, "Expected exactly 1 message in Kafka")
 	//verifyWRPMessage(t, records[0], msg)
 }
+
+// TODO - problems
+// unless wrp QOS is set to CriticalValue, the messages do not flush to kafka, even with a short linger
+// we don't want to modify talaria production code for conditional test stuff - how can we inject this?
+// we need allowAutoTopicCreation set to true, it's not coming through in the config

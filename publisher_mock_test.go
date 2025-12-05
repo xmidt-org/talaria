@@ -518,11 +518,9 @@ func TestDefaultPublisherFactory(t *testing.T) {
 				assert.Equal(t, tt.config.MaxRetries, wrpPub.MaxRetries)
 				assert.Equal(t, tt.config.RequestTimeout, wrpPub.RequestTimeout)
 
-				// Verify topic map was set if not provided
+				// Verify topic map is empty if not provided
 				if len(tt.config.InitialDynamicConfig.TopicMap) == 0 {
-					require.Len(t, wrpPub.InitialDynamicConfig.TopicMap, 1)
-					assert.Equal(t, "*", wrpPub.InitialDynamicConfig.TopicMap[0].Pattern)
-					assert.Equal(t, tt.config.Topic, wrpPub.InitialDynamicConfig.TopicMap[0].Topic)
+					require.Len(t, wrpPub.InitialDynamicConfig.TopicMap, 0)
 				}
 
 				// Verify TLS config
