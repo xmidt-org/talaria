@@ -141,20 +141,21 @@ func talaria(arguments []string) int {
 	// Initialize the server environment: command-line flags, Viper, logging, and the WebPA instance
 	//
 
+	appName := applicationName
+	if strings.Contains(os.Args[0], "test") {
+		appName = testApplicationName
+	}
+
 	var (
 		f = pflag.NewFlagSet(applicationName, pflag.ContinueOnError)
 		v = viper.New()
+
+		logger, metricsRegistry, webPA, err = server.Initialize(appName, arguments, f, v, device.Metrics, rehasher.Metrics, service.Metrics)
 	)
 
 	// Setup default config values BEFORE server.Initialize reads the config file
 	// This ensures AutomaticEnv is enabled and environment variables can override config
 	setupDefaultConfigValues(v)
-
-	appName := applicationName
-	if strings.Contains(os.Args[0], "test") {
-		appName = testApplicationName
-	}
-	logger, metricsRegistry, webPA, err := server.Initialize(appName, arguments, f, v, device.Metrics, rehasher.Metrics, service.Metrics)
 
 	if parseErr, done := printVersion(f, arguments); done {
 		// if we're done, we're exiting no matter what
