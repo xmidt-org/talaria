@@ -29,10 +29,6 @@ This implementation adds Kafka publishing capabilities to Talaria using the [wrp
    - Troubleshooting guide
    - Security best practices
 
-4. **`kafka-config-example.yaml`** - Example configuration file
-   - Complete configuration example with all available options
-   - Inline documentation for each property
-
 ### Modified Files
 
 1. **`eventDispatcher.go`**
@@ -66,7 +62,6 @@ All configuration is under the `kafka` section in `talaria.yaml`:
 
 ### Required (when enabled=true)
 - `enabled` - Enable/disable Kafka publisher
-- `topic` - Kafka topic name for all messages
 - `brokers` - List of Kafka broker addresses
 
 ### Optional
@@ -82,7 +77,7 @@ All configuration is under the `kafka` section in `talaria.yaml`:
 - `sasl.mechanism` - SASL mechanism (PLAIN, SCRAM-SHA-256, SCRAM-SHA-512)
 - `sasl.username` - SASL username
 - `sasl.password` - SASL password
-- `initialDynamicConfig` - Advanced wrpkafka configuration
+- `initialDynamicConfig` - Advanced wrpkafka configuration defines topics
 
 ## Implementation Details
 
@@ -150,7 +145,6 @@ Add to `talaria.yaml`:
 ```yaml
 kafka:
   enabled: true
-  topic: "wrp-events"
   brokers:
     - "localhost:9092"
   maxBufferedRecords: 10000

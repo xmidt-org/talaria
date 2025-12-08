@@ -65,8 +65,6 @@ type KafkaConfig struct {
 	Enabled bool `json:"enabled" yaml:"enabled"`
 	// Enabled determines whether the Kafka publisher is enabled
 	AllowAutoTopicCreation bool `json:"allow_auto_topic_creation"`
-	// Topic is the single Kafka topic to publish all messages to
-	Topic string `json:"topic" yaml:"topic"`
 	// Brokers is the list of Kafka broker addresses
 	Brokers []string `json:"brokers" yaml:"brokers"`
 	// TLS configures TLS for Kafka connections

@@ -58,9 +58,13 @@ func TestKafkaPublisher_Start(t *testing.T) {
 			tt.setupMock(mockPub)
 
 			config := &KafkaConfig{
-				Enabled:            true,
-				Topic:              "test-topic",
-				Brokers:            []string{"localhost:9092"},
+				Enabled: true,
+				Brokers: []string{"localhost:9092"},
+				InitialDynamicConfig: wrpkafka.DynamicConfig{
+					TopicMap: []wrpkafka.TopicRoute{
+						{Pattern: "*", Topic: "test-topic"},
+					},
+				},
 				MaxBufferedRecords: 1000,
 				MaxBufferedBytes:   1000000,
 				MaxRetries:         3,
@@ -100,7 +104,11 @@ func TestKafkaPublisher_Start(t *testing.T) {
 func TestKafkaPublisher_Start_AlreadyStarted(t *testing.T) {
 	config := &KafkaConfig{
 		Enabled: true,
-		Topic:   "test-topic",
+		InitialDynamicConfig: wrpkafka.DynamicConfig{
+			TopicMap: []wrpkafka.TopicRoute{
+				{Pattern: "*", Topic: "test-topic"},
+			},
+		},
 		Brokers: []string{"localhost:9092"},
 	}
 
@@ -146,7 +154,11 @@ func TestKafkaPublisher_Stop(t *testing.T) {
 
 			config := &KafkaConfig{
 				Enabled: true,
-				Topic:   "test-topic",
+				InitialDynamicConfig: wrpkafka.DynamicConfig{
+					TopicMap: []wrpkafka.TopicRoute{
+						{Pattern: "*", Topic: "test-topic"},
+					},
+				},
 				Brokers: []string{"localhost:9092"},
 			}
 
@@ -251,7 +263,11 @@ func TestKafkaPublisher_Publish(t *testing.T) {
 
 			config := &KafkaConfig{
 				Enabled: true,
-				Topic:   "test-topic",
+				InitialDynamicConfig: wrpkafka.DynamicConfig{
+					TopicMap: []wrpkafka.TopicRoute{
+						{Pattern: "*", Topic: "test-topic"},
+					},
+				},
 				Brokers: []string{"localhost:9092"},
 			}
 
@@ -300,7 +316,11 @@ func TestKafkaPublisher_Publish_MessageConversion(t *testing.T) {
 
 	config := &KafkaConfig{
 		Enabled: true,
-		Topic:   "test-topic",
+		InitialDynamicConfig: wrpkafka.DynamicConfig{
+			TopicMap: []wrpkafka.TopicRoute{
+				{Pattern: "*", Topic: "test-topic"},
+			},
+		},
 		Brokers: []string{"localhost:9092"},
 	}
 
@@ -373,7 +393,11 @@ func TestKafkaPublisher_IsEnabled(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			config := &KafkaConfig{
 				Enabled: tt.enabled,
-				Topic:   "test-topic",
+				InitialDynamicConfig: wrpkafka.DynamicConfig{
+					TopicMap: []wrpkafka.TopicRoute{
+						{Pattern: "*", Topic: "test-topic"},
+					},
+				},
 				Brokers: []string{"localhost:9092"},
 			}
 
@@ -398,8 +422,12 @@ func TestDefaultPublisherFactory(t *testing.T) {
 		{
 			name: "basic config",
 			config: &KafkaConfig{
-				Enabled:            true,
-				Topic:              "test-topic",
+				Enabled: true,
+				InitialDynamicConfig: wrpkafka.DynamicConfig{
+					TopicMap: []wrpkafka.TopicRoute{
+						{Pattern: "*", Topic: "test-topic"},
+					},
+				},
 				Brokers:            []string{"localhost:9092"},
 				MaxBufferedRecords: 1000,
 				MaxBufferedBytes:   1000000,
@@ -412,7 +440,11 @@ func TestDefaultPublisherFactory(t *testing.T) {
 			name: "with TLS",
 			config: &KafkaConfig{
 				Enabled: true,
-				Topic:   "test-topic",
+				InitialDynamicConfig: wrpkafka.DynamicConfig{
+					TopicMap: []wrpkafka.TopicRoute{
+						{Pattern: "*", Topic: "test-topic"},
+					},
+				},
 				Brokers: []string{"localhost:9093"},
 				TLS: KafkaTLSConfig{
 					Enabled:            true,
@@ -425,7 +457,11 @@ func TestDefaultPublisherFactory(t *testing.T) {
 			name: "with SASL PLAIN",
 			config: &KafkaConfig{
 				Enabled: true,
-				Topic:   "test-topic",
+				InitialDynamicConfig: wrpkafka.DynamicConfig{
+					TopicMap: []wrpkafka.TopicRoute{
+						{Pattern: "*", Topic: "test-topic"},
+					},
+				},
 				Brokers: []string{"localhost:9092"},
 				SASL: KafkaSASLConfig{
 					Mechanism: "PLAIN",
@@ -439,7 +475,11 @@ func TestDefaultPublisherFactory(t *testing.T) {
 			name: "with SASL SCRAM-SHA-256",
 			config: &KafkaConfig{
 				Enabled: true,
-				Topic:   "test-topic",
+				InitialDynamicConfig: wrpkafka.DynamicConfig{
+					TopicMap: []wrpkafka.TopicRoute{
+						{Pattern: "*", Topic: "test-topic"},
+					},
+				},
 				Brokers: []string{"localhost:9092"},
 				SASL: KafkaSASLConfig{
 					Mechanism: "SCRAM-SHA-256",
@@ -453,7 +493,11 @@ func TestDefaultPublisherFactory(t *testing.T) {
 			name: "with SASL SCRAM-SHA-512",
 			config: &KafkaConfig{
 				Enabled: true,
-				Topic:   "test-topic",
+				InitialDynamicConfig: wrpkafka.DynamicConfig{
+					TopicMap: []wrpkafka.TopicRoute{
+						{Pattern: "*", Topic: "test-topic"},
+					},
+				},
 				Brokers: []string{"localhost:9092"},
 				SASL: KafkaSASLConfig{
 					Mechanism: "SCRAM-SHA-512",
@@ -467,7 +511,11 @@ func TestDefaultPublisherFactory(t *testing.T) {
 			name: "unsupported SASL mechanism",
 			config: &KafkaConfig{
 				Enabled: true,
-				Topic:   "test-topic",
+				InitialDynamicConfig: wrpkafka.DynamicConfig{
+					TopicMap: []wrpkafka.TopicRoute{
+						{Pattern: "*", Topic: "test-topic"},
+					},
+				},
 				Brokers: []string{"localhost:9092"},
 				SASL: KafkaSASLConfig{
 					Mechanism: "INVALID",
@@ -482,7 +530,6 @@ func TestDefaultPublisherFactory(t *testing.T) {
 			name: "with InitialDynamicConfig",
 			config: &KafkaConfig{
 				Enabled: true,
-				Topic:   "test-topic",
 				Brokers: []string{"localhost:9092"},
 				InitialDynamicConfig: wrpkafka.DynamicConfig{
 					TopicMap: []wrpkafka.TopicRoute{
@@ -550,7 +597,11 @@ func TestKafkaPublisher_Lifecycle(t *testing.T) {
 
 	config := &KafkaConfig{
 		Enabled: true,
-		Topic:   "test-topic",
+		InitialDynamicConfig: wrpkafka.DynamicConfig{
+			TopicMap: []wrpkafka.TopicRoute{
+				{Pattern: "*", Topic: "test-topic"},
+			},
+		},
 		Brokers: []string{"localhost:9092"},
 	}
 

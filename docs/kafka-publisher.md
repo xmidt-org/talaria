@@ -27,21 +27,15 @@ The Kafka publisher is configured through the main Talaria configuration file (t
 ```yaml
 kafka:
   enabled: true
-  topic: "wrp-events"
   brokers:
     - "localhost:9092"
 ```
-
-### Full Configuration Example
-
-See [kafka-config-example.yaml](./kafka-config-example.yaml) for a complete configuration example with all available options.
 
 ### Configuration Properties
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
 | `enabled` | boolean | No | `false` | Whether the Kafka publisher is enabled |
-| `topic` | string | Yes* | - | The Kafka topic to publish all messages to |
 | `brokers` | []string | Yes* | - | List of Kafka broker addresses |
 | `maxBufferedRecords` | int | No | `10000` | Maximum number of records to buffer |
 | `maxBufferedBytes` | int | No | `104857600` (100MB) | Maximum number of bytes to buffer |
@@ -55,7 +49,7 @@ See [kafka-config-example.yaml](./kafka-config-example.yaml) for a complete conf
 | `sasl.mechanism` | string | No | - | SASL mechanism (PLAIN, SCRAM-SHA-256, SCRAM-SHA-512) |
 | `sasl.username` | string | No | - | SASL username |
 | `sasl.password` | string | No | - | SASL password |
-| `initialDynamicConfig` | object | No | - | Advanced wrpkafka configuration |
+| `initialDynamicConfig` | object | No | - |  wrpkafka topic configuration |
 
 \* Required when `enabled` is `true`
 
@@ -159,37 +153,12 @@ go test -v -run TestKafka
 go test -v ./publisher_test.go
 ```
 
-### Integration Testing
-
-To test with a real Kafka cluster:
-
-1. Start a local Kafka instance (e.g., using Docker):
-   ```bash
-   docker run -d --name kafka -p 9092:9092 \
-     apache/kafka:latest
-   ```
-
-2. Update `talaria.yaml` with Kafka configuration
-
-3. Start Talaria:
-   ```bash
-   ./talaria -f talaria.yaml
-   ```
-
-4. Connect a device and send messages
-
-5. Verify messages in Kafka:
-   ```bash
-   kafka-console-consumer --bootstrap-server localhost:9092 \
-     --topic wrp-events --from-beginning
-   ```
-
 ## Troubleshooting
 
 ### Publisher doesn't start
 
 - Check that `kafka.enabled` is set to `true`
-- Verify `kafka.brokers` and `kafka.topic` are configured
+- Verify `kafka.brokers` are configured
 - Review logs for configuration errors
 
 ### Messages not appearing in Kafka

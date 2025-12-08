@@ -648,8 +648,6 @@ kafka:
 
   allowAutoTopicCreation: true
 
-  topic: "device-events"
-
   # brokers is the list of Kafka broker addresses
   # (Required if enabled is true)
   brokers:
