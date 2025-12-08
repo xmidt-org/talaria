@@ -5,6 +5,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	// nolint:gosec
 	_ "net/http/pprof"
@@ -48,9 +49,10 @@ import (
 )
 
 const (
-	applicationName  = "talaria"
-	tracingConfigKey = "tracing"
-	maxDeviceCount   = "max_device_count"
+	applicationName     = "talaria"
+	testApplicationName = "talaria-test"
+	tracingConfigKey    = "tracing"
+	maxDeviceCount      = "max_device_count"
 )
 
 var (
@@ -80,7 +82,20 @@ func newDeviceManager(logger *zap.Logger, r xmetrics.Registry, tf *touchstone.Fa
 		return nil, nil, nil, fmt.Errorf("failed to get OutboundMeasures: %s", err)
 	}
 
-	outboundListeners, err := outbounder.Start(om)
+	// Create and start Kafka publisher
+	kafkaPublisher, err := NewKafkaPublisher(logger, v)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to create kafka publisher: %w", err)
+	}
+
+	if kafkaPublisher.IsEnabled() {
+		if err := kafkaPublisher.Start(); err != nil {
+			return nil, nil, nil, fmt.Errorf("failed to start kafka publisher: %w", err)
+		}
+		logger.Info("Kafka publisher started and enabled")
+	}
+
+	outboundListeners, err := outbounder.StartWithKafka(om, kafkaPublisher)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -126,12 +141,21 @@ func talaria(arguments []string) int {
 	// Initialize the server environment: command-line flags, Viper, logging, and the WebPA instance
 	//
 
+	appName := applicationName
+	if strings.Contains(os.Args[0], "test") {
+		appName = testApplicationName
+	}
+
 	var (
 		f = pflag.NewFlagSet(applicationName, pflag.ContinueOnError)
 		v = viper.New()
 
-		logger, metricsRegistry, webPA, err = server.Initialize(applicationName, arguments, f, v, device.Metrics, rehasher.Metrics, service.Metrics)
+		logger, metricsRegistry, webPA, err = server.Initialize(appName, arguments, f, v, device.Metrics, rehasher.Metrics, service.Metrics)
 	)
+
+	// Setup default config values BEFORE server.Initialize reads the config file
+	// This ensures AutomaticEnv is enabled and environment variables can override config
+	setupDefaultConfigValues(v)
 
 	if parseErr, done := printVersion(f, arguments); done {
 		// if we're done, we're exiting no matter what
@@ -142,8 +166,6 @@ func talaria(arguments []string) int {
 		}
 		os.Exit(0)
 	}
-
-	setupDefaultConfigValues(v)
 
 	if err != nil {
 		logger.Error("unable to initialize Viper environment", zap.Error(err))

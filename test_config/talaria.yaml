@@ -286,6 +286,7 @@ device:
     # receiver.
     # (Optional) defaults to 1000
     outboundQueueSize: 2000
+    source: "dns:integration-test.talaria.com"
 
     # workerPoolSize configures how many active go threads send messages to the receivers.
     # (Optional) defaults to 100
@@ -645,6 +646,8 @@ kafka:
   # (Optional) defaults to false
   enabled: true
 
+  allowAutoTopicCreation: true
+
   # brokers is the list of Kafka broker addresses
   # (Required if enabled is true)
   brokers:
@@ -715,7 +718,12 @@ kafka:
     # (Optional)
     topicMap:
       - pattern: "*"  # Catch-all pattern
-        topic: "wrp-events"
+        topic: "device-events"
+
+    # linger sets the batching delay - how long to wait before sending batched messages
+    # Setting this to a low value (like 10ms) ensures messages are sent quickly
+    # (Optional) defaults to 0 (no linger, send immediately when other conditions met)
+    # linger: "10ms"  # COMMENTED OUT - use default 0 for immediate drain like wrpkafka tests
 
     # compression configures message compression
     # Supported values: none, gzip, snappy, lz4, zstd
