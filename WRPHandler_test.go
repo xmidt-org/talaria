@@ -121,6 +121,7 @@ func testMessageHandlerServeHTTPEncodeError(t *testing.T) {
 		}),
 	).Once().Return(expectedDeviceResponse, nil)
 
+	request.SetBasicAuth("test", "test")
 	handler.ServeHTTP(response, request)
 	assert.Equal(http.StatusInternalServerError, response.Code)
 	assert.Equal("application/json", response.Header().Get("Content-Type"))
@@ -169,6 +170,7 @@ func testMessageHandlerServeHTTPRouteError(t *testing.T, routeError error, expec
 		}),
 	).Once().Return(nil, routeError)
 
+	request.SetBasicAuth("test", "test")
 	handler.ServeHTTP(response, request)
 	assert.Equal(expectedCode, response.Code)
 	assert.Equal("application/json", response.Header().Get("Content-Type"))
@@ -220,6 +222,7 @@ func testMessageHandlerServeHTTPEvent(t *testing.T, requestFormat wrp.Format) {
 		}),
 	).Once().Return(nil, nil)
 
+	request.SetBasicAuth("test", "test")
 	handler.ServeHTTP(response, request)
 	assert.Equal(http.StatusOK, response.Code)
 	assert.Equal(0, response.Body.Len())
@@ -290,6 +293,7 @@ func testMessageHandlerServeHTTPRequestResponse(t *testing.T, responseFormat, re
 		}),
 	).Once().Return(expectedDeviceResponse, nil)
 
+	request.SetBasicAuth("test", "test")
 	handler.ServeHTTP(response, request)
 	assert.Equal(http.StatusOK, response.Code)
 	assert.Equal(responseFormat.ContentType(), response.Header().Get("Content-Type"))
