@@ -43,6 +43,14 @@ func wrpRouterHandler(logger *zap.Logger, router device.Router, ctxlogger func(c
 	}
 
 	return func(w wrphttp.ResponseWriter, r *wrphttp.Request) {
+		// HOTFIX: only support basic auth for now, so as to avoid allowing themis
+		// to issue JWTs for this endpoint.
+		if _, _, ok := r.Original.BasicAuth(); !ok {
+			logger.Error("only basic auth is supported")
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+
 		deviceRequest := &device.Request{
 			Message:  &r.Entity.Message,
 			Format:   r.Entity.Format,
