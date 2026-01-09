@@ -53,6 +53,7 @@ const (
 	testApplicationName = "talaria_test"
 	tracingConfigKey    = "tracing"
 	maxDeviceCount      = "max_device_count"
+	ThisIsATest         = "this_is_a_test"
 )
 
 var (
@@ -142,9 +143,14 @@ func talaria(arguments []string) int {
 	//
 
 	appName := applicationName
-	if strings.Contains(os.Args[0], "talaria_test") {
-		appName = testApplicationName
+	for _, arg := range arguments {
+		if strings.Contains(arg, ThisIsATest) {
+			appName = testApplicationName
+		}
 	}
+	// if strings.Contains(os.Args[0], "talaria_test") {
+	// 	appName = testApplicationName
+	// }
 
 	var (
 		f = pflag.NewFlagSet(applicationName, pflag.ContinueOnError)

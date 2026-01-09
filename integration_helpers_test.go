@@ -70,21 +70,16 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string, caduce
 
 	// 2. Create a test config file with dynamic external service values
 	// (Gave up on getting environment variables to work)
-	configTemplateFile := filepath.Join(workspaceRoot, "test_config", "talaria.yaml")
+	configTemplateFile := filepath.Join(workspaceRoot, "test_config", "talaria_template.yaml")
 	testConfigFile := filepath.Join(workspaceRoot, "talaria_test.yaml")
 
-	// read the original config
+	// read the config template
 	configTemplate, err := os.ReadFile(configTemplateFile)
 	if err != nil {
-		t.Fatalf("Failed to read original config: %v", err)
+		t.Fatalf("Failed to read template config: %v", err)
 	}
 
-	// environment variables still don't work
-	// os.Setenv("talaria_test_jwtValidator_Config_Resolve_Template", fmt.Sprintf("%s/{keyID}", themisKeysUrl))
-	// os.Setenv("talaria_test_kafka_brokers_0", kafkaBroker)
-	// os.Setenv("talaria_test_device_outbound_eventEndpoints_default", caduceusUrl)
-
-	// for now, just replace the values we need directly
+	// for now, just replace the values we need directly since the environment variable replacement is still broken
 	configContent := string(configTemplate)
 	configContent = strings.Replace(configContent,
 		"THEMIS_URL",
@@ -109,11 +104,20 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string, caduce
 	t.Logf("Created test config file: %s", testConfigFile)
 
 	// 3. Start Talaria as a subprocess.  It will use talaria_test for the app name for viper
-	talariaCmd := exec.Command(talariaTestBinary)
+	talariaCmd := exec.Command(talariaTestBinary, "this_is_a_test")
+
+	// something is still not working with environment variables, so stuck doing the substitutions above
+	// talariaCmd.Env = os.Environ()
+	// talariaCmd.Env = append(talariaCmd.Env, fmt.Sprintf("TALARIA_TEST_JWTVALIDATOR_CONFIG_RESOLVE_TEMPLATE=%s/{keyID}", themisKeysUrl))
+	// talariaCmd.Env = append(talariaCmd.Env, fmt.Sprintf("TALARIA_TEST_KAFKA_BROKERS_0=%s", kafkaBroker))
+	// talariaCmd.Env = append(talariaCmd.Env, fmt.Sprintf("TALARIA_TEST_DEVICE_OUTBOUND_EVENTENDPOINTS_DEFAULT=%s", caduceusUrl))
+
 	talariaCmd.Dir = workspaceRoot
 
 	t.Logf("Using JWT validator template: %s/{keyID}", themisKeysUrl)
-	t.Logf("Using Kafka broker: %s", kafkaBroker) // Send stdout/stderr directly to console
+	t.Logf("Using Kafka broker: %s", kafkaBroker)
+	t.Logf("Using Caduceus URL: %s", caduceusUrl)
+
 	talariaCmd.Stdout = os.Stdout
 	talariaCmd.Stderr = os.Stderr
 
