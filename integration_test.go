@@ -14,8 +14,11 @@ import (
 	"github.com/xmidt-org/wrp-go/v5"
 )
 
-// TODO - get environment variables to work - prefixed by applicationName
-// TODO - refactor common code with other integration tests
+type testConfig struct {
+	configFile   string
+	writeToKafka bool
+}
+
 // TestIntegration_ReceiveEvent tests basic event publishing to Kafka.
 //
 // Verifies:
@@ -23,7 +26,7 @@ import (
 // - Message content in Kafka is correct
 //
 // This test uses the device-simulator to connect to Talaria and generate events.
-func TestIntegration_ReceiveOnlineEvent(t *testing.T) {
+func runIt(t *testing.T, cfg testConfig) {
 	// Disable Ryuk (testcontainers reaper) to avoid port mapping issues
 	t.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
 
@@ -45,7 +48,7 @@ func TestIntegration_ReceiveOnlineEvent(t *testing.T) {
 
 	// TODO - pass in config file and try to use env variables
 	// 3. Start Talaria with the dynamic Kafka broker and Themis keys URL
-	cleanupTalaria := setupTalaria(t, broker, themisKeysUrl, testServer.URL)
+	cleanupTalaria := setupTalaria(t, broker, themisKeysUrl, testServer.URL, cfg.configFile)
 	defer cleanupTalaria()
 
 	// 4. Build and start device-simulator
@@ -67,20 +70,23 @@ func TestIntegration_ReceiveOnlineEvent(t *testing.T) {
 	// Wait for device to connect and events to be published
 	time.Sleep(10 * time.Second)
 
-	// 6. Verify messages in Kafka
-	records := consumeMessages(t, broker, "device-events", messageConsumeWait)
-	require.Len(t, records, 1, "Expected exactly 1 message in Kafka")
-
-	// TODO - put in test struct
+	// expected online message
 	msg := &wrp.Message{
 		Type:        wrp.SimpleEventMessageType,
 		Source:      "dns:integration-test.talaria.com",
 		Destination: "event:device-status/mac:4ca161000109/online",
 	}
-	verifyWRPMessage(t, records[0].Value, msg)
-	require.Equal(t, msg.Source, string(records[0].Key), "Partition key should match Source")
 
-	// 7. Verify that the mock server received the expected WRP message
+	if cfg.writeToKafka {
+		// 6. Verify messages in Kafka
+		records := consumeMessages(t, broker, "device-events", messageConsumeWait)
+		require.Len(t, records, 1, "Expected exactly 1 message in Kafka")
+
+		verifyWRPMessage(t, records[0].Value, msg)
+		require.Equal(t, msg.Source, string(records[0].Key), "Partition key should match Source")
+	}
+
+	// 7. Verify that "caduceus" received the expected WRP message
 	select {
 	case receivedBody := <-receivedBodyChan:
 		fmt.Println(receivedBody)

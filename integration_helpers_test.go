@@ -48,7 +48,7 @@ func newTestLogConsumer(t *testing.T, prefix string) *testLogConsumer {
 
 // setupTalaria builds and starts Talaria as a subprocess with the given Kafka broker.
 // Returns a cleanup function to stop Talaria.
-func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string, caduceusUrl string) func() {
+func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string, caduceusUrl string, configFile string) func() {
 	t.Helper()
 
 	ctx := context.Background()
@@ -70,7 +70,7 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string, caduce
 
 	// 2. Create a test config file with dynamic external service values
 	// (Gave up on getting environment variables to work)
-	configTemplateFile := filepath.Join(workspaceRoot, "test_config", "talaria_template.yaml")
+	configTemplateFile := filepath.Join(workspaceRoot, "test_config", configFile)
 	testConfigFile := filepath.Join(workspaceRoot, "talaria_test.yaml")
 
 	// read the config template

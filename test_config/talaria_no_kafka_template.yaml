@@ -254,7 +254,7 @@ device:
     # where the key is the device event type (https://godoc.org/github.com/xmidt-org/webpa-common/device#EventType)
     # and the value is the url.
     eventEndpoints:
-      default: http://caduceus:6000/api/v4/notify
+      default: CADUCEUS_URL
 
     # enableConsulRoundRobin will overwrite the eventEndpoints with using consul to discover the caduceus in the datacenter.
     # NOTE: eventEndpoints still must be set, and in the service section of this config caduceus must be added to the list
@@ -339,7 +339,7 @@ jwtValidator:
       # Template is a URI template used to fetch keys.  This template may
       # use a single parameter named keyID, e.g. http://keys.com/{keyID}.
       # This field is required and has no default.
-      Template: "http://localhost:6500/keys/{keyID}"
+      Template: THEMIS_URL
 
 # Any combination of these configurations may be used for authorization.
 # If ANY match, the request goes onwards.  If none are provided, no requests
@@ -638,98 +638,3 @@ zap:
 #(Optional) failOpen determines if talaria should allow devices without authentication to connect or not
 #default is to allow for fail open
 failOpen: true
-
-# kafka configures the Kafka publisher for streaming WRP messages to Kafka
-# All WRP event messages will be published to a single Kafka topic
-kafka:
-  # enabled determines whether the Kafka publisher is enabled
-  # (Optional) defaults to false
-  enabled: true
-
-  allowAutoTopicCreation: true
-
-  # brokers is the list of Kafka broker addresses
-  # (Required if enabled is true)
-  brokers:
-    - (( grab $KAFKA_BROKERS || "http://localhost:9092" ))
-
-  # maxBufferedRecords is the maximum number of records the publisher can buffer
-  # (Optional) defaults to 10000
-  maxBufferedRecords: 10000
-
-  # maxBufferedBytes is the maximum number of bytes the publisher can buffer
-  # (Optional) defaults to 100MB (104857600 bytes)
-  maxBufferedBytes: 104857600
-
-  # maxRetries is the maximum number of retries for failed produce requests
-  # (Optional) defaults to 3
-  maxRetries: 3
-
-  # requestTimeout is the timeout for produce requests
-  # (Optional) defaults to 30s
-  requestTimeout: "30s"
-
-  # tls configures TLS for Kafka connections
-  # (Optional) defaults to disabled
-  tls:
-    # enabled determines whether TLS is enabled
-    # (Optional) defaults to false
-    enabled: false
-
-    # insecureSkipVerify controls whether a client verifies the server's certificate chain
-    # WARNING: Setting this to true is insecure and should only be used in development
-    # (Optional) defaults to false
-    insecureSkipVerify: false
-
-    # certFile is the path to the client certificate file
-    # (Optional) only needed for mutual TLS
-    certFile: ""
-
-    # keyFile is the path to the client key file
-    # (Optional) only needed for mutual TLS
-    keyFile: ""
-
-    # caFile is the path to the CA certificate file
-    # (Optional) only needed if using a custom CA
-    caFile: ""
-
-  # sasl configures SASL authentication for Kafka
-  # (Optional) defaults to no authentication
-  sasl:
-    # mechanism is the SASL mechanism to use
-    # Supported values: PLAIN, SCRAM-SHA-256, SCRAM-SHA-512
-    # (Optional) leave empty to disable SASL
-    mechanism: ""
-
-    # username is the SASL username
-    # (Required if mechanism is set)
-    username: ""
-
-    # password is the SASL password
-    # (Required if mechanism is set)
-    password: ""
-
-  # initialDynamicConfig is the initial dynamic configuration for wrpkafka
-  # This allows advanced configuration of topic routing, compression, etc.
-  # (Optional) defaults to sending all messages to the configured topic
-  initialDynamicConfig:
-    # topicMap defines routing patterns for messages
-    # If not specified, all messages go to the configured topic
-    # (Optional)
-    topicMap:
-      - pattern: "*"  # Catch-all pattern
-        topic: "device-events"
-
-    # linger sets the batching delay - how long to wait before sending batched messages
-    # Setting this to a low value (like 10ms) ensures messages are sent quickly
-    # (Optional) defaults to 0 (no linger, send immediately when other conditions met)
-    # linger: "10ms"  # COMMENTED OUT - use default 0 for immediate drain like wrpkafka tests
-
-    # compression configures message compression
-    # Supported values: none, gzip, snappy, lz4, zstd
-    # (Optional) defaults to none
-    compression: "snappy"
-
-    # headers defines static headers to add to all messages
-    # (Optional) defaults to no additional headers
-    headers: []
