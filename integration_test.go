@@ -39,7 +39,7 @@ func TestIntegration_ReceiveOnlineEvent(t *testing.T) {
 	// Channel for "caduceus" to receive wrp message
 	receivedBodyChan := make(chan string, 1)
 
-	// 1. Create a mock HTTP server using httptest.Server
+	// 1. Create a mock caduceus server using httptest.Server
 	testServer := setupCaduceusMockServer(t, receivedBodyChan)
 	defer testServer.Close() // Clean up the server after the test
 

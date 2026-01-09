@@ -50,7 +50,7 @@ import (
 
 const (
 	applicationName     = "talaria"
-	testApplicationName = "talaria-test"
+	testApplicationName = "talaria_test"
 	tracingConfigKey    = "tracing"
 	maxDeviceCount      = "max_device_count"
 )
@@ -142,7 +142,7 @@ func talaria(arguments []string) int {
 	//
 
 	appName := applicationName
-	if strings.Contains(os.Args[0], "test") {
+	if strings.Contains(os.Args[0], "talaria_test") {
 		appName = testApplicationName
 	}
 
@@ -150,6 +150,7 @@ func talaria(arguments []string) int {
 		f = pflag.NewFlagSet(applicationName, pflag.ContinueOnError)
 		v = viper.New()
 
+		// I hate webpa libary
 		logger, metricsRegistry, webPA, err = server.Initialize(appName, arguments, f, v, device.Metrics, rehasher.Metrics, service.Metrics)
 	)
 
@@ -166,6 +167,9 @@ func talaria(arguments []string) int {
 		}
 		os.Exit(0)
 	}
+
+	// TODO REMOVE - DEBUGGING ONLY
+	fmt.Println("viper configuration:	" + fmt.Sprintf("%v", v.AllSettings()))
 
 	if err != nil {
 		logger.Error("unable to initialize Viper environment", zap.Error(err))

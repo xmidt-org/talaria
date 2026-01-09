@@ -59,7 +59,7 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string, caduce
 
 	// 1. Build Talaria binary
 	t.Log("Building Talaria...")
-	talariaTestBinary := filepath.Join(workspaceRoot, "talaria-test")
+	talariaTestBinary := filepath.Join(workspaceRoot, "talaria_test")
 	buildCmd := exec.CommandContext(ctx, "go", "build", "-o", talariaTestBinary, ".")
 	buildCmd.Dir = workspaceRoot
 	buildOutput, err := buildCmd.CombinedOutput()
@@ -70,30 +70,33 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string, caduce
 
 	// 2. Create a test config file with dynamic external service values
 	// (Gave up on getting environment variables to work)
-	originalConfigFile := filepath.Join(workspaceRoot, "test_config", "talaria.yaml")
-	testConfigFile := filepath.Join(workspaceRoot, "talaria-test.yaml")
+	configTemplateFile := filepath.Join(workspaceRoot, "test_config", "talaria.yaml")
+	testConfigFile := filepath.Join(workspaceRoot, "talaria_test.yaml")
 
 	// read the original config
-	originalContent, err := os.ReadFile(originalConfigFile)
+	configTemplate, err := os.ReadFile(configTemplateFile)
 	if err != nil {
 		t.Fatalf("Failed to read original config: %v", err)
 	}
 
-	// replace just the JWT validator template and Kafka settings
-	configContent := string(originalContent)
+	// environment variables still don't work
+	// os.Setenv("talaria_test_jwtValidator_Config_Resolve_Template", fmt.Sprintf("%s/{keyID}", themisKeysUrl))
+	// os.Setenv("talaria_test_kafka_brokers_0", kafkaBroker)
+	// os.Setenv("talaria_test_device_outbound_eventEndpoints_default", caduceusUrl)
+
+	// for now, just replace the values we need directly
+	configContent := string(configTemplate)
 	configContent = strings.Replace(configContent,
 		"THEMIS_URL",
 		fmt.Sprintf("%s/{keyID}", themisKeysUrl),
 		1)
-	// Replace Kafka broker
-	fmt.Println(kafkaBroker)
+	// // Replace Kafka broker
 	configContent = strings.Replace(configContent,
 		"KAFKA_BROKER",
 		kafkaBroker,
 		1)
 
-	// Replace Caduceus URL
-	fmt.Println(caduceusUrl)
+	// // Replace Caduceus URL
 	configContent = strings.Replace(configContent,
 		"CADUCEUS_URL",
 		caduceusUrl,
@@ -105,7 +108,7 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string, caduce
 	}
 	t.Logf("Created test config file: %s", testConfigFile)
 
-	// 3. Start Talaria as a subprocess.  It will use talaria-test for the app name for viper
+	// 3. Start Talaria as a subprocess.  It will use talaria_test for the app name for viper
 	talariaCmd := exec.Command(talariaTestBinary)
 	talariaCmd.Dir = workspaceRoot
 
