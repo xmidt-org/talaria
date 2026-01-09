@@ -6,9 +6,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -43,15 +48,20 @@ func newTestLogConsumer(t *testing.T, prefix string) *testLogConsumer {
 
 // setupTalaria builds and starts Talaria as a subprocess with the given Kafka broker.
 // Returns a cleanup function to stop Talaria.
-func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string) func() {
+func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string, caduceusUrl string) func() {
 	t.Helper()
 
 	ctx := context.Background()
 
+	// Get the workspace root directory (parent of the test file)
+	_, filename, _, _ := runtime.Caller(0)
+	workspaceRoot := filepath.Dir(filename)
+
 	// 1. Build Talaria binary
 	t.Log("Building Talaria...")
-	buildCmd := exec.CommandContext(ctx, "go", "build", "-o", "talaria-test", ".")
-	buildCmd.Dir = "/Users/mpicci200/comcast/talaria"
+	talariaTestBinary := filepath.Join(workspaceRoot, "talaria-test")
+	buildCmd := exec.CommandContext(ctx, "go", "build", "-o", talariaTestBinary, ".")
+	buildCmd.Dir = workspaceRoot
 	buildOutput, err := buildCmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Failed to build Talaria: %v\nOutput: %s", err, buildOutput)
@@ -60,8 +70,8 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string) func()
 
 	// 2. Create a test config file with dynamic external service values
 	// (Gave up on getting environment variables to work)
-	originalConfigFile := "test_config/talaria.yaml"
-	testConfigFile := "talaria-test.yaml"
+	originalConfigFile := filepath.Join(workspaceRoot, "test_config", "talaria.yaml")
+	testConfigFile := filepath.Join(workspaceRoot, "talaria-test.yaml")
 
 	// read the original config
 	originalContent, err := os.ReadFile(originalConfigFile)
@@ -72,13 +82,21 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string) func()
 	// replace just the JWT validator template and Kafka settings
 	configContent := string(originalContent)
 	configContent = strings.Replace(configContent,
-		`Template: "http://localhost:6500/keys/{keyID}"`,
-		fmt.Sprintf(`Template: "%s/{keyID}"`, themisKeysUrl),
+		"THEMIS_URL",
+		fmt.Sprintf("%s/{keyID}", themisKeysUrl),
 		1)
 	// Replace Kafka broker
+	fmt.Println(kafkaBroker)
 	configContent = strings.Replace(configContent,
-		`- (( grab $KAFKA_BROKERS || "http://localhost:9092" ))`,
-		fmt.Sprintf(`- "%s"`, kafkaBroker),
+		"KAFKA_BROKER",
+		kafkaBroker,
+		1)
+
+	// Replace Caduceus URL
+	fmt.Println(caduceusUrl)
+	configContent = strings.Replace(configContent,
+		"CADUCEUS_URL",
+		caduceusUrl,
 		1)
 
 	// write the test config file
@@ -88,7 +106,8 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string) func()
 	t.Logf("Created test config file: %s", testConfigFile)
 
 	// 3. Start Talaria as a subprocess.  It will use talaria-test for the app name for viper
-	talariaCmd := exec.Command("./talaria-test")
+	talariaCmd := exec.Command(talariaTestBinary)
+	talariaCmd.Dir = workspaceRoot
 
 	t.Logf("Using JWT validator template: %s/{keyID}", themisKeysUrl)
 	t.Logf("Using Kafka broker: %s", kafkaBroker) // Send stdout/stderr directly to console
@@ -138,7 +157,7 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string) func()
 		}
 
 		// Remove test binary and config files
-		os.Remove("talaria-test")
+		os.Remove(talariaTestBinary)
 		os.Remove(testConfigFile)
 
 		t.Log("✓ Talaria stopped")
@@ -286,50 +305,80 @@ func consumeMessages(t *testing.T, broker string, topic string, timeout time.Dur
 }
 
 // decodeWRPMessage decodes a msgpack-encoded WRP message from a Kafka record.
-func decodeWRPMessage(t *testing.T, record *kgo.Record) *wrp.Message {
+func decodeWRPMessage(t *testing.T, in []byte) *wrp.Message {
 	t.Helper()
 
 	var msg wrp.Message
-	decoder := wrp.NewDecoderBytes(record.Value, wrp.Msgpack)
+	decoder := wrp.NewDecoderBytes(in, wrp.Msgpack)
 	err := decoder.Decode(&msg)
 	require.NoError(t, err, "Failed to decode WRP message")
 
 	return &msg
 }
 
-// verifyWRPMessage verifies that a Kafka record contains the expected WRP message.
-func verifyWRPMessage(t *testing.T, record *kgo.Record, expected *wrp.Message) {
+// TODO environment variables and other cleanup.  allow for multiple tests in a table
+func verifyWRPMessage(t *testing.T, msg []byte, expected *wrp.Message) {
 	t.Helper()
 
-	actual := decodeWRPMessage(t, record)
+	actual := decodeWRPMessage(t, msg)
 
-	// Verify key fields
+	// Verify fields
 	require.Equal(t, expected.Type, actual.Type, "Message type mismatch")
 	require.Equal(t, expected.Source, actual.Source, "Source mismatch")
 	require.Equal(t, expected.Destination, actual.Destination, "Destination mismatch")
-	//require.Equal(t, string(expected.Payload), string(actual.Payload), "Payload mismatch")
+}
 
-	require.Equal(t, expected.Source, string(record.Key), "Partition key should match Source")
+func setupCaduceusMockServer(t *testing.T, receivedBodyChan chan<- string) *httptest.Server {
+	t.Helper()
+
+	// 1. Create a mock HTTP server using httptest.Server
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("Expected POST request, got %s", r.Method)
+		}
+
+		// Read and capture the request body
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("Failed to read request body: %v", err)
+		}
+		r.Body.Close()
+
+		receivedBodyChan <- string(body) // Send the body to the channel
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	t.Logf("Caduceus mock server started at: %s", testServer.URL)
+
+	return testServer
 }
 
 func setupDeviceSimulator(t *testing.T, themisURL string) *exec.Cmd {
+	t.Helper()
+
+	// Get the workspace root directory
+	_, filename, _, _ := runtime.Caller(0)
+	workspaceRoot := filepath.Dir(filename)
+	deviceSimulatorDir := filepath.Join(workspaceRoot, "cmd", "device-simulator")
+	deviceSimulatorBinary := filepath.Join(deviceSimulatorDir, "device-simulator")
+
 	t.Log("Building device-simulator...")
-	buildCmd := exec.Command("go", "build", "-o", "device-simulator", ".")
-	buildCmd.Dir = "./cmd/device-simulator"
+	buildCmd := exec.Command("go", "build", "-o", deviceSimulatorBinary, ".")
+	buildCmd.Dir = deviceSimulatorDir
 	if output, err := buildCmd.CombinedOutput(); err != nil {
 		t.Logf("Build output: %s", string(output))
 		t.Fatalf("Failed to build device-simulator: %v", err)
 	}
 	t.Log("✓ Device-simulator built successfully")
 
-	simCmd := exec.Command("./device-simulator",
+	simCmd := exec.Command(deviceSimulatorBinary,
 		"-themis", themisURL,
 		"-talaria", "ws://localhost:6200/api/v2/device",
 		"-device-id", "mac:4ca161000109",
 		"-serial", "1800deadbeef",
 		"-ping-interval", "10s",
 	)
-	simCmd.Dir = "./cmd/device-simulator"
+	simCmd.Dir = workspaceRoot
 	simCmd.Stdout = os.Stdout
 	simCmd.Stderr = os.Stderr
 
@@ -347,6 +396,11 @@ func setupThemis(t *testing.T) (*testcontainers.Container, string, string) {
 
 	ctx := context.Background()
 
+	// Get the workspace root directory
+	_, filename, _, _ := runtime.Caller(0)
+	workspaceRoot := filepath.Dir(filename)
+	themisConfigPath := filepath.Join(workspaceRoot, "test_config", "themis.yaml")
+
 	// Configure testcontainers to use Podman if DOCKER_HOST is set
 	configureTestContainersForPodman(t)
 
@@ -357,7 +411,7 @@ func setupThemis(t *testing.T) (*testcontainers.Container, string, string) {
 		WaitingFor:   wait.ForHTTP("/health").WithPort("6504/tcp").WithStartupTimeout(60 * time.Second),
 		Files: []testcontainers.ContainerFile{
 			{
-				HostFilePath:      "test_config/themis.yaml",
+				HostFilePath:      themisConfigPath,
 				ContainerFilePath: "/etc/themis/themis.yaml",
 				FileMode:          0644, // Optional: specify file permissions in the container
 			},

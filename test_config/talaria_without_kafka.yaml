@@ -254,7 +254,7 @@ device:
     # where the key is the device event type (https://godoc.org/github.com/xmidt-org/webpa-common/device#EventType)
     # and the value is the url.
     eventEndpoints:
-      default: CADUCEUS_URL
+      default: http://caduceus:6000/api/v4/notify
 
     # enableConsulRoundRobin will overwrite the eventEndpoints with using consul to discover the caduceus in the datacenter.
     # NOTE: eventEndpoints still must be set, and in the service section of this config caduceus must be added to the list
@@ -339,7 +339,7 @@ jwtValidator:
       # Template is a URI template used to fetch keys.  This template may
       # use a single parameter named keyID, e.g. http://keys.com/{keyID}.
       # This field is required and has no default.
-      Template: THEMIS_URL
+      Template: "http://localhost:6500/keys/{keyID}"
 
 # Any combination of these configurations may be used for authorization.
 # If ANY match, the request goes onwards.  If none are provided, no requests
@@ -651,7 +651,7 @@ kafka:
   # brokers is the list of Kafka broker addresses
   # (Required if enabled is true)
   brokers:
-    - KAFKA_BROKER
+    - (( grab $KAFKA_BROKERS || "http://localhost:9092" ))
 
   # maxBufferedRecords is the maximum number of records the publisher can buffer
   # (Optional) defaults to 10000
