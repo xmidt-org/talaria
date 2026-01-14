@@ -33,6 +33,161 @@ const (
 	messageConsumeWait = 60 * time.Second
 )
 
+// TalariaTestFixture holds all the test infrastructure for integration tests.
+// It provides service URLs, channels for monitoring events, and helper methods
+// for making API calls and assertions.
+type TalariaTestFixture struct {
+	t *testing.T
+
+	// Service URLs
+	KafkaBroker     string
+	ThemisIssuerURL string
+	ThemisKeysURL   string
+	CaduceusURL     string
+	TalariaURL      string
+
+	// Channels for monitoring
+	ReceivedBodyChan chan string
+
+	// HTTP client
+	httpClient *http.Client
+}
+
+// NewRequest creates an HTTP request to Talaria without any authentication.
+// Use WithBasicAuth(), WithBearerToken(), etc. to add authentication.
+func (f *TalariaTestFixture) NewRequest(method, path string, body io.Reader) (*http.Request, error) {
+	url := f.TalariaURL + path
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		return nil, err
+	}
+	return req, nil
+}
+
+// WithBasicAuth adds Basic authentication to a request.
+// Pass empty username/password to test with invalid credentials.
+func (f *TalariaTestFixture) WithBasicAuth(req *http.Request, username, password string) *http.Request {
+	req.SetBasicAuth(username, password)
+	return req
+}
+
+// WithBearerToken adds Bearer token authentication to a request.
+func (f *TalariaTestFixture) WithBearerToken(req *http.Request, token string) *http.Request {
+	req.Header.Set("Authorization", "Bearer "+token)
+	return req
+}
+
+// WithContentType sets the Content-Type header on a request.
+func (f *TalariaTestFixture) WithContentType(req *http.Request, contentType string) *http.Request {
+	req.Header.Set("Content-Type", contentType)
+	return req
+}
+
+// Do executes an HTTP request and returns the response.
+func (f *TalariaTestFixture) Do(req *http.Request) (*http.Response, error) {
+	return f.httpClient.Do(req)
+}
+
+// DoAndReadBody executes an HTTP request and returns the response body and status code.
+// Automatically closes the response body.
+func (f *TalariaTestFixture) DoAndReadBody(req *http.Request) (body string, statusCode int, err error) {
+	resp, err := f.Do(req)
+	if err != nil {
+		return "", 0, err
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", resp.StatusCode, err
+	}
+
+	return string(bodyBytes), resp.StatusCode, nil
+}
+
+// GET makes a GET request to the specified path with optional auth.
+// If username is empty, no auth is added.
+func (f *TalariaTestFixture) GET(path string, username, password string) (body string, statusCode int, err error) {
+	req, err := f.NewRequest("GET", path, nil)
+	if err != nil {
+		return "", 0, err
+	}
+
+	if username != "" {
+		f.WithBasicAuth(req, username, password)
+	}
+
+	return f.DoAndReadBody(req)
+}
+
+// POST makes a POST request with the specified body and optional auth.
+// If username is empty, no auth is added.
+func (f *TalariaTestFixture) POST(path string, body io.Reader, contentType string, username, password string) (respBody string, statusCode int, err error) {
+	req, err := f.NewRequest("POST", path, body)
+	if err != nil {
+		return "", 0, err
+	}
+
+	if contentType != "" {
+		f.WithContentType(req, contentType)
+	}
+
+	if username != "" {
+		f.WithBasicAuth(req, username, password)
+	}
+
+	return f.DoAndReadBody(req)
+}
+
+// PUT makes a PUT request with the specified body and optional auth.
+// If username is empty, no auth is added.
+func (f *TalariaTestFixture) PUT(path string, body io.Reader, contentType string, username, password string) (respBody string, statusCode int, err error) {
+	req, err := f.NewRequest("PUT", path, body)
+	if err != nil {
+		return "", 0, err
+	}
+
+	if contentType != "" {
+		f.WithContentType(req, contentType)
+	}
+
+	if username != "" {
+		f.WithBasicAuth(req, username, password)
+	}
+
+	return f.DoAndReadBody(req)
+}
+
+// DELETE makes a DELETE request with optional auth.
+// If username is empty, no auth is added.
+func (f *TalariaTestFixture) DELETE(path string, username, password string) (body string, statusCode int, err error) {
+	req, err := f.NewRequest("DELETE", path, nil)
+	if err != nil {
+		return "", 0, err
+	}
+
+	if username != "" {
+		f.WithBasicAuth(req, username, password)
+	}
+
+	return f.DoAndReadBody(req)
+}
+
+// GetDevices makes a GET request to /api/v2/devices with basic auth.
+func (f *TalariaTestFixture) GetDevices(username, password string) (string, int, error) {
+	return f.GET("/api/v2/devices", username, password)
+}
+
+// WaitForCaduceusMessage waits for a message to arrive at the mock Caduceus server.
+func (f *TalariaTestFixture) WaitForCaduceusMessage(timeout time.Duration) (string, error) {
+	select {
+	case msg := <-f.ReceivedBodyChan:
+		return msg, nil
+	case <-time.After(timeout):
+		return "", fmt.Errorf("timeout waiting for Caduceus message")
+	}
+}
+
 // testLogConsumer is a custom log consumer that sends container logs to the test logger
 type testLogConsumer struct {
 	t      *testing.T
@@ -536,4 +691,72 @@ func setupThemis(t *testing.T) (*testcontainers.Container, string, string) {
 	})
 
 	return &container, themisIssuerUrl, themisKeysUrl
+}
+
+// setupIntegrationTest creates and starts all services needed for integration testing.
+// Returns a TalariaTestFixture with all service URLs and helper methods.
+// All cleanup is automatically registered with t.Cleanup().
+func setupIntegrationTest(t *testing.T, configFile string) *TalariaTestFixture {
+	t.Helper()
+
+	// Disable Ryuk (testcontainers reaper) to avoid port mapping issues
+	t.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
+
+	// 1. Start Kafka
+	_, broker := setupKafka(t)
+	t.Logf("✓ Kafka broker started at: %s", broker)
+
+	// 2. Start Themis
+	_, themisIssuerURL, themisKeysURL := setupThemis(t)
+	t.Logf("✓ Themis issuer started at: %s", themisIssuerURL)
+	t.Logf("✓ Themis keys started at: %s", themisKeysURL)
+
+	// 3. Create channel for Caduceus to receive WRP messages
+	receivedBodyChan := make(chan string, 10) // Buffered to avoid blocking
+
+	// 4. Create mock Caduceus server
+	caduceusServer := setupCaduceusMockServer(t, receivedBodyChan)
+	t.Logf("✓ Caduceus mock server started at: %s", caduceusServer.URL)
+
+	// 5. Start Talaria
+	cleanupTalaria := setupTalaria(t, broker, themisKeysURL, caduceusServer.URL, configFile)
+	t.Cleanup(cleanupTalaria)
+	talariaURL := "http://localhost:6200"
+	t.Logf("✓ Talaria started at: %s", talariaURL)
+
+	// 6. Build and start xmidt-agent (device simulator)
+	simCmd := setupXmidtAgent(t, themisIssuerURL)
+	if err := simCmd.Start(); err != nil {
+		t.Fatalf("Failed to start xmidt-agent: %v", err)
+	}
+	t.Logf("✓ xmidt-agent started with PID %d", simCmd.Process.Pid)
+
+	// Register cleanup for xmidt-agent
+	t.Cleanup(func() {
+		if simCmd.Process != nil {
+			t.Log("Stopping xmidt-agent...")
+			simCmd.Process.Kill()
+			simCmd.Wait()
+			t.Log("✓ xmidt-agent stopped")
+		}
+	})
+
+	// 7. Wait for device to connect
+	t.Log("Waiting for device to connect...")
+	time.Sleep(10 * time.Second)
+	t.Log("✓ Device connection window complete")
+
+	// 8. Create and return fixture
+	fixture := &TalariaTestFixture{
+		t:                t,
+		KafkaBroker:      broker,
+		ThemisIssuerURL:  themisIssuerURL,
+		ThemisKeysURL:    themisKeysURL,
+		CaduceusURL:      caduceusServer.URL,
+		TalariaURL:       talariaURL,
+		ReceivedBodyChan: receivedBodyChan,
+		httpClient:       http.DefaultClient,
+	}
+
+	return fixture
 }

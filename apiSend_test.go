@@ -6,82 +6,123 @@
 package main
 
 import (
-	"io"
+	"bytes"
 	"net/http"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 )
 
-// simply starts up the cluster.
+// TestHelloWorld is a basic integration test that verifies the test fixture setup
+// and makes a simple API call to get the list of connected devices.
 func TestHelloWorld(t *testing.T) {
-	// this looks to be broken, with talaria picking up talaria.yaml instead
-	talariaTestConfigFile := "talaria_template.yaml"
-	// this sets up a talaria cluster with kafka, themis, and a mock caduceus server.
-	// Disable Ryuk (testcontainers reaper) to avoid port mapping issues
-	t.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
+	// Set up the complete integration test environment
+	fixture := setupIntegrationTest(t, "talaria_template.yaml")
 
-	// 1. Start Kafka with dynamic port
-	_, broker := setupKafka(t)
-	t.Logf("Kafka broker started at: %s", broker)
+	// Make a simple API call with valid credentials
+	body, statusCode, err := fixture.GetDevices("user", "pass")
+	require.NoError(t, err, "Failed to get devices")
 
-	// 2a. Start supporting services for themis
-	_, themisIssuerUrl, themisKeysUrl := setupThemis(t)
-	t.Logf("Themis issuer started at: %s", themisIssuerUrl)
-	t.Logf("Themis keys started at: %s", themisKeysUrl)
+	// Log the results
+	t.Logf("***************************")
+	t.Logf("Status: %d", statusCode)
+	t.Logf("Response: %s", body)
+	t.Logf("***************************")
 
-	// Channel for "caduceus" to receive wrp message
-	receivedBodyChan := make(chan string, 1)
+	// Basic assertion - should get a successful response
+	require.Equal(t, http.StatusOK, statusCode, "Expected 200 OK response")
+}
 
-	// 2b. Create a mock caduceus server using httptest.Server
-	testServer := setupCaduceusMockServer(t, receivedBodyChan)
+// TestGetDevices_WithAuth tests authentication behavior for the devices endpoint.
+func TestGetDevices_WithAuth(t *testing.T) {
+	fixture := setupIntegrationTest(t, "talaria_template.yaml")
 
-	// 3. Start Talaria with the dynamic Kafka broker and Themis keys URL
-	cleanupTalaria := setupTalaria(t, broker, themisKeysUrl, testServer.URL, talariaTestConfigFile)
-	defer cleanupTalaria()
-
-	// 4. Build and start device-simulator
-	simCmd := setupXmidtAgent(t, themisIssuerUrl)
-	if err := simCmd.Start(); err != nil {
-		t.Fatalf("Failed to start device-simulator: %v", err)
+	tests := []struct {
+		name           string
+		username       string
+		password       string
+		expectedStatus int
+		description    string
+	}{
+		{
+			name:           "valid_credentials",
+			username:       "user",
+			password:       "pass",
+			expectedStatus: http.StatusOK,
+			description:    "Valid credentials should return 200",
+		},
+		{
+			name:           "invalid_credentials",
+			username:       "wrong",
+			password:       "wrong",
+			expectedStatus: http.StatusUnauthorized,
+			description:    "Invalid credentials should return 401",
+		},
+		{
+			name:           "no_credentials",
+			username:       "",
+			password:       "",
+			expectedStatus: http.StatusUnauthorized,
+			description:    "No credentials should return 401",
+		},
 	}
-	t.Logf("✓ Device-simulator started with PID %d", simCmd.Process.Pid)
 
-	// Cleanup: Kill the simulator when test ends
-	defer func() {
-		if simCmd.Process != nil {
-			t.Log("Stopping device-simulator...")
-			simCmd.Process.Kill()
-			simCmd.Wait()
-		}
-	}()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body, statusCode, err := fixture.GetDevices(tt.username, tt.password)
+			require.NoError(t, err)
 
-	// Wait for device to connect and events to be published
-	time.Sleep(10 * time.Second)
+			t.Logf("%s - Status: %d, Body: %s", tt.description, statusCode, body)
+			require.Equal(t, tt.expectedStatus, statusCode, tt.description)
+		})
+	}
+}
 
-	//TODO: execute test here
-	t.Logf("THIS IS A PLACEHOLDER TEST - NO ASSERTIONS")
+// TestCustomAPICall demonstrates using the fixture for custom API calls with different verbs.
+func TestCustomAPICall(t *testing.T) {
+	fixture := setupIntegrationTest(t, "talaria_template.yaml")
 
-	req, err := http.NewRequest("GET", "http://localhost:6200/api/v2/devices", nil)
-	require.NoError(t, err)
+	t.Run("GET_with_bearer_token", func(t *testing.T) {
+		// Example: Test with Bearer token instead of Basic auth
+		req, err := fixture.NewRequest("GET", "/api/v2/devices", nil)
+		require.NoError(t, err)
 
-	req.Header.Set("Authorization", "Basic dXNlcjpwYXNz")
+		fixture.WithBearerToken(req, "some-token")
 
-	resp, err := http.DefaultClient.Do(req)
-	defer resp.Body.Close()
+		resp, err := fixture.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
 
-	require.NoError(t, err)
+		t.Logf("Bearer token auth status: %d", resp.StatusCode)
+	})
 
-	body, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	t.Logf("***************************")
-	t.Logf("Status: %s", resp.Status)
-	t.Logf("Response: %s", string(body))
-	t.Logf("***************************")
+	t.Run("POST_with_payload", func(t *testing.T) {
+		// Example: POST request with JSON payload
+		jsonPayload := []byte(`{"test": "data"}`)
+		body, statusCode, err := fixture.POST(
+			"/api/v2/some-endpoint",
+			bytes.NewReader(jsonPayload),
+			"application/json",
+			"user",
+			"pass",
+		)
 
-	//runIt(t, testConfig{
-	//	configFile:   "talaria_template.yaml",
-	//	writeToKafka: false,
-	//})
+		require.NoError(t, err)
+		t.Logf("POST request status: %d, body: %s", statusCode, body)
+	})
+
+	t.Run("custom_headers", func(t *testing.T) {
+		// Example: Request with custom headers
+		req, err := fixture.NewRequest("GET", "/api/v2/devices", nil)
+		require.NoError(t, err)
+
+		fixture.WithBasicAuth(req, "user", "pass")
+		req.Header.Set("X-Custom-Header", "test-value")
+
+		body, statusCode, err := fixture.DoAndReadBody(req)
+		require.NoError(t, err)
+
+		t.Logf("Custom header request - Status: %d, Body: %s", statusCode, body)
+		require.Equal(t, http.StatusOK, statusCode)
+	})
 }
