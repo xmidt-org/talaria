@@ -178,6 +178,32 @@ func (f *TalariaTestFixture) GetDevices(username, password string) (string, int,
 	return f.GET("/api/v2/devices", username, password)
 }
 
+// GetJWTFromThemis requests a JWT token from the Themis issuer service.
+// Returns the raw JWT token string.
+func (f *TalariaTestFixture) GetJWTFromThemis() (string, error) {
+	resp, err := http.Get(f.ThemisIssuerURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to get JWT from Themis: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("Themis returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	tokenBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read JWT response: %w", err)
+	}
+
+	token := string(tokenBytes)
+	// Trim any whitespace/newlines
+	token = strings.TrimSpace(token)
+
+	return token, nil
+}
+
 // WaitForCaduceusMessage waits for a message to arrive at the mock Caduceus server.
 func (f *TalariaTestFixture) WaitForCaduceusMessage(timeout time.Duration) (string, error) {
 	select {
