@@ -7,10 +7,13 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
 
+	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 )
 
@@ -212,6 +215,106 @@ func TestCustomAPICall(t *testing.T) {
 		t.Logf("Custom header request - Status: %d, Body: %s", statusCode, body)
 		require.Equal(t, http.StatusOK, statusCode)
 	})
+}
+
+// TestDeviceConnect_Auth tests authentication behavior for the WebSocket device connect endpoint
+// at /api/v2/device. This endpoint requires special headers for WebSocket upgrade.
+func TestDeviceConnect_Auth(t *testing.T) {
+	fixture := setupIntegrationTest(t, "talaria_template.yaml")
+
+	authScenarios := []authTestCase{
+		{
+			name:           "valid_jwt_token",
+			username:       "",
+			password:       "",
+			description:    "Valid JWT token should allow connection",
+			expectedStatus: http.StatusSwitchingProtocols, // 101 for WebSocket upgrade
+		},
+		{
+			name:           "invalid_jwt_token",
+			username:       "",
+			password:       "",
+			description:    "Invalid JWT token should fail",
+			expectedStatus: http.StatusUnauthorized,
+		},
+		{
+			name:           "no_auth",
+			username:       "",
+			password:       "",
+			description:    "No auth credentials (depends on failOpen config)",
+			expectedStatus: http.StatusSwitchingProtocols, // May succeed if failOpen=true
+		},
+	}
+
+	for _, scenario := range authScenarios {
+		t.Run(scenario.name, func(t *testing.T) {
+			// Build WebSocket URL
+			wsURL := strings.Replace(fixture.TalariaURL, "http://", "ws://", 1) + "/api/v2/device"
+
+			// Prepare headers
+			headers := http.Header{}
+			headers.Set("X-Webpa-Device-Name", "mac:4c161000110")
+
+			// Add convey header with device metadata
+			conveyData := map[string]interface{}{
+				"fw-name":                  "test-firmware-1.0",
+				"hw-model":                 "test-model",
+				"hw-manufacturer":          "test-manufacturer",
+				"hw-serial-number":         "TEST123456",
+				"hw-last-reboot-reason":    "power-cycle",
+				"webpa-protocol":           "websocket",
+				"boot-time":                "1234567890",
+				"webpa-interface-used":     "eth0",
+				"boot-time-retry-wait":     "30",
+				"hw-last-reconnect-reason": "first-connect",
+			}
+			conveyJSON, err := json.Marshal(conveyData)
+			require.NoError(t, err)
+			headers.Set("X-Webpa-Convey", base64.StdEncoding.EncodeToString(conveyJSON))
+
+			// Add authentication based on scenario
+			switch scenario.name {
+			case "valid_jwt_token":
+				token, err := fixture.GetJWTFromThemis()
+				require.NoError(t, err)
+				headers.Set("Authorization", "Bearer "+token)
+
+			case "invalid_jwt_token":
+				headers.Set("Authorization", "Bearer invalid-token-xyz")
+
+			case "no_auth":
+				// No Authorization header
+			}
+
+			// Attempt WebSocket connection
+			dialer := websocket.Dialer{}
+			conn, resp, err := dialer.Dial(wsURL, headers)
+
+			if conn != nil {
+				defer conn.Close()
+			}
+			if resp != nil {
+				defer resp.Body.Close()
+			}
+
+			// Check status code
+			var statusCode int
+			if resp != nil {
+				statusCode = resp.StatusCode
+			} else if err != nil {
+				// If dial failed without a response, it's likely a connection error
+				statusCode = 0
+			}
+
+			t.Logf("%s - Status: %d, Error: %v", scenario.description, statusCode, err)
+
+			// For now, just log the result. We'll refine expected status codes
+			// once we know the actual auth requirements for each scenario
+			if statusCode > 0 {
+				t.Logf("Got status code: %d (expected: %d)", statusCode, scenario.expectedStatus)
+			}
+		})
+	}
 }
 
 // Example: Add new endpoints to TestEndpoints_WithAuth by uncommenting and filling in:
