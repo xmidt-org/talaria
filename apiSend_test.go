@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -253,7 +254,7 @@ func TestDeviceConnect_Auth(t *testing.T) {
 
 			// Prepare headers
 			headers := http.Header{}
-			headers.Set("X-Webpa-Device-Name", "mac:4c161000110")
+			headers.Set("X-Webpa-Device-Name", "mac:aabbccddeeff")
 
 			// Add convey header with device metadata
 			conveyData := map[string]interface{}{
@@ -276,6 +277,7 @@ func TestDeviceConnect_Auth(t *testing.T) {
 			switch scenario.name {
 			case "valid_jwt_token":
 				token, err := fixture.GetJWTFromThemis()
+				t.Logf("Obtained JWT token: %s", token)
 				require.NoError(t, err)
 				headers.Set("Authorization", "Bearer "+token)
 
@@ -293,14 +295,21 @@ func TestDeviceConnect_Auth(t *testing.T) {
 			if conn != nil {
 				defer conn.Close()
 			}
-			if resp != nil {
-				defer resp.Body.Close()
-			}
 
-			// Check status code
+			// Check status code and read response body for error details
 			var statusCode int
+			var responseBody string
 			if resp != nil {
 				statusCode = resp.StatusCode
+				t.Logf("Response Headers: %v", resp.Header)
+
+				// Read response body to see error message
+				bodyBytes, readErr := io.ReadAll(resp.Body)
+				resp.Body.Close()
+				if readErr == nil {
+					responseBody = string(bodyBytes)
+					t.Logf("Response Body: %s", responseBody)
+				}
 			} else if err != nil {
 				// If dial failed without a response, it's likely a connection error
 				statusCode = 0
