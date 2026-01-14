@@ -628,7 +628,7 @@ func setupXmidtAgent(t *testing.T, themisURL string) *exec.Cmd {
 
 }
 
-func setupThemis(t *testing.T) (*testcontainers.Container, string, string) {
+func setupThemis(t *testing.T, themisConfigFile string) (*testcontainers.Container, string, string) {
 	t.Helper()
 
 	// Skip if running in short mode
@@ -641,7 +641,7 @@ func setupThemis(t *testing.T) (*testcontainers.Container, string, string) {
 	// Get the workspace root directory
 	_, filename, _, _ := runtime.Caller(0)
 	workspaceRoot := filepath.Dir(filename)
-	themisConfigPath := filepath.Join(workspaceRoot, "test_config", "themis.yaml")
+	themisConfigPath := filepath.Join(workspaceRoot, "test_config", themisConfigFile)
 
 	// Configure testcontainers to use Podman if DOCKER_HOST is set
 	configureTestContainersForPodman(t)
@@ -722,7 +722,16 @@ func setupThemis(t *testing.T) (*testcontainers.Container, string, string) {
 // setupIntegrationTest creates and starts all services needed for integration testing.
 // Returns a TalariaTestFixture with all service URLs and helper methods.
 // All cleanup is automatically registered with t.Cleanup().
+// Uses themis.yaml by default. For custom capabilities, use setupIntegrationTestWithCapabilities().
 func setupIntegrationTest(t *testing.T, configFile string) *TalariaTestFixture {
+	return setupIntegrationTestWithCapabilities(t, configFile, "themis.yaml")
+}
+
+// setupIntegrationTestWithCapabilities creates and starts all services needed for integration testing
+// with a custom Themis configuration for testing different JWT capabilities.
+// Returns a TalariaTestFixture with all service URLs and helper methods.
+// All cleanup is automatically registered with t.Cleanup().
+func setupIntegrationTestWithCapabilities(t *testing.T, talariaConfigFile, themisConfigFile string) *TalariaTestFixture {
 	t.Helper()
 
 	// Disable Ryuk (testcontainers reaper) to avoid port mapping issues
@@ -732,9 +741,9 @@ func setupIntegrationTest(t *testing.T, configFile string) *TalariaTestFixture {
 	_, broker := setupKafka(t)
 	t.Logf("✓ Kafka broker started at: %s", broker)
 
-	// 2. Start Themis
-	_, themisIssuerURL, themisKeysURL := setupThemis(t)
-	t.Logf("✓ Themis issuer started at: %s", themisIssuerURL)
+	// 2. Start Themis with specified config
+	_, themisIssuerURL, themisKeysURL := setupThemis(t, themisConfigFile)
+	t.Logf("✓ Themis issuer started at: %s (using %s)", themisIssuerURL, themisConfigFile)
 	t.Logf("✓ Themis keys started at: %s", themisKeysURL)
 
 	// 3. Create channel for Caduceus to receive WRP messages
@@ -745,7 +754,7 @@ func setupIntegrationTest(t *testing.T, configFile string) *TalariaTestFixture {
 	t.Logf("✓ Caduceus mock server started at: %s", caduceusServer.URL)
 
 	// 5. Start Talaria
-	cleanupTalaria := setupTalaria(t, broker, themisKeysURL, caduceusServer.URL, configFile)
+	cleanupTalaria := setupTalaria(t, broker, themisKeysURL, caduceusServer.URL, talariaConfigFile)
 	t.Cleanup(cleanupTalaria)
 	talariaURL := "http://localhost:6200"
 	t.Logf("✓ Talaria started at: %s", talariaURL)
