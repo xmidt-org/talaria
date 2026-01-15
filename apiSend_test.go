@@ -31,7 +31,7 @@ type authTestCase struct {
 // and makes a simple API call to get the list of connected devices.
 func TestHelloWorld(t *testing.T) {
 	// Set up the complete integration test environment
-	fixture := setupIntegrationTest(t, "talaria_template.yaml")
+	fixture := setupIntegrationTest(t, "talaria_template.yaml", WithFullStack())
 
 	// Make a simple API call with valid credentials
 	body, statusCode, err := fixture.GetDevices("user", "pass")
@@ -49,7 +49,7 @@ func TestHelloWorld(t *testing.T) {
 
 // TestGetDevices_Auth tests authentication behavior for GET /api/v2/devices
 func TestGetDevices_Auth(t *testing.T) {
-	fixture := setupIntegrationTest(t, "talaria_template.yaml")
+	fixture := setupIntegrationTest(t, "talaria_template.yaml", WithFullStack())
 
 	authScenarios := []authTestCase{
 		{
@@ -88,7 +88,7 @@ func TestGetDevices_Auth(t *testing.T) {
 
 // TestGetDeviceStat_Auth tests authentication behavior for GET /api/v2/device/:deviceID/stat
 func TestGetDeviceStat_Auth(t *testing.T) {
-	fixture := setupIntegrationTest(t, "talaria_template.yaml")
+	fixture := setupIntegrationTest(t, "talaria_template.yaml", WithFullStack())
 
 	authScenarios := []authTestCase{
 		{
@@ -127,7 +127,7 @@ func TestGetDeviceStat_Auth(t *testing.T) {
 
 // TestPostDeviceSend_Auth tests authentication behavior for POST /api/v2/device/send
 func TestPostDeviceSend_Auth(t *testing.T) {
-	fixture := setupIntegrationTest(t, "talaria_template.yaml")
+	fixture := setupIntegrationTest(t, "talaria_template.yaml", WithFullStack())
 
 	authScenarios := []authTestCase{
 		{
@@ -167,7 +167,8 @@ func TestPostDeviceSend_Auth(t *testing.T) {
 
 // TestCustomAPICall demonstrates using the fixture for custom API calls with different verbs.
 func TestCustomAPICall(t *testing.T) {
-	fixture := setupIntegrationTest(t, "talaria_template.yaml")
+	// Only need Themis for auth testing, not full stack
+	fixture := setupIntegrationTest(t, "talaria_template.yaml", WithAPIServices())
 
 	t.Run("GET_with_bearer_token", func(t *testing.T) {
 		// Example: Test with Bearer token instead of Basic auth
@@ -221,7 +222,7 @@ func TestCustomAPICall(t *testing.T) {
 // TestDeviceConnect_Auth tests authentication behavior for the WebSocket device connect endpoint
 // at /api/v2/device. This endpoint requires special headers for WebSocket upgrade.
 func TestDeviceConnect_Auth(t *testing.T) {
-	fixture := setupIntegrationTest(t, "talaria_template.yaml")
+	fixture := setupIntegrationTest(t, "talaria_template.yaml", WithFullStack())
 
 	authScenarios := []authTestCase{
 		{
@@ -352,3 +353,63 @@ func TestDeviceConnect_Auth(t *testing.T) {
 	})
 }
 */
+
+// TestSetupOptions demonstrates the flexible service startup options.
+// This test shows how to selectively start services based on test requirements.
+func TestSetupOptions(t *testing.T) {
+	t.Run("API_Services_Only", func(t *testing.T) {
+		// Only start Themis and Caduceus for testing API endpoints
+		// This is faster than starting full stack when Kafka/xmidt-agent aren't needed
+		fixture := setupIntegrationTest(t, "talaria_template.yaml", WithAPIServices())
+
+		// Verify we can make authenticated API calls
+		token, err := fixture.GetJWTFromThemis()
+		require.NoError(t, err)
+		require.NotEmpty(t, token)
+
+		// Test an endpoint with the token
+		req, err := fixture.NewRequest("GET", "/api/v2/devices", nil)
+		require.NoError(t, err)
+		fixture.WithBearerToken(req, token)
+
+		body, statusCode, err := fixture.DoAndReadBody(req)
+		require.NoError(t, err)
+		t.Logf("API Services test - Status: %d, Body: %s", statusCode, body)
+		require.Equal(t, http.StatusOK, statusCode)
+	})
+
+	t.Run("Themis_Only", func(t *testing.T) {
+		// Only start Themis for testing JWT generation
+		// Useful for auth-only tests
+		fixture := setupIntegrationTest(t, "talaria_template.yaml", WithThemis())
+
+		// Verify JWT generation works
+		token, err := fixture.GetJWTFromThemis()
+		require.NoError(t, err)
+		require.NotEmpty(t, token)
+		t.Logf("Generated JWT token: %s", token[:50]+"...")
+	})
+
+	t.Run("Full_Stack_Without_Agent", func(t *testing.T) {
+		// Start all services except xmidt-agent
+		// Useful when you want to test manual device connections
+		fixture := setupIntegrationTest(
+			t,
+			"talaria_template.yaml",
+			WithFullStack(),
+			WithoutXmidtAgent(),
+		)
+
+		// Verify services are available
+		require.NotEmpty(t, fixture.KafkaBroker)
+		require.NotEmpty(t, fixture.ThemisIssuerURL)
+		require.NotEmpty(t, fixture.CaduceusURL)
+		require.NotEmpty(t, fixture.TalariaURL)
+
+		// API should work normally
+		body, statusCode, err := fixture.GetDevices("user", "pass")
+		require.NoError(t, err)
+		t.Logf("Devices response: %s", body)
+		require.Equal(t, http.StatusOK, statusCode)
+	})
+}

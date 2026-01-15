@@ -723,39 +723,154 @@ func setupThemis(t *testing.T, themisConfigFile string) (*testcontainers.Contain
 	return &container, themisIssuerUrl, themisKeysUrl
 }
 
+// setupOption configures which services to start in integration tests
+type setupOption func(*setupConfig)
+
+// setupConfig holds configuration for which services to start
+type setupConfig struct {
+	startKafka      bool
+	startThemis     bool
+	startCaduceus   bool
+	startXmidtAgent bool
+}
+
+// WithKafka enables Kafka container in the test setup
+func WithKafka() setupOption {
+	return func(c *setupConfig) { c.startKafka = true }
+}
+
+// WithThemis enables Themis JWT issuer container in the test setup
+func WithThemis() setupOption {
+	return func(c *setupConfig) { c.startThemis = true }
+}
+
+// WithCaduceus enables Caduceus mock server in the test setup
+func WithCaduceus() setupOption {
+	return func(c *setupConfig) { c.startCaduceus = true }
+}
+
+// WithXmidtAgent enables xmidt-agent device simulator in the test setup
+func WithXmidtAgent() setupOption {
+	return func(c *setupConfig) { c.startXmidtAgent = true }
+}
+
+// WithFullStack enables all services (Kafka, Themis, Caduceus, xmidt-agent)
+func WithFullStack() setupOption {
+	return func(c *setupConfig) {
+		c.startKafka = true
+		c.startThemis = true
+		c.startCaduceus = true
+		c.startXmidtAgent = true
+	}
+}
+
+// WithAPIServices enables services needed for API testing (Themis, Caduceus)
+func WithAPIServices() setupOption {
+	return func(c *setupConfig) {
+		c.startThemis = true
+		c.startCaduceus = true
+	}
+}
+
+// WithoutKafka disables Kafka (useful with WithFullStack to exclude one service)
+func WithoutKafka() setupOption {
+	return func(c *setupConfig) { c.startKafka = false }
+}
+
+// WithoutThemis disables Themis
+func WithoutThemis() setupOption {
+	return func(c *setupConfig) { c.startThemis = false }
+}
+
+// WithoutCaduceus disables Caduceus
+func WithoutCaduceus() setupOption {
+	return func(c *setupConfig) { c.startCaduceus = false }
+}
+
+// WithoutXmidtAgent disables xmidt-agent
+func WithoutXmidtAgent() setupOption {
+	return func(c *setupConfig) { c.startXmidtAgent = false }
+}
+
 // setupIntegrationTest creates and starts all services needed for integration testing.
 // Returns a TalariaTestFixture with all service URLs and helper methods.
 // All cleanup is automatically registered with t.Cleanup().
 // Uses themis.yaml by default. For custom capabilities, use setupIntegrationTestWithCapabilities().
-func setupIntegrationTest(t *testing.T, configFile string) *TalariaTestFixture {
-	return setupIntegrationTestWithCapabilities(t, configFile, "themis.yaml")
+//
+// By default, starts all services. Use options to customize which services to start:
+//
+//	setupIntegrationTest(t, "config.yaml", WithThemis(), WithCaduceus()) // Only Themis and Caduceus
+//	setupIntegrationTest(t, "config.yaml", WithFullStack()) // All services
+//	setupIntegrationTest(t, "config.yaml", WithAPIServices()) // Themis + Caduceus
+func setupIntegrationTest(t *testing.T, configFile string, opts ...setupOption) *TalariaTestFixture {
+	return setupIntegrationTestWithCapabilities(t, configFile, "themis.yaml", opts...)
 }
 
 // setupIntegrationTestWithCapabilities creates and starts all services needed for integration testing
 // with a custom Themis configuration for testing different JWT capabilities.
 // Returns a TalariaTestFixture with all service URLs and helper methods.
 // All cleanup is automatically registered with t.Cleanup().
-func setupIntegrationTestWithCapabilities(t *testing.T, talariaConfigFile, themisConfigFile string) *TalariaTestFixture {
+//
+// By default, starts all services. Use options to customize which services to start:
+//
+//	setupIntegrationTestWithCapabilities(t, "talaria.yaml", "themis_custom.yaml", WithThemis(), WithCaduceus())
+func setupIntegrationTestWithCapabilities(t *testing.T, talariaConfigFile, themisConfigFile string, opts ...setupOption) *TalariaTestFixture {
 	t.Helper()
+
+	// Default: start all services (backwards compatible)
+	config := setupConfig{
+		startKafka:      true,
+		startThemis:     true,
+		startCaduceus:   true,
+		startXmidtAgent: true,
+	}
+
+	// Apply options
+	for _, opt := range opts {
+		opt(&config)
+	}
 
 	// Disable Ryuk (testcontainers reaper) to avoid port mapping issues
 	t.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
 
-	// 1. Start Kafka
-	_, broker := setupKafka(t)
-	t.Logf("✓ Kafka broker started at: %s", broker)
+	var broker string
+	var themisIssuerURL, themisKeysURL string
+	var caduceusServer *httptest.Server
+	var receivedBodyChan chan string
 
-	// 2. Start Themis with specified config
-	_, themisIssuerURL, themisKeysURL := setupThemis(t, themisConfigFile)
-	t.Logf("✓ Themis issuer started at: %s (using %s)", themisIssuerURL, themisConfigFile)
-	t.Logf("✓ Themis keys started at: %s", themisKeysURL)
+	// 1. Start Kafka (if enabled)
+	if config.startKafka {
+		_, broker = setupKafka(t)
+		t.Logf("✓ Kafka broker started at: %s", broker)
+	} else {
+		broker = "localhost:9092" // Placeholder if not started
+		t.Log("⊘ Kafka disabled")
+	}
 
-	// 3. Create channel for Caduceus to receive WRP messages
-	receivedBodyChan := make(chan string, 10) // Buffered to avoid blocking
+	// 2. Start Themis (if enabled)
+	if config.startThemis {
+		_, themisIssuerURL, themisKeysURL = setupThemis(t, themisConfigFile)
+		t.Logf("✓ Themis issuer started at: %s (using %s)", themisIssuerURL, themisConfigFile)
+		t.Logf("✓ Themis keys started at: %s", themisKeysURL)
+	} else {
+		themisIssuerURL = "http://localhost:6501/issue"
+		themisKeysURL = "http://localhost:6500/keys"
+		t.Log("⊘ Themis disabled")
+	}
 
-	// 4. Create mock Caduceus server
-	caduceusServer := setupCaduceusMockServer(t, receivedBodyChan)
-	t.Logf("✓ Caduceus mock server started at: %s", caduceusServer.URL)
+	// 3. Create channel for Caduceus (if enabled)
+	if config.startCaduceus {
+		receivedBodyChan = make(chan string, 10) // Buffered to avoid blocking
+	}
+
+	// 4. Create mock Caduceus server (if enabled)
+	if config.startCaduceus {
+		caduceusServer = setupCaduceusMockServer(t, receivedBodyChan)
+		t.Logf("✓ Caduceus mock server started at: %s", caduceusServer.URL)
+	} else {
+		caduceusServer = &httptest.Server{URL: "http://localhost:6000"}
+		t.Log("⊘ Caduceus disabled")
+	}
 
 	// 5. Start Talaria
 	cleanupTalaria := setupTalaria(t, broker, themisKeysURL, caduceusServer.URL, talariaConfigFile)
@@ -763,27 +878,31 @@ func setupIntegrationTestWithCapabilities(t *testing.T, talariaConfigFile, themi
 	talariaURL := "http://localhost:6200"
 	t.Logf("✓ Talaria started at: %s", talariaURL)
 
-	// 6. Build and start xmidt-agent (device simulator)
-	simCmd := setupXmidtAgent(t, themisIssuerURL)
-	if err := simCmd.Start(); err != nil {
-		t.Fatalf("Failed to start xmidt-agent: %v", err)
-	}
-	t.Logf("✓ xmidt-agent started with PID %d", simCmd.Process.Pid)
-
-	// Register cleanup for xmidt-agent
-	t.Cleanup(func() {
-		if simCmd.Process != nil {
-			t.Log("Stopping xmidt-agent...")
-			simCmd.Process.Kill()
-			simCmd.Wait()
-			t.Log("✓ xmidt-agent stopped")
+	// 6. Build and start xmidt-agent (if enabled)
+	if config.startXmidtAgent {
+		simCmd := setupXmidtAgent(t, themisIssuerURL)
+		if err := simCmd.Start(); err != nil {
+			t.Fatalf("Failed to start xmidt-agent: %v", err)
 		}
-	})
+		t.Logf("✓ xmidt-agent started with PID %d", simCmd.Process.Pid)
 
-	// 7. Wait for device to connect
-	t.Log("Waiting for device to connect...")
-	time.Sleep(10 * time.Second)
-	t.Log("✓ Device connection window complete")
+		// Register cleanup for xmidt-agent
+		t.Cleanup(func() {
+			if simCmd.Process != nil {
+				t.Log("Stopping xmidt-agent...")
+				simCmd.Process.Kill()
+				simCmd.Wait()
+				t.Log("✓ xmidt-agent stopped")
+			}
+		})
+
+		// 7. Wait for device to connect
+		t.Log("Waiting for device to connect...")
+		time.Sleep(10 * time.Second)
+		t.Log("✓ Device connection window complete")
+	} else {
+		t.Log("⊘ xmidt-agent disabled")
+	}
 
 	// 8. Create and return fixture
 	fixture := &TalariaTestFixture{
