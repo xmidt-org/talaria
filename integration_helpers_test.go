@@ -289,6 +289,25 @@ func newTestLogConsumer(t *testing.T, prefix string) *testLogConsumer {
 
 // setupTalaria builds and starts Talaria as a subprocess with the given Kafka broker.
 // Returns a cleanup function to stop Talaria.
+//
+// MULTI-THEMIS SUPPORT: Currently accepts a single themisKeysUrl that's used for both
+// device and API endpoints. When Talaria supports separate validators, this can be
+// extended to accept deviceThemisUrl and apiThemisUrl separately.
+//
+// Future signature when Talaria supports 2 JWT validators:
+//
+//	func setupTalaria(t *testing.T, kafkaBroker, deviceThemisUrl, apiThemisUrl, caduceusUrl, configFile string) func()
+//
+// Or use a config struct for even more flexibility:
+//
+//	type TalariaConfig struct {
+//	    KafkaBroker      string
+//	    DeviceThemisURL  string  // For /api/v2/device WebSocket endpoint
+//	    APIThemisURL     string  // For REST API endpoints
+//	    CaduceusURL      string
+//	    ConfigFile       string
+//	}
+//	func setupTalaria(t *testing.T, config TalariaConfig) func()
 func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string, caduceusUrl string, configFile string) func() {
 	t.Helper()
 
@@ -325,10 +344,15 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string, caduce
 
 	// for now, just replace the values we need directly since the environment variable replacement is still broken
 	configContent := string(configTemplate)
-	configContent = strings.Replace(configContent,
-		"THEMIS_URL",
-		fmt.Sprintf("%s/{keyID}", themisKeysUrl),
-		1)
+
+	// FUTURE-PROOF: Replace both DEVICE_THEMIS_URL and API_THEMIS_URL placeholders.
+	// When Talaria supports 2 separate JWT validators (one for device/WebSocket endpoint,
+	// one for API/REST endpoints), we can pass different URLs for each.
+	// For now, both use the same Themis instance (backwards compatible).
+	themisKeysTemplate := fmt.Sprintf("%s/{keyID}", themisKeysUrl)
+	configContent = strings.Replace(configContent, "DEVICE_THEMIS_URL", themisKeysTemplate, -1)
+	configContent = strings.Replace(configContent, "API_THEMIS_URL", themisKeysTemplate, -1)
+
 	// // Replace Kafka broker
 	configContent = strings.Replace(configContent,
 		"KAFKA_BROKER",
@@ -341,23 +365,32 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string, caduce
 		caduceusUrl,
 		1)
 
-	// TODO: MULTI-THEMIS CONFIGURATION
-	// When Talaria supports multiple JWT validators per endpoint, add configuration here.
-	// Current state: Talaria only supports ONE Themis keys URL globally (jwtValidator.Config.Resolve.Template).
+	// TODO: MULTI-THEMIS CONFIGURATION (2 JWT Validators)
+	// Talaria will support 2 separate JWT validators:
+	//   1. DEVICE endpoint (WebSocket /api/v2/device)
+	//   2. API endpoints (REST GET/POST)
 	//
-	// Future implementation will need:
-	// 1. Accept []string of trusted Themis keys URLs instead of single themisKeysUrl
-	// 2. Update Talaria config to support per-endpoint JWT validators, e.g.:
-	//    authorization:
-	//      device:  # For WebSocket /api/v2/device
-	//        jwtValidators:
-	//          - url: http://themis-device:6500/keys/{keyID}
-	//      api:     # For REST API endpoints
-	//        jwtValidators:
-	//          - url: http://themis-api:6500/keys/{keyID}
-	// 3. Or support multiple validators globally (array instead of single URL):
-	//    jwtValidator:
-	//      Config:
+	// Current state: Both endpoints use the same validator (DEVICE_THEMIS_URL placeholder).
+	// The config template already has placeholders for both:
+	//   - DEVICE_THEMIS_URL (currently used)
+	//   - API_THEMIS_URL (ready for when Talaria supports it)
+	//
+	// When Talaria's config structure is finalized:
+	// 1. Update setupTalaria signature to accept deviceThemisUrl and apiThemisUrl separately:
+	//    func setupTalaria(t, kafkaBroker, deviceThemisUrl, apiThemisUrl, caduceusUrl, configFile)
+	//
+	// 2. Update the replacement logic above to use different URLs:
+	//    configContent = strings.Replace(configContent, \"DEVICE_THEMIS_URL\", deviceThemisTemplate, -1)
+	//    configContent = strings.Replace(configContent, \"API_THEMIS_URL\", apiThemisTemplate, -1)
+	//
+	// 3. Update setupIntegrationTestWithCapabilities to pass separate URLs based on
+	//    config.trustedThemisInstances (e.g., \"device\" instance for device endpoint,
+	//    \"api\" instance for API endpoints)
+	//
+	// This approach allows:
+	//   - Testing device endpoint with device-specific Themis
+	//   - Testing API endpoints with API-specific Themis
+	//   - Testing trusted vs untrusted JWT validation per endpoint category
 	//        Resolve:
 	//          Templates:
 	//            - http://themis-trusted:6500/keys/{keyID}
