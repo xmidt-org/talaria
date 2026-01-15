@@ -252,9 +252,12 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string, caduce
 	t.Log("✓ Talaria built successfully")
 
 	// 2. Create a test config file with dynamic external service values
-	// (Gave up on getting environment variables to work)
+	// Generate unique output filename based on the template name
+	// Place it in workspace root where Viper will find it
 	configTemplateFile := filepath.Join(workspaceRoot, "test_config", configFile)
-	testConfigFile := filepath.Join(workspaceRoot, "talaria_test.yaml")
+	// Strip .yaml extension and add _test.yaml suffix for output file
+	baseConfigName := strings.TrimSuffix(configFile, ".yaml")
+	testConfigFile := filepath.Join(workspaceRoot, baseConfigName+"_test.yaml")
 
 	// read the config template
 	configTemplate, err := os.ReadFile(configTemplateFile)
@@ -286,8 +289,9 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string, caduce
 	}
 	t.Logf("Created test config file: %s", testConfigFile)
 
-	// 3. Start Talaria as a subprocess.  It will use talaria_test for the app name for viper
-	talariaCmd := exec.Command(talariaTestBinary, "this_is_a_test")
+	// 3. Start Talaria as a subprocess. Pass just the base config name without .yaml extension
+	// Viper will look for <name>.yaml in its configured directories (including workspaceRoot)
+	talariaCmd := exec.Command(talariaTestBinary, "--file", baseConfigName+"_test")
 
 	// something is still not working with environment variables, so stuck doing the substitutions above
 	// talariaCmd.Env = os.Environ()
