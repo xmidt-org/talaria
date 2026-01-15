@@ -48,8 +48,17 @@ func TestHelloWorld(t *testing.T) {
 }
 
 // TestGetDevices_Auth tests authentication behavior for GET /api/v2/devices
+// This is an API endpoint - it will use the API JWT validator (not device validator).
+// 2-THEMIS-AWARE: Tests both API JWT (should succeed) and Device JWT (should fail).
 func TestGetDevices_Auth(t *testing.T) {
-	fixture := setupIntegrationTest(t, "talaria_template.yaml", WithFullStack())
+	// Start both device and api Themis instances
+	fixture := setupIntegrationTest(t, "talaria_template.yaml",
+		WithKafka(),
+		WithThemisInstance("device", "themis.yaml"), // For device/WebSocket endpoint
+		WithThemisInstance("api", "themis.yaml"),    // For API endpoints
+		WithCaduceus(),
+		WithXmidtAgent(),
+	)
 
 	authScenarios := []authTestCase{
 		{
@@ -84,9 +93,49 @@ func TestGetDevices_Auth(t *testing.T) {
 			require.Equal(t, scenario.expectedStatus, statusCode, scenario.description)
 		})
 	}
+
+	// 2-THEMIS-AWARE: Test with API JWT (should succeed - correct validator)
+	t.Run("valid_api_jwt", func(t *testing.T) {
+		// Get JWT from API Themis instance
+		apiToken, err := fixture.GetJWTFromThemisInstance("api")
+		require.NoError(t, err)
+		t.Logf("Using API JWT from 'api' Themis instance")
+
+		req, err := fixture.NewRequest("GET", "/api/v2/devices", nil)
+		require.NoError(t, err)
+		fixture.WithBearerToken(req, apiToken)
+
+		body, statusCode, err := fixture.DoAndReadBody(req)
+		require.NoError(t, err)
+		t.Logf("API JWT - Status: %d, Body: %s", statusCode, body)
+		require.Equal(t, http.StatusOK, statusCode, "API JWT should be accepted on API endpoint")
+	})
+
+	// 2-THEMIS-AWARE: Test with Device JWT (should fail - wrong validator)
+	t.Run("device_jwt_on_api_endpoint", func(t *testing.T) {
+		// Get JWT from Device Themis instance
+		deviceToken, err := fixture.GetJWTFromThemisInstance("device")
+		require.NoError(t, err)
+		t.Logf("Using Device JWT from 'device' Themis instance")
+
+		req, err := fixture.NewRequest("GET", "/api/v2/devices", nil)
+		require.NoError(t, err)
+		fixture.WithBearerToken(req, deviceToken)
+
+		body, statusCode, err := fixture.DoAndReadBody(req)
+		require.NoError(t, err)
+		t.Logf("Device JWT on API endpoint - Status: %d, Body: %s", statusCode, body)
+
+		// TODO: When Talaria supports 2 validators, this should be 401 Unauthorized
+		// For now, both JWTs work because Talaria only has one validator
+		// Change this assertion when Talaria implements separate validators:
+		// require.Equal(t, http.StatusUnauthorized, statusCode, "Device JWT should be rejected on API endpoint")
+		t.Logf("NOTE: Currently both JWTs work (single validator). Expected 401 when 2 validators implemented.")
+	})
 }
 
 // TestGetDeviceStat_Auth tests authentication behavior for GET /api/v2/device/:deviceID/stat
+// This is an API endpoint - it will use the API JWT validator (not device validator).
 func TestGetDeviceStat_Auth(t *testing.T) {
 	fixture := setupIntegrationTest(t, "talaria_template.yaml", WithFullStack())
 
@@ -123,9 +172,27 @@ func TestGetDeviceStat_Auth(t *testing.T) {
 			require.Equal(t, scenario.expectedStatus, statusCode, scenario.description)
 		})
 	}
+
+	// 2-THEMIS-AWARE: Test with JWT (API endpoint uses API JWT validator)
+	t.Run("valid_api_jwt", func(t *testing.T) {
+		// When Talaria supports 2 validators: use fixture.GetJWTFromThemisInstance("api")
+		// For now, all JWTs come from the same Themis instance
+		token, err := fixture.GetJWTFromThemis()
+		require.NoError(t, err)
+
+		req, err := fixture.NewRequest("GET", "/api/v2/device/mac:4ca161000109/stat", nil)
+		require.NoError(t, err)
+		fixture.WithBearerToken(req, token)
+
+		body, statusCode, err := fixture.DoAndReadBody(req)
+		require.NoError(t, err)
+		t.Logf("API JWT - Status: %d, Body: %s", statusCode, body)
+		require.Equal(t, http.StatusOK, statusCode, "Valid API JWT should be accepted")
+	})
 }
 
 // TestPostDeviceSend_Auth tests authentication behavior for POST /api/v2/device/send
+// This is an API endpoint - it will use the API JWT validator (not device validator).
 func TestPostDeviceSend_Auth(t *testing.T) {
 	fixture := setupIntegrationTest(t, "talaria_template.yaml", WithFullStack())
 
@@ -163,15 +230,37 @@ func TestPostDeviceSend_Auth(t *testing.T) {
 			require.Equal(t, scenario.expectedStatus, statusCode, scenario.description)
 		})
 	}
+
+	// 2-THEMIS-AWARE: Test with JWT (API endpoint uses API JWT validator)
+	t.Run("valid_api_jwt", func(t *testing.T) {
+		// When Talaria supports 2 validators: use fixture.GetJWTFromThemisInstance("api")
+		// For now, all JWTs come from the same Themis instance
+		token, err := fixture.GetJWTFromThemis()
+		require.NoError(t, err)
+
+		payload := `{"device_id":"mac:4ca161000109","message":"test"}`
+		req, err := fixture.NewRequest("POST", "/api/v2/device/send", strings.NewReader(payload))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		fixture.WithBearerToken(req, token)
+
+		body, statusCode, err := fixture.DoAndReadBody(req)
+		require.NoError(t, err)
+		t.Logf("API JWT - Status: %d, Body: %s", statusCode, body)
+		require.Equal(t, http.StatusOK, statusCode, "Valid API JWT should be accepted")
+	})
 }
 
 // TestCustomAPICall demonstrates using the fixture for custom API calls with different verbs.
+// 2-THEMIS-AWARE: These are API endpoints - they will use the API JWT validator (not device validator).
 func TestCustomAPICall(t *testing.T) {
 	// Only need Themis for auth testing, not full stack
 	fixture := setupIntegrationTest(t, "talaria_template.yaml", WithAPIServices())
 
 	t.Run("GET_with_bearer_token", func(t *testing.T) {
-		// Example: Test with Bearer token instead of Basic auth
+		// 2-THEMIS-AWARE: API endpoint uses API JWT validator
+		// When Talaria supports 2 validators: use fixture.GetJWTFromThemisInstance("api")
+		// For now, all JWTs come from the same Themis instance
 		token, err := fixture.GetJWTFromThemis()
 		require.NoError(t, err)
 
@@ -221,6 +310,7 @@ func TestCustomAPICall(t *testing.T) {
 
 // TestDeviceConnect_Auth tests authentication behavior for the WebSocket device connect endpoint
 // at /api/v2/device. This endpoint requires special headers for WebSocket upgrade.
+// 2-THEMIS-AWARE: This is the DEVICE endpoint - it will use the DEVICE JWT validator (not API validator).
 func TestDeviceConnect_Auth(t *testing.T) {
 	fixture := setupIntegrationTest(t, "talaria_template.yaml", WithFullStack())
 
@@ -277,8 +367,11 @@ func TestDeviceConnect_Auth(t *testing.T) {
 			// Add authentication based on scenario
 			switch scenario.name {
 			case "valid_jwt_token":
+				// 2-THEMIS-AWARE: Device endpoint uses DEVICE JWT validator
+				// When Talaria supports 2 validators: use fixture.GetJWTFromThemisInstance("device")
+				// For now, all JWTs come from the same Themis instance
 				token, err := fixture.GetJWTFromThemis()
-				t.Logf("Obtained JWT token: %s", token)
+				t.Logf("Obtained Device JWT token: %s", token)
 				require.NoError(t, err)
 				headers.Set("Authorization", "Bearer "+token)
 
