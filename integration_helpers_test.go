@@ -699,7 +699,7 @@ func setupCaduceusMockServer(t *testing.T, receivedBodyChan chan<- string) *http
 	return testServer
 }
 
-func setupXmidtAgent(t *testing.T, themisURL string) *exec.Cmd {
+func setupXmidtAgent(t *testing.T, themisURL string, debug bool) *exec.Cmd {
 	t.Helper()
 
 	// Get the workspace root directory
@@ -756,10 +756,15 @@ func setupXmidtAgent(t *testing.T, themisURL string) *exec.Cmd {
 	}
 	t.Log("✓ Device-simulator built successfully")
 
-	simCmd := exec.Command(XmidtAgentBinary,
-		"-d",
-		"-f", testConfigFile,
-	)
+	// Build command with optional debug flag
+	args := []string{}
+	if debug {
+		args = append(args, "-d")
+		t.Log("Starting xmidt-agent with DEBUG mode enabled (-d flag)")
+	}
+	args = append(args, "-f", testConfigFile)
+
+	simCmd := exec.Command(XmidtAgentBinary, args...)
 	simCmd.Dir = workspaceRoot
 	simCmd.Stdout = os.Stdout
 	simCmd.Stderr = os.Stderr
@@ -862,6 +867,11 @@ type setupConfig struct {
 	startCaduceus   bool
 	startXmidtAgent bool
 
+	// xmidtAgentDebug enables debug logging (-d flag) for xmidt-agent.
+	// When false (default), xmidt-agent runs without -d flag (less verbose).
+	// When true, enables debug mode which can be very spammy.
+	xmidtAgentDebug bool
+
 	// Multiple Themis configurations: map of instance name -> config file
 	// Key is the instance name (e.g., "device", "api", "admin")
 	// Value is the config file path relative to test_config/ (e.g., "themis_device.yaml")
@@ -896,6 +906,16 @@ func WithCaduceus() setupOption {
 // WithXmidtAgent enables xmidt-agent device simulator in the test setup
 func WithXmidtAgent() setupOption {
 	return func(c *setupConfig) { c.startXmidtAgent = true }
+}
+
+// WithXmidtAgentDebug enables xmidt-agent with debug logging (-d flag).
+// Debug mode is very verbose and can be spammy.
+// Use this when you need detailed logs from xmidt-agent for troubleshooting.
+func WithXmidtAgentDebug() setupOption {
+	return func(c *setupConfig) {
+		c.startXmidtAgent = true
+		c.xmidtAgentDebug = true
+	}
 }
 
 // WithFullStack enables all services (Kafka, Themis, Caduceus, xmidt-agent)
@@ -1161,7 +1181,7 @@ func setupIntegrationTestWithCapabilities(t *testing.T, talariaConfigFile, themi
 
 	// 6. Build and start xmidt-agent (if enabled)
 	if config.startXmidtAgent {
-		simCmd := setupXmidtAgent(t, themisIssuerURL)
+		simCmd := setupXmidtAgent(t, themisIssuerURL, config.xmidtAgentDebug)
 		if err := simCmd.Start(); err != nil {
 			t.Fatalf("Failed to start xmidt-agent: %v", err)
 		}
