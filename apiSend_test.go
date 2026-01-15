@@ -569,3 +569,185 @@ func TestMultipleThemisInstances(t *testing.T) {
 		t.Logf("Expected error: %v", err)
 	})
 }
+
+// TestTrustedVsUntrustedJWT demonstrates testing JWT validation with trusted and untrusted Themis instances.
+// This test is currently INCOMPLETE because Talaria only supports ONE global JWT validator.
+//
+// TODO: Complete this test when Talaria supports multiple JWT validators per endpoint.
+//
+// Current limitation: All started Themis instances are trusted by Talaria because setupTalaria()
+// only configures one JWT validator URL (the first available instance).
+//
+// To complete implementation:
+// 1. Update Talaria to support multiple JWT validator URLs (per-endpoint or globally)
+// 2. Uncomment the WithTrustedThemis option logic in setupIntegrationTestWithCapabilities
+// 3. Update setupTalaria to accept and configure multiple Themis keys URLs
+// 4. Enable these tests by removing the t.Skip() calls
+//
+// Expected behavior when complete:
+// - Talaria configured with WithTrustedThemis("trusted") will ONLY trust JWTs from "trusted" instance
+// - JWTs from "untrusted" instance will be rejected with 401 Unauthorized
+// - This enables security testing: verify endpoints properly validate JWT issuers
+func TestTrustedVsUntrustedJWT(t *testing.T) {
+	t.Run("GET_Devices_Trusted_vs_Untrusted", func(t *testing.T) {
+		t.Skip("TODO: Enable when Talaria supports multiple JWT validators. See function documentation.")
+
+		// Setup: Start 2 Themis instances, but only trust one
+		fixture := setupIntegrationTest(t, "talaria_template.yaml",
+			WithKafka(),
+			WithThemisInstance("trusted", "themis.yaml"),
+			WithThemisInstance("untrusted", "themis.yaml"),
+			WithTrustedThemis("trusted"), // TODO: Implement filtering in setupTalaria
+			WithCaduceus(),
+		)
+
+		// Get JWTs from both instances
+		trustedJWT, err := fixture.GetJWTFromThemisInstance("trusted")
+		require.NoError(t, err)
+		require.NotEmpty(t, trustedJWT)
+
+		untrustedJWT, err := fixture.GetJWTFromThemisInstance("untrusted")
+		require.NoError(t, err)
+		require.NotEmpty(t, untrustedJWT)
+
+		// Verify JWTs are different
+		require.NotEqual(t, trustedJWT, untrustedJWT)
+
+		// Test with trusted JWT - should succeed
+		req, _ := fixture.NewRequest("GET", "/api/v2/devices", nil)
+		fixture.WithBearerToken(req, trustedJWT)
+		body, statusCode, err := fixture.DoAndReadBody(req)
+		require.NoError(t, err)
+		t.Logf("Trusted JWT - Status: %d, Body: %s", statusCode, body)
+		require.Equal(t, http.StatusOK, statusCode, "Trusted JWT should be accepted")
+
+		// Test with untrusted JWT - should fail
+		req2, _ := fixture.NewRequest("GET", "/api/v2/devices", nil)
+		fixture.WithBearerToken(req2, untrustedJWT)
+		body2, statusCode2, err2 := fixture.DoAndReadBody(req2)
+		require.NoError(t, err2)
+		t.Logf("Untrusted JWT - Status: %d, Body: %s", statusCode2, body2)
+		require.Equal(t, http.StatusUnauthorized, statusCode2, "Untrusted JWT should be rejected")
+	})
+
+	t.Run("POST_DeviceSend_Trusted_vs_Untrusted", func(t *testing.T) {
+		t.Skip("TODO: Enable when Talaria supports multiple JWT validators. See function documentation.")
+
+		fixture := setupIntegrationTest(t, "talaria_template.yaml",
+			WithKafka(),
+			WithThemisInstance("trusted", "themis.yaml"),
+			WithThemisInstance("untrusted", "themis.yaml"),
+			WithTrustedThemis("trusted"),
+			WithCaduceus(),
+		)
+
+		trustedJWT, _ := fixture.GetJWTFromThemisInstance("trusted")
+		untrustedJWT, _ := fixture.GetJWTFromThemisInstance("untrusted")
+
+		payload := `{"device_id":"mac:4ca161000109","message":"test"}`
+
+		// Test with trusted JWT
+		req, _ := fixture.NewRequest("POST", "/api/v2/device/send", strings.NewReader(payload))
+		req.Header.Set("Content-Type", "application/json")
+		fixture.WithBearerToken(req, trustedJWT)
+		body, statusCode, err := fixture.DoAndReadBody(req)
+		require.NoError(t, err)
+		t.Logf("Trusted JWT - Status: %d, Body: %s", statusCode, body)
+		require.Equal(t, http.StatusOK, statusCode, "Trusted JWT should be accepted")
+
+		// Test with untrusted JWT
+		req2, _ := fixture.NewRequest("POST", "/api/v2/device/send", strings.NewReader(payload))
+		req2.Header.Set("Content-Type", "application/json")
+		fixture.WithBearerToken(req2, untrustedJWT)
+		body2, statusCode2, err2 := fixture.DoAndReadBody(req2)
+		require.NoError(t, err2)
+		t.Logf("Untrusted JWT - Status: %d, Body: %s", statusCode2, body2)
+		require.Equal(t, http.StatusUnauthorized, statusCode2, "Untrusted JWT should be rejected")
+	})
+
+	t.Run("WebSocket_Device_Connect_Trusted_vs_Untrusted", func(t *testing.T) {
+		t.Skip("TODO: Enable when Talaria supports multiple JWT validators. See function documentation.")
+
+		fixture := setupIntegrationTest(t, "talaria_template.yaml",
+			WithKafka(),
+			WithThemisInstance("trusted", "themis.yaml"),
+			WithThemisInstance("untrusted", "themis.yaml"),
+			WithTrustedThemis("trusted"),
+			WithCaduceus(),
+		)
+
+		trustedJWT, _ := fixture.GetJWTFromThemisInstance("trusted")
+		untrustedJWT, _ := fixture.GetJWTFromThemisInstance("untrusted")
+
+		wsURL := strings.Replace(fixture.TalariaURL, "http://", "ws://", 1) + "/api/v2/device"
+
+		// Prepare common headers
+		prepareHeaders := func(jwt string) http.Header {
+			headers := http.Header{}
+			headers.Set("X-Webpa-Device-Name", "mac:aabbccddeeff")
+
+			conveyData := map[string]interface{}{
+				"fw-name":         "test-firmware-1.0",
+				"hw-model":        "test-model",
+				"hw-manufacturer": "test-manufacturer",
+			}
+			conveyJSON, _ := json.Marshal(conveyData)
+			headers.Set("X-Webpa-Convey", base64.StdEncoding.EncodeToString(conveyJSON))
+			headers.Set("Authorization", "Bearer "+jwt)
+			return headers
+		}
+
+		// Test with trusted JWT - should connect
+		dialer := websocket.Dialer{}
+		conn, resp, err := dialer.Dial(wsURL, prepareHeaders(trustedJWT))
+		if conn != nil {
+			defer conn.Close()
+		}
+		require.NoError(t, err, "Trusted JWT should allow WebSocket connection")
+		require.Equal(t, http.StatusSwitchingProtocols, resp.StatusCode)
+		t.Logf("Trusted JWT - Connected successfully")
+
+		// Test with untrusted JWT - should fail
+		conn2, resp2, err2 := dialer.Dial(wsURL, prepareHeaders(untrustedJWT))
+		if conn2 != nil {
+			conn2.Close()
+		}
+		require.Error(t, err2, "Untrusted JWT should fail WebSocket connection")
+		if resp2 != nil {
+			require.Equal(t, http.StatusUnauthorized, resp2.StatusCode, "Untrusted JWT should be rejected")
+			t.Logf("Untrusted JWT - Rejected with status: %d", resp2.StatusCode)
+		}
+	})
+
+	t.Run("GET_DeviceStat_Trusted_vs_Untrusted", func(t *testing.T) {
+		t.Skip("TODO: Enable when Talaria supports multiple JWT validators. See function documentation.")
+
+		fixture := setupIntegrationTest(t, "talaria_template.yaml",
+			WithKafka(),
+			WithThemisInstance("trusted", "themis.yaml"),
+			WithThemisInstance("untrusted", "themis.yaml"),
+			WithTrustedThemis("trusted"),
+			WithCaduceus(),
+			WithXmidtAgent(), // Need connected device for stat endpoint
+		)
+
+		trustedJWT, _ := fixture.GetJWTFromThemisInstance("trusted")
+		untrustedJWT, _ := fixture.GetJWTFromThemisInstance("untrusted")
+
+		// Test with trusted JWT
+		req, _ := fixture.NewRequest("GET", "/api/v2/device/mac:4ca161000109/stat", nil)
+		fixture.WithBearerToken(req, trustedJWT)
+		body, statusCode, err := fixture.DoAndReadBody(req)
+		require.NoError(t, err)
+		t.Logf("Trusted JWT - Status: %d, Body: %s", statusCode, body)
+		require.Equal(t, http.StatusOK, statusCode, "Trusted JWT should be accepted")
+
+		// Test with untrusted JWT
+		req2, _ := fixture.NewRequest("GET", "/api/v2/device/mac:4ca161000109/stat", nil)
+		fixture.WithBearerToken(req2, untrustedJWT)
+		body2, statusCode2, err2 := fixture.DoAndReadBody(req2)
+		require.NoError(t, err2)
+		t.Logf("Untrusted JWT - Status: %d, Body: %s", statusCode2, body2)
+		require.Equal(t, http.StatusUnauthorized, statusCode2, "Untrusted JWT should be rejected")
+	})
+}

@@ -19,8 +19,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/kafka"
@@ -343,6 +341,45 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string, caduce
 		caduceusUrl,
 		1)
 
+	// TODO: MULTI-THEMIS CONFIGURATION
+	// When Talaria supports multiple JWT validators per endpoint, add configuration here.
+	// Current state: Talaria only supports ONE Themis keys URL globally (jwtValidator.Config.Resolve.Template).
+	//
+	// Future implementation will need:
+	// 1. Accept []string of trusted Themis keys URLs instead of single themisKeysUrl
+	// 2. Update Talaria config to support per-endpoint JWT validators, e.g.:
+	//    authorization:
+	//      device:  # For WebSocket /api/v2/device
+	//        jwtValidators:
+	//          - url: http://themis-device:6500/keys/{keyID}
+	//      api:     # For REST API endpoints
+	//        jwtValidators:
+	//          - url: http://themis-api:6500/keys/{keyID}
+	// 3. Or support multiple validators globally (array instead of single URL):
+	//    jwtValidator:
+	//      Config:
+	//        Resolve:
+	//          Templates:
+	//            - http://themis-trusted:6500/keys/{keyID}
+	//            # Omit untrusted Themis URLs
+	//
+	// This enables testing:
+	//   - Start 2+ Themis instances (all on different dynamic ports)
+	//   - Configure Talaria to trust only specific instance(s)
+	//   - Test: endpoint accepts JWT from trusted instance
+	//   - Test: endpoint rejects JWT from untrusted instance
+	//
+	// Example test pattern when implemented:
+	//   fixture := setupIntegrationTest(t, \"talaria.yaml\",
+	//       WithThemisInstance(\"trusted\", \"themis.yaml\"),
+	//       WithThemisInstance(\"untrusted\", \"themis.yaml\"),
+	//       WithTrustedThemis(\"trusted\"),
+	//   )
+	//   trustedJWT := fixture.GetJWTFromThemisInstance(\"trusted\")
+	//   untrustedJWT := fixture.GetJWTFromThemisInstance(\"untrusted\")
+	//   // GET /api/v2/devices with trustedJWT → 200 OK
+	//   // GET /api/v2/devices with untrustedJWT → 401 Unauthorized
+
 	// write the test config file
 	if err := os.WriteFile(testConfigFile, []byte(configContent), 0644); err != nil {
 		t.Fatalf("Failed to write test config: %v", err)
@@ -664,6 +701,12 @@ func setupXmidtAgent(t *testing.T, themisURL string) *exec.Cmd {
 	configStr = strings.Replace(configStr, "./local-rdk-testing/temporary", tokenCacheDir, 1)
 	configStr = strings.Replace(configStr, "./local-rdk-testing/durable", durableCacheDir, 1)
 
+	// DYNAMIC PORT ALLOCATION: Update Themis URL with the actual dynamic port
+	// The xmidt-agent needs to get its JWT from Themis, which now runs on a random port.
+	// Replace the hardcoded "http://localhost:6501/issue" with the actual Themis issuer URL.
+	configStr = strings.Replace(configStr, "http://localhost:6501/issue", themisURL, 1)
+	t.Logf("✓ Updated xmidt-agent config to use Themis at: %s", themisURL)
+
 	// Write test-specific config
 	testConfigFile := filepath.Join(testTempDir, "xmidt-agent.yaml")
 	if err := os.WriteFile(testConfigFile, []byte(configStr), 0644); err != nil {
@@ -713,16 +756,9 @@ func setupThemis(t *testing.T, themisConfigFile string) (*testcontainers.Contain
 	req := testcontainers.ContainerRequest{
 		Image:        "ghcr.io/xmidt-org/themis:latest-amd64",
 		ExposedPorts: []string{"6500/tcp", "6501/tcp", "6502/tcp", "6503/tcp", "6504/tcp"},
-		HostConfigModifier: func(hc *container.HostConfig) {
-			// Fix ports for predictable access from config files
-			hc.PortBindings = nat.PortMap{
-				"6500/tcp": []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: "6500"}},
-				"6501/tcp": []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: "6501"}},
-				"6502/tcp": []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: "6502"}},
-				"6503/tcp": []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: "6503"}},
-				"6504/tcp": []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: "6504"}},
-			}
-		},
+		// DYNAMIC PORT ALLOCATION: No HostConfigModifier - Docker will assign random available ports.
+		// This enables multiple Themis instances to run simultaneously for testing trusted vs untrusted JWT validation.
+		// We retrieve the actual assigned ports using container.MappedPort() after the container starts.
 		Hostname:   "themis",
 		WaitingFor: wait.ForHTTP("/health").WithPort("6504/tcp").WithStartupTimeout(60 * time.Second),
 		Files: []testcontainers.ContainerFile{
@@ -800,6 +836,13 @@ type setupConfig struct {
 
 	// Default Themis config file (used when startThemis=true but no themisConfigs specified)
 	defaultThemisConfig string
+
+	// MULTI-THEMIS CONFIGURATION: Names of Themis instances that Talaria should trust.
+	// When empty (default), Talaria trusts all started Themis instances (backwards compatible).
+	// When specified, Talaria will only trust JWTs from these named instances.
+	// This enables testing: endpoint accepts trusted JWT, rejects untrusted JWT.
+	// TODO: Uncomment and use when Talaria supports multiple JWT validators per endpoint.
+	trustedThemisInstances []string
 }
 
 // WithKafka enables Kafka container in the test setup
@@ -882,6 +925,32 @@ func WithMultipleThemis(configs map[string]string) setupOption {
 		for name, configFile := range configs {
 			c.themisConfigs[name] = configFile
 		}
+	}
+}
+
+// WithTrustedThemis configures Talaria to ONLY trust JWTs from the specified Themis instance(s).
+// This enables testing: endpoint accepts trusted JWT, rejects untrusted JWT.
+//
+// Example usage:
+//
+//	fixture := setupIntegrationTest(t, "talaria.yaml",
+//	    WithThemisInstance("trusted", "themis.yaml"),
+//	    WithThemisInstance("untrusted", "themis.yaml"),
+//	    WithTrustedThemis("trusted"),  // Only trust the "trusted" instance
+//	)
+//
+//	trustedJWT, _ := fixture.GetJWTFromThemisInstance("trusted")
+//	untrustedJWT, _ := fixture.GetJWTFromThemisInstance("untrusted")
+//
+//	// Test endpoint with trusted JWT - should succeed
+//	// Test endpoint with untrusted JWT - should fail
+//
+// TODO: Currently a no-op. Uncomment the implementation when Talaria supports
+// multiple JWT validator configurations per endpoint. For now, Talaria trusts
+// ALL Themis instances (uses the first available keys URL).
+func WithTrustedThemis(instanceNames ...string) setupOption {
+	return func(c *setupConfig) {
+		c.trustedThemisInstances = append(c.trustedThemisInstances, instanceNames...)
 	}
 }
 
@@ -980,7 +1049,7 @@ func setupIntegrationTestWithCapabilities(t *testing.T, talariaConfigFile, themi
 			themisIssuerURL = issuerURL
 			themisKeysURL = keysURL
 		} else {
-			// Start multiple Themis instances
+			// Start multiple Themis instances (each on dynamic ports)
 			for name, configFile := range config.themisConfigs {
 				_, issuerURL, keysURL := setupThemis(t, configFile)
 				t.Logf("✓ Themis instance '%s' started at: %s (using %s)", name, issuerURL, configFile)
@@ -991,6 +1060,28 @@ func setupIntegrationTestWithCapabilities(t *testing.T, talariaConfigFile, themi
 					KeysURL:   keysURL,
 				}
 			}
+
+			// TODO: MULTI-THEMIS CONFIGURATION
+			// When Talaria supports multiple Themis validators, filter instances based on
+			// config.trustedThemisInstances. Currently, Talaria will trust ALL instances
+			// because it only supports one global JWT validator URL.
+			//
+			// Future implementation:
+			//   var trustedKeysURLs []string
+			//   if len(config.trustedThemisInstances) > 0 {
+			//       // Only include trusted instances
+			//       for _, name := range config.trustedThemisInstances {
+			//           if instance, ok := themisInstances[name]; ok {
+			//               trustedKeysURLs = append(trustedKeysURLs, instance.KeysURL)
+			//           }
+			//       }
+			//   } else {
+			//       // Trust all instances (backwards compatible)
+			//       for _, instance := range themisInstances {
+			//           trustedKeysURLs = append(trustedKeysURLs, instance.KeysURL)
+			//       }
+			//   }
+			//   // Pass trustedKeysURLs to setupTalaria instead of single themisKeysURL
 
 			// Set default/primary instance for backwards compatibility
 			// Prefer "device" instance, fall back to first available
