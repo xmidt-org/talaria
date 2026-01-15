@@ -33,6 +33,14 @@ const (
 	messageConsumeWait = 60 * time.Second
 )
 
+// ThemisInstance represents a single Themis JWT issuer instance.
+// Allows testing with multiple JWT issuers for different endpoints or scenarios.
+type ThemisInstance struct {
+	Name      string // Instance name (e.g., "device", "api", "admin")
+	IssuerURL string // JWT issue endpoint
+	KeysURL   string // Public keys endpoint
+}
+
 // TalariaTestFixture holds all the test infrastructure for integration tests.
 // It provides service URLs, channels for monitoring events, and helper methods
 // for making API calls and assertions.
@@ -40,11 +48,18 @@ type TalariaTestFixture struct {
 	t *testing.T
 
 	// Service URLs
-	KafkaBroker     string
+	KafkaBroker string
+
+	// Multiple Themis instances for different JWT scenarios
+	// Map key is the instance name (e.g., "device", "api", "admin")
+	ThemisInstances map[string]*ThemisInstance
+
+	// Backwards compatibility - points to primary/default Themis instance
 	ThemisIssuerURL string
 	ThemisKeysURL   string
-	CaduceusURL     string
-	TalariaURL      string
+
+	CaduceusURL string
+	TalariaURL  string
 
 	// Channels for monitoring
 	ReceivedBodyChan chan string
@@ -178,8 +193,9 @@ func (f *TalariaTestFixture) GetDevices(username, password string) (string, int,
 	return f.GET("/api/v2/devices", username, password)
 }
 
-// GetJWTFromThemis requests a JWT token from the Themis issuer service.
+// GetJWTFromThemis requests a JWT token from the default Themis issuer service.
 // Returns the raw JWT token string.
+// For multiple Themis instances, use GetJWTFromThemisInstance(name) instead.
 func (f *TalariaTestFixture) GetJWTFromThemis() (string, error) {
 	resp, err := http.Get(f.ThemisIssuerURL)
 	if err != nil {
@@ -202,6 +218,50 @@ func (f *TalariaTestFixture) GetJWTFromThemis() (string, error) {
 	token = strings.TrimSpace(token)
 
 	return token, nil
+}
+
+// GetThemisInstance returns the Themis instance with the given name.
+// Returns nil if the instance doesn't exist.
+func (f *TalariaTestFixture) GetThemisInstance(name string) *ThemisInstance {
+	return f.ThemisInstances[name]
+}
+
+// GetJWTFromThemisInstance requests a JWT token from a specific Themis instance.
+// Use this when testing with multiple JWT issuers for different endpoints.
+// Returns an error if the instance doesn't exist.
+func (f *TalariaTestFixture) GetJWTFromThemisInstance(name string) (string, error) {
+	instance := f.GetThemisInstance(name)
+	if instance == nil {
+		return "", fmt.Errorf("themis instance '%s' not found", name)
+	}
+
+	resp, err := http.Get(instance.IssuerURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to get JWT from Themis instance '%s': %w", name, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("Themis instance '%s' returned status %d: %s", name, resp.StatusCode, string(body))
+	}
+
+	tokenBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read JWT response from Themis instance '%s': %w", name, err)
+	}
+
+	token := string(tokenBytes)
+	return strings.TrimSpace(token), nil
+}
+
+// ListThemisInstances returns a slice of all Themis instance names.
+func (f *TalariaTestFixture) ListThemisInstances() []string {
+	names := make([]string, 0, len(f.ThemisInstances))
+	for name := range f.ThemisInstances {
+		names = append(names, name)
+	}
+	return names
 }
 
 // WaitForCaduceusMessage waits for a message to arrive at the mock Caduceus server.
@@ -732,6 +792,14 @@ type setupConfig struct {
 	startThemis     bool
 	startCaduceus   bool
 	startXmidtAgent bool
+
+	// Multiple Themis configurations: map of instance name -> config file
+	// Key is the instance name (e.g., "device", "api", "admin")
+	// Value is the config file path relative to test_config/ (e.g., "themis_device.yaml")
+	themisConfigs map[string]string
+
+	// Default Themis config file (used when startThemis=true but no themisConfigs specified)
+	defaultThemisConfig string
 }
 
 // WithKafka enables Kafka container in the test setup
@@ -769,6 +837,51 @@ func WithAPIServices() setupOption {
 	return func(c *setupConfig) {
 		c.startThemis = true
 		c.startCaduceus = true
+	}
+}
+
+// WithThemisInstance enables a specific Themis instance with the given name and config file.
+// This allows testing with multiple JWT issuers for different endpoints.
+// Example: WithThemisInstance("device", "themis_device.yaml")
+func WithThemisInstance(name, configFile string) setupOption {
+	return func(c *setupConfig) {
+		c.startThemis = true
+		if c.themisConfigs == nil {
+			c.themisConfigs = make(map[string]string)
+		}
+		c.themisConfigs[name] = configFile
+	}
+}
+
+// WithDeviceThemis enables a Themis instance for device authentication.
+// Uses themis.yaml by default for full capabilities.
+func WithDeviceThemis() setupOption {
+	return WithThemisInstance("device", "themis.yaml")
+}
+
+// WithAPIThemis enables a Themis instance for API authentication.
+// Uses themis.yaml by default. Override with WithThemisInstance("api", "custom.yaml").
+func WithAPIThemis() setupOption {
+	return WithThemisInstance("api", "themis.yaml")
+}
+
+// WithAdminThemis enables a Themis instance for admin authentication.
+// Uses themis.yaml by default. Override with WithThemisInstance("admin", "custom.yaml").
+func WithAdminThemis() setupOption {
+	return WithThemisInstance("admin", "themis.yaml")
+}
+
+// WithMultipleThemis enables multiple Themis instances at once.
+// Example: WithMultipleThemis(map[string]string{"device": "themis_device.yaml", "api": "themis_api.yaml"})
+func WithMultipleThemis(configs map[string]string) setupOption {
+	return func(c *setupConfig) {
+		c.startThemis = true
+		if c.themisConfigs == nil {
+			c.themisConfigs = make(map[string]string)
+		}
+		for name, configFile := range configs {
+			c.themisConfigs[name] = configFile
+		}
 	}
 }
 
@@ -819,10 +932,11 @@ func setupIntegrationTestWithCapabilities(t *testing.T, talariaConfigFile, themi
 
 	// Default: start all services (backwards compatible)
 	config := setupConfig{
-		startKafka:      true,
-		startThemis:     true,
-		startCaduceus:   true,
-		startXmidtAgent: true,
+		startKafka:          true,
+		startThemis:         true,
+		startCaduceus:       true,
+		startXmidtAgent:     true,
+		defaultThemisConfig: themisConfigFile,
 	}
 
 	// Apply options
@@ -837,6 +951,7 @@ func setupIntegrationTestWithCapabilities(t *testing.T, talariaConfigFile, themi
 	var themisIssuerURL, themisKeysURL string
 	var caduceusServer *httptest.Server
 	var receivedBodyChan chan string
+	themisInstances := make(map[string]*ThemisInstance)
 
 	// 1. Start Kafka (if enabled)
 	if config.startKafka {
@@ -847,11 +962,53 @@ func setupIntegrationTestWithCapabilities(t *testing.T, talariaConfigFile, themi
 		t.Log("⊘ Kafka disabled")
 	}
 
-	// 2. Start Themis (if enabled)
+	// 2. Start Themis instance(s) (if enabled)
 	if config.startThemis {
-		_, themisIssuerURL, themisKeysURL = setupThemis(t, themisConfigFile)
-		t.Logf("✓ Themis issuer started at: %s (using %s)", themisIssuerURL, themisConfigFile)
-		t.Logf("✓ Themis keys started at: %s", themisKeysURL)
+		// If no specific instances configured, start a single default instance
+		if len(config.themisConfigs) == 0 {
+			_, issuerURL, keysURL := setupThemis(t, config.defaultThemisConfig)
+			t.Logf("✓ Themis (default) started at: %s (using %s)", issuerURL, config.defaultThemisConfig)
+
+			// Store as default instance
+			themisInstances["default"] = &ThemisInstance{
+				Name:      "default",
+				IssuerURL: issuerURL,
+				KeysURL:   keysURL,
+			}
+
+			// Backwards compatibility
+			themisIssuerURL = issuerURL
+			themisKeysURL = keysURL
+		} else {
+			// Start multiple Themis instances
+			for name, configFile := range config.themisConfigs {
+				_, issuerURL, keysURL := setupThemis(t, configFile)
+				t.Logf("✓ Themis instance '%s' started at: %s (using %s)", name, issuerURL, configFile)
+
+				themisInstances[name] = &ThemisInstance{
+					Name:      name,
+					IssuerURL: issuerURL,
+					KeysURL:   keysURL,
+				}
+			}
+
+			// Set default/primary instance for backwards compatibility
+			// Prefer "device" instance, fall back to first available
+			if instance, ok := themisInstances["device"]; ok {
+				themisIssuerURL = instance.IssuerURL
+				themisKeysURL = instance.KeysURL
+			} else if instance, ok := themisInstances["api"]; ok {
+				themisIssuerURL = instance.IssuerURL
+				themisKeysURL = instance.KeysURL
+			} else {
+				// Use first available instance
+				for _, instance := range themisInstances {
+					themisIssuerURL = instance.IssuerURL
+					themisKeysURL = instance.KeysURL
+					break
+				}
+			}
+		}
 	} else {
 		themisIssuerURL = "http://localhost:6501/issue"
 		themisKeysURL = "http://localhost:6500/keys"
@@ -908,8 +1065,9 @@ func setupIntegrationTestWithCapabilities(t *testing.T, talariaConfigFile, themi
 	fixture := &TalariaTestFixture{
 		t:                t,
 		KafkaBroker:      broker,
-		ThemisIssuerURL:  themisIssuerURL,
-		ThemisKeysURL:    themisKeysURL,
+		ThemisInstances:  themisInstances,
+		ThemisIssuerURL:  themisIssuerURL, // Backwards compatibility
+		ThemisKeysURL:    themisKeysURL,   // Backwards compatibility
 		CaduceusURL:      caduceusServer.URL,
 		TalariaURL:       talariaURL,
 		ReceivedBodyChan: receivedBodyChan,

@@ -413,3 +413,159 @@ func TestSetupOptions(t *testing.T) {
 		require.Equal(t, http.StatusOK, statusCode)
 	})
 }
+
+// TestMultipleThemisInstances demonstrates using multiple Themis JWT issuers
+// for different endpoints or authentication scenarios.
+func TestMultipleThemisInstances(t *testing.T) {
+	t.Run("Single_Themis_Default_Behavior", func(t *testing.T) {
+		// Default behavior - single Themis instance
+		fixture := setupIntegrationTest(t, "talaria_template.yaml", WithThemis())
+
+		// List available instances
+		instances := fixture.ListThemisInstances()
+		require.Len(t, instances, 1, "Should have exactly one Themis instance")
+		require.Equal(t, "default", instances[0])
+
+		// Get JWT from default instance
+		token, err := fixture.GetJWTFromThemis()
+		require.NoError(t, err)
+		require.NotEmpty(t, token)
+		t.Logf("Default Themis JWT: %s...", token[:50])
+
+		// Also works with GetJWTFromThemisInstance
+		token2, err := fixture.GetJWTFromThemisInstance("default")
+		require.NoError(t, err)
+		require.NotEmpty(t, token2)
+		t.Logf("Default Themis JWT (explicit): %s...", token2[:50])
+	})
+
+	t.Run("Multiple_Themis_Instances", func(t *testing.T) {
+		// Start multiple Themis instances with different configurations
+		fixture := setupIntegrationTest(t, "talaria_template.yaml",
+			WithKafka(),
+			WithThemisInstance("device", "themis.yaml"),                // Full capabilities
+			WithThemisInstance("api", "themis_read_only.yaml"),         // Read-only
+			WithThemisInstance("admin", "themis_no_capabilities.yaml"), // No capabilities
+			WithCaduceus(),
+		)
+
+		// List all instances
+		instances := fixture.ListThemisInstances()
+		require.Len(t, instances, 3, "Should have three Themis instances")
+		t.Logf("Available Themis instances: %v", instances)
+
+		// Get JWT from device Themis (full capabilities)
+		deviceJWT, err := fixture.GetJWTFromThemisInstance("device")
+		require.NoError(t, err)
+		require.NotEmpty(t, deviceJWT)
+		t.Logf("Device Themis JWT (full caps): %s...", deviceJWT[:50])
+
+		// Get JWT from API Themis (read-only)
+		apiJWT, err := fixture.GetJWTFromThemisInstance("api")
+		require.NoError(t, err)
+		require.NotEmpty(t, apiJWT)
+		t.Logf("API Themis JWT (read-only): %s...", apiJWT[:50])
+
+		// Get JWT from admin Themis (no capabilities)
+		adminJWT, err := fixture.GetJWTFromThemisInstance("admin")
+		require.NoError(t, err)
+		require.NotEmpty(t, adminJWT)
+		t.Logf("Admin Themis JWT (no caps): %s...", adminJWT[:50])
+
+		// Verify JWTs are different
+		require.NotEqual(t, deviceJWT, apiJWT, "Device and API JWTs should be different")
+		require.NotEqual(t, apiJWT, adminJWT, "API and Admin JWTs should be different")
+
+		// Test with device JWT (should succeed - full capabilities)
+		req, _ := fixture.NewRequest("GET", "/api/v2/devices", nil)
+		fixture.WithBearerToken(req, deviceJWT)
+		body, statusCode, err := fixture.DoAndReadBody(req)
+		require.NoError(t, err)
+		t.Logf("Device JWT result - Status: %d, Body: %s", statusCode, body)
+		require.Equal(t, http.StatusOK, statusCode, "Device JWT should work")
+
+		// Test with API JWT (should succeed - read capabilities)
+		req2, _ := fixture.NewRequest("GET", "/api/v2/devices", nil)
+		fixture.WithBearerToken(req2, apiJWT)
+		body2, statusCode2, err2 := fixture.DoAndReadBody(req2)
+		require.NoError(t, err2)
+		t.Logf("API JWT result - Status: %d, Body: %s", statusCode2, body2)
+		require.Equal(t, http.StatusOK, statusCode2, "API JWT should work for read")
+
+		// Test with admin JWT (may fail - no capabilities)
+		req3, _ := fixture.NewRequest("GET", "/api/v2/devices", nil)
+		fixture.WithBearerToken(req3, adminJWT)
+		body3, statusCode3, err3 := fixture.DoAndReadBody(req3)
+		require.NoError(t, err3)
+		t.Logf("Admin JWT result - Status: %d, Body: %s", statusCode3, body3)
+		// Note: May succeed or fail depending on Talaria's failOpen configuration
+	})
+
+	t.Run("Convenience_Options", func(t *testing.T) {
+		// Use convenience options for common scenarios
+		fixture := setupIntegrationTest(t, "talaria_template.yaml",
+			WithDeviceThemis(), // Uses themis.yaml
+			WithAPIThemis(),    // Uses themis.yaml
+			WithKafka(),
+			WithCaduceus(),
+		)
+
+		// Verify both instances exist
+		deviceInstance := fixture.GetThemisInstance("device")
+		require.NotNil(t, deviceInstance, "Device Themis should exist")
+		require.Equal(t, "device", deviceInstance.Name)
+
+		apiInstance := fixture.GetThemisInstance("api")
+		require.NotNil(t, apiInstance, "API Themis should exist")
+		require.Equal(t, "api", apiInstance.Name)
+
+		// Get tokens from each
+		deviceToken, err := fixture.GetJWTFromThemisInstance("device")
+		require.NoError(t, err)
+		require.NotEmpty(t, deviceToken)
+
+		apiToken, err := fixture.GetJWTFromThemisInstance("api")
+		require.NoError(t, err)
+		require.NotEmpty(t, apiToken)
+
+		t.Logf("✓ Device and API Themis instances configured and working")
+	})
+
+	t.Run("Batch_Configuration", func(t *testing.T) {
+		// Configure multiple instances in one call
+		themisConfigs := map[string]string{
+			"device": "themis.yaml",
+			"api":    "themis_read_only.yaml",
+			"admin":  "themis_specific_device.yaml",
+		}
+
+		fixture := setupIntegrationTest(t, "talaria_template.yaml",
+			WithKafka(),
+			WithMultipleThemis(themisConfigs),
+			WithCaduceus(),
+		)
+
+		// Verify all instances created
+		instances := fixture.ListThemisInstances()
+		require.Len(t, instances, 3)
+		t.Logf("Batch-configured instances: %v", instances)
+
+		// Get tokens from all instances
+		for name := range themisConfigs {
+			token, err := fixture.GetJWTFromThemisInstance(name)
+			require.NoError(t, err, "Failed to get token from %s", name)
+			require.NotEmpty(t, token)
+			t.Logf("%s JWT: %s...", name, token[:30])
+		}
+	})
+
+	t.Run("Nonexistent_Instance_Error", func(t *testing.T) {
+		fixture := setupIntegrationTest(t, "talaria_template.yaml", WithThemis())
+
+		// Try to get JWT from nonexistent instance
+		_, err := fixture.GetJWTFromThemisInstance("nonexistent")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "not found")
+		t.Logf("Expected error: %v", err)
+	})
+}
