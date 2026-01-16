@@ -3,10 +3,10 @@
 
 package main
 
-type testConfig struct {
-	configFile   string
-	writeToKafka bool
-}
+//type testConfig struct {
+//	configFile   string
+//	writeToKafka bool
+//}
 
 // TestIntegration_ReceiveEvent tests basic event publishing to Kafka.
 //
