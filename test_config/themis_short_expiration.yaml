@@ -68,9 +68,14 @@ token:
       value:
         - x1:issuer:test:.*:all
 
-key:
-  type: development
-  kid: "development"
-  development:
-    expiration: 15m
+  key:
+    kid: "development"
+    type: rsa
     bits: 1024
+
+log:
+  outputPaths:
+    - "stdout"
+  errorOutputPaths:
+    - "stdout"
+  level: "DEBUG"

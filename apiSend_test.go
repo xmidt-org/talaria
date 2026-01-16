@@ -880,18 +880,18 @@ func TestTrustedVsUntrustedJWT(t *testing.T) {
 // Uses a Themis instance configured to issue JWTs with very short expiration (2 seconds).
 func TestExpiredJWT(t *testing.T) {
 	t.Run("GET_Devices_With_Expired_JWT", func(t *testing.T) {
-		// Start Themis with standard configuration
+		// Start Themis with short-lived JWTs (2 second expiration)
 		// GET /api/v2/devices is an API endpoint, so use "api" instance
 		fixture := setupIntegrationTest(t, "talaria_template.yaml",
-			WithThemisInstance("api", "themis.yaml"),
+			WithThemisInstance("api", "themis_short_expiration.yaml"),
 			WithCaduceus(),
 		)
 
-		// Get a JWT token
+		// Get a JWT token (valid for 2 seconds)
 		token, err := fixture.GetJWTFromThemisInstance("api")
 		require.NoError(t, err)
 		require.NotEmpty(t, token)
-		t.Logf("Obtained JWT token: %s...", token[:50])
+		t.Logf("Obtained short-lived JWT (expires in 2s): %s...", token[:50])
 
 		// Test immediately - should succeed (token is still valid)
 		req1, _ := fixture.NewRequest("GET", "/api/v2/devices", nil)
@@ -901,35 +901,30 @@ func TestExpiredJWT(t *testing.T) {
 		t.Logf("Fresh JWT - Status: %d, Body: %s", statusCode1, body1)
 		require.Equal(t, http.StatusOK, statusCode1, "Fresh JWT should be accepted")
 
-		// Wait to simulate expired token scenario (standard JWTs are longer-lived)
-		// In a real scenario, this would be a much longer wait, but for testing
-		// we'll simulate expiration by waiting and treating it as expired
-		t.Log("Simulating JWT expiration scenario...")
-		time.Sleep(1 * time.Second)
+		// Wait for token to expire (2 seconds + buffer)
+		t.Log("Waiting 3 seconds for JWT to expire...")
+		time.Sleep(3 * time.Second)
 
-		// Test again - in a real scenario with proper expiration, this should fail
-		// For this test, we'll verify the token still works (since it's not actually expired)
+		// Test again - should fail (token is now expired)
 		req2, _ := fixture.NewRequest("GET", "/api/v2/devices", nil)
 		fixture.WithBearerToken(req2, token)
 		body2, statusCode2, err2 := fixture.DoAndReadBody(req2)
 		require.NoError(t, err2)
-		t.Logf("Token after wait - Status: %d, Body: %s", statusCode2, body2)
-		// In real expired token scenario: require.Equal(t, http.StatusUnauthorized, statusCode2)
-		// For this test (non-expired): require.Equal(t, http.StatusOK, statusCode2)
-		t.Log("Note: This test demonstrates expiration flow but uses standard tokens")
+		t.Logf("Expired JWT - Status: %d, Body: %s", statusCode2, body2)
+		require.Equal(t, http.StatusUnauthorized, statusCode2, "Expired JWT should be rejected")
 	})
 
 	t.Run("POST_DeviceSend_With_Expired_JWT", func(t *testing.T) {
-		// Start Themis with standard configuration
+		// Start Themis with short-lived JWTs (2 second expiration)
 		fixture := setupIntegrationTest(t, "talaria_template.yaml",
-			WithThemisInstance("api", "themis.yaml"),
+			WithThemisInstance("api", "themis_short_expiration.yaml"),
 			WithCaduceus(),
 		)
 
-		// Get a JWT token
+		// Get a JWT token (valid for 2 seconds)
 		token, err := fixture.GetJWTFromThemisInstance("api")
 		require.NoError(t, err)
-		t.Logf("Obtained JWT token")
+		t.Logf("Obtained short-lived JWT (expires in 2s)")
 
 		// Use valid WRP (Web Router Protocol) message format
 		payload := `{
@@ -951,31 +946,31 @@ func TestExpiredJWT(t *testing.T) {
 		t.Logf("Fresh JWT - Status: %d, Body: %s", statusCode1, body1)
 		require.Equal(t, http.StatusOK, statusCode1, "Fresh JWT should be accepted")
 
-		// Wait to simulate expired token scenario
-		t.Log("Simulating JWT expiration scenario...")
-		time.Sleep(1 * time.Second)
+		// Wait for token to expire
+		t.Log("Waiting 3 seconds for JWT to expire...")
+		time.Sleep(3 * time.Second)
 
-		// Test again - in a real scenario with proper expiration, this should fail
+		// Test again - should fail
 		req2, _ := fixture.NewRequest("POST", "/api/v2/device/send", strings.NewReader(payload))
 		req2.Header.Set("Content-Type", "application/json")
 		fixture.WithBearerToken(req2, token)
 		body2, statusCode2, err2 := fixture.DoAndReadBody(req2)
 		require.NoError(t, err2)
-		t.Logf("Token after wait - Status: %d, Body: %s", statusCode2, body2)
-		t.Log("Note: This test demonstrates expiration flow but uses standard tokens")
+		t.Logf("Expired JWT - Status: %d, Body: %s", statusCode2, body2)
+		require.Equal(t, http.StatusUnauthorized, statusCode2, "Expired JWT should be rejected")
 	})
 
 	t.Run("WebSocket_Device_Connect_With_Expired_JWT", func(t *testing.T) {
-		// Start Themis with standard configuration
+		// Start Themis with short-lived JWTs (2 second expiration)
 		fixture := setupIntegrationTest(t, "talaria_template.yaml",
-			WithThemisInstance("device", "themis.yaml"),
+			WithThemisInstance("device", "themis_short_expiration.yaml"),
 			WithCaduceus(),
 		)
 
-		// Get a JWT token
+		// Get a JWT token (valid for 2 seconds)
 		token, err := fixture.GetJWTFromThemisInstance("device")
 		require.NoError(t, err)
-		t.Logf("Obtained JWT token")
+		t.Logf("Obtained short-lived JWT (expires in 2s)")
 
 		wsURL := strings.Replace(fixture.TalariaURL, "http://", "ws://", 1) + "/api/v2/device"
 
@@ -1007,25 +1002,19 @@ func TestExpiredJWT(t *testing.T) {
 			conn1.Close() // Close before waiting
 		}
 
-		// Wait to simulate expired token scenario
-		t.Log("Simulating JWT expiration scenario...")
-		time.Sleep(1 * time.Second)
+		// Wait for token to expire
+		t.Log("Waiting 3 seconds for JWT to expire...")
+		time.Sleep(3 * time.Second)
 
-		// Test again - in a real scenario with proper expiration, this should fail
+		// Test again - should fail
 		conn2, resp2, err2 := dialer.Dial(wsURL, prepareHeaders(token))
 		if conn2 != nil {
 			conn2.Close()
 		}
-		// In real expired token scenario: require.Error(t, err2, "Expired JWT should fail")
-		// For this test (non-expired): connection should still succeed
-		if err2 != nil {
-			t.Logf("Connection failed (which could be normal): %v", err2)
-			if resp2 != nil {
-				t.Logf("Response status: %d", resp2.StatusCode)
-			}
-		} else {
-			t.Logf("Token after wait - WebSocket connection succeeded")
+		require.Error(t, err2, "Expired JWT should fail WebSocket connection")
+		if resp2 != nil {
+			t.Logf("Expired JWT - Status: %d", resp2.StatusCode)
+			require.Equal(t, http.StatusUnauthorized, resp2.StatusCode, "Expired JWT should be rejected")
 		}
-		t.Log("Note: This test demonstrates expiration flow but uses standard tokens")
 	})
 }
