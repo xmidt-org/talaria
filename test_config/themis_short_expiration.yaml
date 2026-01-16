@@ -1,0 +1,76 @@
+# SPDX-FileCopyrightText: 2022 Comcast Cable Communications Management, LLC
+# SPDX-License-Identifier: Apache-2.0
+---
+# Themis configuration for testing EXPIRED JWT tokens.
+# This config issues JWTs that expire in 2 seconds.
+# Use for testing that Talaria properly rejects expired JWTs.
+
+server: "themis-short-expiration"
+
+build: "unknown"
+stage: "development"
+
+servers:
+  key:
+    address: :6500
+    disableHTTPKeepAlives: true
+    header:
+  issuer:
+    address: :6501
+    disableHTTPKeepAlives: true
+    header:
+  claims:
+    address: :6502
+    disableHTTPKeepAlives: true
+    header:
+  metrics:
+    address: :6503
+    disableHTTPKeepAlives: true
+
+  health:
+    address: :6504
+    disableHTTPKeepAlives: true
+    header:
+
+health:
+  disableLogging: false
+  custom:
+    server: themis
+
+prometheus:
+  defaultNamespace: xmidt
+  defaultSubsystem: themis
+
+token:
+  alg: RS256
+  nonce: true
+  notBeforeDelta: -15s
+  duration: 2s  # SHORT EXPIRATION: JWT expires in 2 seconds (for testing expired tokens)
+  claims:
+    - key: mac
+      header: X-Midt-Mac-Address
+      parameter: mac
+    - key: serial
+      header: X-Midt-Serial-Number
+      parameter: serial
+    - key: uuid
+      header: X-Midt-Uuid
+      parameter: uuid
+    - key: iss
+      value: "themis"
+    - key: trust
+      value: 1000
+    - key: sub
+      value: "client-supplied"
+    - key: aud
+      value: "XMiDT"
+    - key: capabilities
+      value:
+        - x1:issuer:test:.*:all
+
+key:
+  type: development
+  kid: "development"
+  development:
+    expiration: 15m
+    bits: 1024
