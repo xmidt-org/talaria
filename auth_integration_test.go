@@ -893,7 +893,11 @@ func TestExpiredJWT(t *testing.T) {
 		require.NotEmpty(t, token)
 		t.Logf("Obtained short-lived JWT (expires in 2s): %s...", token[:50])
 
-		// Test immediately - should succeed (token is still valid)
+		// TIMING FIX: Wait 1 second to ensure token's 'iat' (issued at) time has definitely passed
+		t.Log("Waiting 1 second to ensure token iat time has passed...")
+		time.Sleep(1 * time.Second)
+
+		// Test with valid token - should succeed (token is still valid)
 		req1, _ := fixture.NewRequest("GET", "/api/v2/devices", nil)
 		fixture.WithBearerToken(req1, token)
 		body1, statusCode1, err1 := fixture.DoAndReadBody(req1)
@@ -901,8 +905,9 @@ func TestExpiredJWT(t *testing.T) {
 		t.Logf("Fresh JWT - Status: %d, Body: %s", statusCode1, body1)
 		require.Equal(t, http.StatusOK, statusCode1, "Fresh JWT should be accepted")
 
-		// Wait for token to expire (2 seconds + buffer)
-		t.Log("Waiting 3 seconds for JWT to expire...")
+		// Wait for token to expire (was issued 1s ago, expires in 2s total = 1s remaining + buffer)
+		// Adding extra buffer to account for clock skew and validation precision
+		t.Log("Waiting 3 seconds for JWT to expire (2s + buffer)...")
 		time.Sleep(3 * time.Second)
 
 		// Test again - should fail (token is now expired)
@@ -926,6 +931,11 @@ func TestExpiredJWT(t *testing.T) {
 		require.NoError(t, err)
 		t.Logf("Obtained short-lived JWT (expires in 2s)")
 
+		// TIMING FIX: Wait 1 second to ensure token's 'iat' (issued at) time has definitely passed
+		// This prevents "Token used before issued" errors due to clock skew or timing races
+		t.Log("Waiting 1 second to ensure token iat time has passed...")
+		time.Sleep(1 * time.Second)
+
 		// Use valid WRP (Web Router Protocol) message format
 		payload := `{
 			"msg_type":3,
@@ -933,11 +943,11 @@ func TestExpiredJWT(t *testing.T) {
 			"source":"dns:test-sender",
 			"dest":"mac:4ca161000109/config",
 			"transaction_uuid":"test-transaction-uuid",
-			"payload":"eyJjb21tYW5kIjoiR0VUIiwibmFtZXMiOlsiRGV2aWNlLkluZm8uUHJvcGVydHkxIl19",
+			"payload":"eyJjb21tYW5kIjoiR0VUIiwibmFtZXMiOlsiRGV2aWNlLkluZm8uUHJvcGVydHkxIl09",
 			"partner_ids":["foobar"]
 		}`
 
-		// Test immediately - should succeed
+		// Test with valid token (should succeed)
 		req1, _ := fixture.NewRequest("POST", "/api/v2/device/send", strings.NewReader(payload))
 		req1.Header.Set("Content-Type", "application/json")
 		fixture.WithBearerToken(req1, token)
@@ -946,8 +956,9 @@ func TestExpiredJWT(t *testing.T) {
 		t.Logf("Fresh JWT - Status: %d, Body: %s", statusCode1, body1)
 		require.Equal(t, http.StatusOK, statusCode1, "Fresh JWT should be accepted")
 
-		// Wait for token to expire
-		t.Log("Waiting 3 seconds for JWT to expire...")
+		// Wait for token to expire (was issued 1s ago, expires in 2s total = 1s remaining + buffer)
+		// Adding extra buffer to account for clock skew and validation precision
+		t.Log("Waiting 3 seconds for JWT to expire (2s + buffer)...")
 		time.Sleep(3 * time.Second)
 
 		// Test again - should fail
@@ -971,6 +982,10 @@ func TestExpiredJWT(t *testing.T) {
 		token, err := fixture.GetJWTFromThemisInstance("device")
 		require.NoError(t, err)
 		t.Logf("Obtained short-lived JWT (expires in 2s)")
+
+		// TIMING FIX: Wait 1 second to ensure token's 'iat' (issued at) time has definitely passed
+		t.Log("Waiting 1 second to ensure token iat time has passed...")
+		time.Sleep(1 * time.Second)
 
 		wsURL := strings.Replace(fixture.TalariaURL, "http://", "ws://", 1) + "/api/v2/device"
 
@@ -1002,8 +1017,9 @@ func TestExpiredJWT(t *testing.T) {
 			conn1.Close() // Close before waiting
 		}
 
-		// Wait for token to expire
-		t.Log("Waiting 3 seconds for JWT to expire...")
+		// Wait for token to expire (was issued 1s ago, expires in 2s total = 1s remaining + buffer)
+		// Adding extra buffer to account for clock skew and validation precision
+		t.Log("Waiting 3 seconds for JWT to expire (2s + buffer)...")
 		time.Sleep(3 * time.Second)
 
 		// Test again - should fail
