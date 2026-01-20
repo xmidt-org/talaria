@@ -339,7 +339,7 @@ jwtValidator:
       # Template is a URI template used to fetch keys.  This template may
       # use a single parameter named keyID, e.g. http://keys.com/{keyID}.
       # This field is required and has no default.
-      # 
+      #
       # FUTURE: When Talaria supports 2 JWT validators (device vs API endpoints),
       # this will be split into DEVICE_THEMIS_URL and API_THEMIS_URL.
       # For now, both endpoints use the same validator.
