@@ -38,27 +38,19 @@ func TestHelloWorld(t *testing.T) {
 	)
 
 	// Make a simple API call with valid credentials
-	body, statusCode, err := fixture.GetDevices("user", "pass")
+	_, statusCode, err := fixture.GetDevices("user", "pass")
 	require.NoError(t, err, "Failed to get devices")
-
-	// Log the results
-	t.Logf("***************************")
-	t.Logf("Status: %d", statusCode)
-	t.Logf("Response: %s", body)
-	t.Logf("***************************")
 
 	// Basic assertion - should get a successful response
 	require.Equal(t, http.StatusOK, statusCode, "Expected 200 OK response")
 }
 
 // TestGetDevices_Auth tests authentication behavior for GET /api/v2/devices
-// This is an API endpoint - it will use the API JWT validator (not device validator).
-// 2-THEMIS-AWARE: Tests both API JWT (should succeed) and Device JWT (should fail).
 func TestGetDevices_Auth(t *testing.T) {
 	// Start both device and api Themis instances
 	fixture := setupIntegrationTest(t, "talaria_template.yaml",
-		WithThemisInstance("device", "themis.yaml"), // For device/WebSocket endpoint
-		WithThemisInstance("api", "themis.yaml"),    // For API endpoints
+		WithThemisInstance("device", "themis.yaml"),
+		WithThemisInstance("api", "themis.yaml"),
 		WithCaduceus(),
 		WithXmidtAgent(),
 	)
@@ -97,7 +89,7 @@ func TestGetDevices_Auth(t *testing.T) {
 		})
 	}
 
-	// 2-THEMIS-AWARE: Test with API JWT (should succeed - correct validator)
+	// Test with API JWT
 	t.Run("valid_api_jwt", func(t *testing.T) {
 		// Get JWT from API Themis instance
 		apiToken, err := fixture.GetJWTFromThemisInstance("api")
@@ -114,7 +106,7 @@ func TestGetDevices_Auth(t *testing.T) {
 		require.Equal(t, http.StatusOK, statusCode, "API JWT should be accepted on API endpoint")
 	})
 
-	// 2-THEMIS-AWARE: Test with Device JWT (should fail - wrong validator)
+	// Test with Device JWT
 	t.Run("device_jwt_on_api_endpoint", func(t *testing.T) {
 		// Get JWT from Device Themis instance
 		deviceToken, err := fixture.GetJWTFromThemisInstance("device")
@@ -131,9 +123,7 @@ func TestGetDevices_Auth(t *testing.T) {
 
 		// TODO: When Talaria supports 2 validators, this should be 401 Unauthorized
 		// For now, both JWTs work because Talaria only has one validator
-		// Change this assertion when Talaria implements separate validators:
-		// require.Equal(t, http.StatusUnauthorized, statusCode, "Device JWT should be rejected on API endpoint")
-		t.Logf("NOTE: Currently both JWTs work (single validator). Expected 401 when 2 validators implemented.")
+		require.Equal(t, http.StatusOK, statusCode, "Device JWT should currently succeed (single validator)")
 	})
 }
 
@@ -239,7 +229,7 @@ func TestPostDeviceSend_Auth(t *testing.T) {
 				"dest":"mac:4ca161000109/config",
 				"transaction_uuid":"test-transaction-uuid",
 				"payload":"eyJjb21tYW5kIjoiR0VUIiwibmFtZXMiOlsiRGV2aWNlLkluZm8uUHJvcGVydHkxIl19",
-				"partner_ids":["comcast"]
+				"partner_ids":["testpartner"]
 			}`
 			body, statusCode, err := fixture.POST("/api/v2/device/send", strings.NewReader(payload), "application/json", scenario.username, scenario.password)
 			require.NoError(t, err)
@@ -256,7 +246,7 @@ func TestPostDeviceSend_Auth(t *testing.T) {
 		token, err := fixture.GetJWTFromThemis()
 		require.NoError(t, err)
 
-		// Use valid WRP (Web Router Protocol) message format
+		// Use valid WRP message format
 		payload := `{
 			"msg_type":3,
 			"content_type":"application/json",
@@ -264,7 +254,7 @@ func TestPostDeviceSend_Auth(t *testing.T) {
 			"dest":"mac:4ca161000109/config",
 			"transaction_uuid":"test-transaction-uuid",
 			"payload":"eyJjb21tYW5kIjoiR0VUIiwibmFtZXMiOlsiRGV2aWNlLkluZm8uUHJvcGVydHkxIl19",
-			"partner_ids":["comcast"]
+			"partner_ids":["testpartner"]
 		}`
 		req, err := fixture.NewRequest("POST", "/api/v2/device/send", strings.NewReader(payload))
 		require.NoError(t, err)
@@ -279,7 +269,6 @@ func TestPostDeviceSend_Auth(t *testing.T) {
 }
 
 // TestCustomAPICall demonstrates using the fixture for custom API calls with different verbs.
-// 2-THEMIS-AWARE: These are API endpoints - they will use the API JWT validator (not device validator).
 func TestCustomAPICall(t *testing.T) {
 	// Only need Themis for auth testing, not full stack
 	fixture := setupIntegrationTest(t, "talaria_template.yaml", WithAPIServices())
@@ -721,7 +710,7 @@ func TestTrustedVsUntrustedJWT(t *testing.T) {
 			WithKafka(),
 			WithThemisInstance("trusted", "themis.yaml"),
 			WithThemisInstance("untrusted", "themis.yaml"),
-			WithTrustedThemis("trusted"), // TODO: Implement filtering in setupTalaria
+			WithTrustedThemis("trusted"), // Only trust the "trusted" instance
 			WithCaduceus(),
 		)
 
