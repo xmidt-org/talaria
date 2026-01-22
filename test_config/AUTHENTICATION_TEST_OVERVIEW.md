@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2025 Comcast Cable Communications Management, LLC -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Authentication Testing Overview
 
 This document describes the authentication test suite for Talaria's four main endpoints.
