@@ -98,6 +98,7 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string, caduce
 		1)
 
 	// write the test config file
+	//nolint:gosec
 	if err := os.WriteFile(testConfigFile, []byte(configContent), 0644); err != nil {
 		t.Fatalf("Failed to write test config: %v", err)
 	}

@@ -143,7 +143,6 @@ func talaria(arguments []string) int {
 		f = pflag.NewFlagSet(applicationName, pflag.ContinueOnError)
 		v = viper.New()
 
-		// I hate webpa libary
 		logger, metricsRegistry, webPA, err = server.Initialize(applicationName, arguments, f, v, device.Metrics, rehasher.Metrics, service.Metrics)
 	)
 
