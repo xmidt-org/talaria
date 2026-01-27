@@ -5,7 +5,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	// nolint:gosec
 	_ "net/http/pprof"
@@ -49,11 +48,10 @@ import (
 )
 
 const (
-	applicationName     = "talaria"
-	testApplicationName = "talaria_test"
-	tracingConfigKey    = "tracing"
-	maxDeviceCount      = "max_device_count"
-	ThisIsATest         = "this_is_a_test"
+	applicationName  = "talaria"
+	tracingConfigKey = "tracing"
+	maxDeviceCount   = "max_device_count"
+	ThisIsATest      = "this_is_a_test"
 )
 
 var (
@@ -142,22 +140,12 @@ func talaria(arguments []string) int {
 	// Initialize the server environment: command-line flags, Viper, logging, and the WebPA instance
 	//
 
-	appName := applicationName
-	for _, arg := range arguments {
-		if strings.Contains(arg, ThisIsATest) {
-			appName = testApplicationName
-		}
-	}
-	// if strings.Contains(os.Args[0], "talaria_test") {
-	// 	appName = testApplicationName
-	// }
-
 	var (
 		f = pflag.NewFlagSet(applicationName, pflag.ContinueOnError)
 		v = viper.New()
 
 		// I hate webpa libary
-		logger, metricsRegistry, webPA, err = server.Initialize(appName, arguments, f, v, device.Metrics, rehasher.Metrics, service.Metrics)
+		logger, metricsRegistry, webPA, err = server.Initialize(applicationName, arguments, f, v, device.Metrics, rehasher.Metrics, service.Metrics)
 	)
 
 	// Setup default config values BEFORE server.Initialize reads the config file
@@ -173,9 +161,6 @@ func talaria(arguments []string) int {
 		}
 		os.Exit(0)
 	}
-
-	// TODO REMOVE - DEBUGGING ONLY
-	fmt.Println("viper configuration:	" + fmt.Sprintf("%v", v.AllSettings()))
 
 	if err != nil {
 		logger.Error("unable to initialize Viper environment", zap.Error(err))

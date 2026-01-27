@@ -104,7 +104,7 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string, caduce
 	t.Logf("Created test config file: %s", testConfigFile)
 
 	// 3. Start Talaria as a subprocess.  It will use talaria_test for the app name for viper
-	talariaCmd := exec.Command(talariaTestBinary, "this_is_a_test")
+	talariaCmd := exec.Command(talariaTestBinary, "--file", "talaria_test")
 
 	// something is still not working with environment variables, so stuck doing the substitutions above
 	// talariaCmd.Env = os.Environ()
