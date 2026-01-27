@@ -188,6 +188,7 @@ func publisherFactory(config *KafkaConfig) (wrpKafkaPublisher, error) {
 	// Configure TLS if enabled
 	if config.TLS.Enabled {
 		publisher.TLS = &tls.Config{
+			//nolint:gosec
 			InsecureSkipVerify: config.TLS.InsecureSkipVerify,
 		}
 		caCertPool := x509.NewCertPool()
