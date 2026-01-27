@@ -288,8 +288,6 @@ func (d *eventDispatcher) dispatchEvent(eventType, contentType string, contents 
 		}
 	}
 
-	// streamEvent
-
 	return url, nil
 }
 

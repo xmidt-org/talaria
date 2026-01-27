@@ -51,7 +51,6 @@ const (
 	applicationName  = "talaria"
 	tracingConfigKey = "tracing"
 	maxDeviceCount   = "max_device_count"
-	ThisIsATest      = "this_is_a_test"
 )
 
 var (
