@@ -254,7 +254,7 @@ device:
     # where the key is the device event type (https://godoc.org/github.com/xmidt-org/webpa-common/device#EventType)
     # and the value is the url.
     eventEndpoints:
-      default: http://caduceus:6000/api/v4/notify
+      default: CADUCEUS_URL
 
     # enableConsulRoundRobin will overwrite the eventEndpoints with using consul to discover the caduceus in the datacenter.
     # NOTE: eventEndpoints still must be set, and in the service section of this config caduceus must be added to the list
@@ -286,6 +286,7 @@ device:
     # receiver.
     # (Optional) defaults to 1000
     outboundQueueSize: 2000
+    source: "dns:integration-test.talaria.com"
 
     # workerPoolSize configures how many active go threads send messages to the receivers.
     # (Optional) defaults to 100
@@ -338,7 +339,7 @@ jwtValidator:
       # Template is a URI template used to fetch keys.  This template may
       # use a single parameter named keyID, e.g. http://keys.com/{keyID}.
       # This field is required and has no default.
-      Template: "http://localhost:6500/keys/{keyID}"
+      Template: THEMIS_URL
 
 # Any combination of these configurations may be used for authorization.
 # If ANY match, the request goes onwards.  If none are provided, no requests
@@ -645,10 +646,12 @@ kafka:
   # (Optional) defaults to false
   enabled: true
 
+  allowAutoTopicCreation: true
+
   # brokers is the list of Kafka broker addresses
   # (Required if enabled is true)
   brokers:
-    - (( grab $KAFKA_BROKERS || "http://localhost:9092" ))
+    - KAFKA_BROKER
 
   # maxBufferedRecords is the maximum number of records the publisher can buffer
   # (Optional) defaults to 10000
@@ -715,7 +718,12 @@ kafka:
     # (Optional)
     topicMap:
       - pattern: "*"  # Catch-all pattern
-        topic: "wrp-events"
+        topic: "device-events"
+
+    # linger sets the batching delay - how long to wait before sending batched messages
+    # Setting this to a low value (like 10ms) ensures messages are sent quickly
+    # (Optional) defaults to 0 (no linger, send immediately when other conditions met)
+    # linger: "10ms"  # COMMENTED OUT - use default 0 for immediate drain like wrpkafka tests
 
     # compression configures message compression
     # Supported values: none, gzip, snappy, lz4, zstd
