@@ -308,7 +308,7 @@ func newTestLogConsumer(t *testing.T, prefix string) *testLogConsumer {
 //	    ConfigFile       string
 //	}
 //	func setupTalaria(t *testing.T, config TalariaConfig) func()
-func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string, caduceusUrl string, configFile string) func() {
+func setupTalaria(t *testing.T, kafkaBroker string, themisURLs map[string]string, caduceusUrl string, configFile string) func() {
 	t.Helper()
 
 	ctx := context.Background()
@@ -345,13 +345,14 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string, caduce
 	// for now, just replace the values we need directly since the environment variable replacement is still broken
 	configContent := string(configTemplate)
 
-	// FUTURE-PROOF: Replace both DEVICE_THEMIS_URL and API_THEMIS_URL placeholders.
-	// When Talaria supports 2 separate JWT validators (one for device/WebSocket endpoint,
-	// one for API/REST endpoints), we can pass different URLs for each.
-	// For now, both use the same Themis instance (backwards compatible).
-	themisKeysTemplate := fmt.Sprintf("%s/{keyID}", themisKeysUrl)
-	configContent = strings.Replace(configContent, "DEVICE_THEMIS_URL", themisKeysTemplate, -1)
-	configContent = strings.Replace(configContent, "API_THEMIS_URL", themisKeysTemplate, -1)
+	// Replace Themis URL placeholders
+	// themisURLs is a map of placeholder -> Themis keys URL
+	// Example: {"DEVICE_THEMIS_URL": "http://localhost:6500/keys", "API_THEMIS_URL": "http://localhost:6501/keys"}
+	for placeholder, keysUrl := range themisURLs {
+		themisKeysTemplate := fmt.Sprintf("%s/{keyID}", keysUrl)
+		configContent = strings.Replace(configContent, placeholder, themisKeysTemplate, -1)
+		t.Logf("Replacing %s with %s", placeholder, themisKeysTemplate)
+	}
 
 	// // Replace Kafka broker
 	configContent = strings.Replace(configContent,
@@ -431,7 +432,6 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisKeysUrl string, caduce
 
 	talariaCmd.Dir = workspaceRoot
 
-	t.Logf("Using JWT validator template: %s/{keyID}", themisKeysUrl)
 	t.Logf("Using Kafka broker: %s", kafkaBroker)
 	t.Logf("Using Caduceus URL: %s", caduceusUrl)
 
@@ -877,6 +877,11 @@ type setupConfig struct {
 	// Value is the config file path relative to test_config/ (e.g., "themis_device.yaml")
 	themisConfigs map[string]string
 
+	// themisPlaceholders maps instance names to config placeholders they should replace
+	// Key is the instance name (e.g., "device"), Value is placeholder (e.g., "DEVICE_THEMIS_URL")
+	// If an instance is not in this map, it's a standalone instance (not mapped to config)
+	themisPlaceholders map[string]string
+
 	// Default Themis config file (used when startThemis=true but no themisConfigs specified)
 	defaultThemisConfig string
 
@@ -938,33 +943,51 @@ func WithAPIServices() setupOption {
 
 // WithThemisInstance enables a specific Themis instance with the given name and config file.
 // This allows testing with multiple JWT issuers for different endpoints.
-// Example: WithThemisInstance("device", "themis_device.yaml")
-func WithThemisInstance(name, configFile string) setupOption {
+// The optional placeholder parameter specifies which config placeholder this instance replaces.
+// If no placeholder is provided, the instance is standalone (for testing but not mapped to config).
+//
+// Examples:
+//
+//	WithThemisInstance("device", "themis_device.yaml", "DEVICE_THEMIS_URL")
+//	WithThemisInstance("api", "themis_api.yaml", "API_THEMIS_URL")
+//	WithThemisInstance("untrusted", "themis.yaml")  // Standalone, no placeholder
+func WithThemisInstance(name, configFile string, placeholder ...string) setupOption {
 	return func(c *setupConfig) {
 		c.startThemis = true
 		if c.themisConfigs == nil {
 			c.themisConfigs = make(map[string]string)
 		}
 		c.themisConfigs[name] = configFile
+
+		// If placeholder provided, map it
+		if len(placeholder) > 0 && placeholder[0] != "" {
+			if c.themisPlaceholders == nil {
+				c.themisPlaceholders = make(map[string]string)
+			}
+			c.themisPlaceholders[name] = placeholder[0]
+		}
 	}
 }
 
 // WithDeviceThemis enables a Themis instance for device authentication.
 // Uses themis.yaml by default for full capabilities.
+// Maps to DEVICE_THEMIS_URL placeholder in config.
 func WithDeviceThemis() setupOption {
-	return WithThemisInstance("device", "themis.yaml")
+	return WithThemisInstance("device", "themis.yaml", "DEVICE_THEMIS_URL")
 }
 
 // WithAPIThemis enables a Themis instance for API authentication.
-// Uses themis.yaml by default. Override with WithThemisInstance("api", "custom.yaml").
+// Uses themis.yaml by default. Override with WithThemisInstance("api", "custom.yaml", "API_THEMIS_URL").
+// Maps to API_THEMIS_URL placeholder in config.
 func WithAPIThemis() setupOption {
-	return WithThemisInstance("api", "themis.yaml")
+	return WithThemisInstance("api", "themis.yaml", "API_THEMIS_URL")
 }
 
 // WithAdminThemis enables a Themis instance for admin authentication.
-// Uses themis.yaml by default. Override with WithThemisInstance("admin", "custom.yaml").
+// Uses themis.yaml by default. Override with WithThemisInstance("admin", "custom.yaml", "ADMIN_THEMIS_URL").
+// Maps to ADMIN_THEMIS_URL placeholder in config.
 func WithAdminThemis() setupOption {
-	return WithThemisInstance("admin", "themis.yaml")
+	return WithThemisInstance("admin", "themis.yaml", "ADMIN_THEMIS_URL")
 }
 
 // WithMultipleThemis enables multiple Themis instances at once.
@@ -1159,12 +1182,30 @@ func setupIntegrationTestWithCapabilities(t *testing.T, talariaConfigFile, themi
 		t.Log("⊘ Themis disabled")
 	}
 
-	// 3. Create channel for Caduceus (if enabled)
+	// 3. Build Themis URL map for config placeholders
+	// Only include instances that have explicit placeholder mappings
+	themisURLs := make(map[string]string)
+	for name, instance := range themisInstances {
+		if placeholder, ok := config.themisPlaceholders[name]; ok {
+			themisURLs[placeholder] = instance.KeysURL
+			t.Logf("Mapped Themis instance '%s' to placeholder '%s'", name, placeholder)
+		} else {
+			t.Logf("Themis instance '%s' is standalone (no placeholder mapping)", name)
+		}
+	}
+
+	// If no explicit mappings but we have a default instance, use backwards-compatible single mapping
+	if len(themisURLs) == 0 && themisKeysURL != "" {
+		themisURLs["DEVICE_THEMIS_URL"] = themisKeysURL
+		t.Logf("Using backwards-compatible single Themis URL for DEVICE_THEMIS_URL")
+	}
+
+	// 4. Create channel for Caduceus (if enabled)
 	if config.startCaduceus {
 		receivedBodyChan = make(chan string, 10) // Buffered to avoid blocking
 	}
 
-	// 4. Create mock Caduceus server (if enabled)
+	// 5. Create mock Caduceus server (if enabled)
 	if config.startCaduceus {
 		caduceusServer = setupCaduceusMockServer(t, receivedBodyChan)
 		t.Logf("✓ Caduceus mock server started at: %s", caduceusServer.URL)
@@ -1173,13 +1214,13 @@ func setupIntegrationTestWithCapabilities(t *testing.T, talariaConfigFile, themi
 		t.Log("⊘ Caduceus disabled")
 	}
 
-	// 5. Start Talaria
-	cleanupTalaria := setupTalaria(t, broker, themisKeysURL, caduceusServer.URL, talariaConfigFile)
+	// 6. Start Talaria
+	cleanupTalaria := setupTalaria(t, broker, themisURLs, caduceusServer.URL, talariaConfigFile)
 	t.Cleanup(cleanupTalaria)
 	talariaURL := "http://localhost:6200"
 	t.Logf("✓ Talaria started at: %s", talariaURL)
 
-	// 6. Build and start xmidt-agent (if enabled)
+	// 7. Build and start xmidt-agent (if enabled)
 	if config.startXmidtAgent {
 		simCmd := setupXmidtAgent(t, themisIssuerURL, config.xmidtAgentDebug)
 		if err := simCmd.Start(); err != nil {

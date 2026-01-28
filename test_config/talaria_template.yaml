@@ -2,739 +2,131 @@
 # SPDX-FileCopyrightText: 2017 Comcast Cable Communications Management, LLC
 # SPDX-License-Identifier: Apache-2.0
 
-# The unique fully-qualified-domain-name of the server.  It is provided to
-# the X-Talaria-Server header for showing what server fulfilled the request
-# sent.
-# (Optional)
 server: "talaria"
 
-########################################
-#   Labeling/Tracing via HTTP Headers Configuration
-########################################
-
-# Provides this build number to the X-Talaria-Build header for
-# showing machine version information.  The build number SHOULD
-# match the scheme `version-build` but there is not a strict requirement.
-# (Optional)
 build: "0.1.4"
 
-# Provides the region information to the X-Talaria-Region header
-# for showing what region this machine is located in.  The region
-# is arbitrary and optional.
-# (Optional)
 region: "east"
 
-# Provides the flavor information to the X-Talaria-Flavor header
-# for showing what flavor this machine is associated with.  The flavor
-# is arbitrary and optional.
-# (Optional)
 flavor: "mint"
 
-##############################################################################
-# WebPA Service configuration
-##############################################################################
-
-# For a complete view of the service config structure,
-# checkout https://godoc.org/github.com/xmidt-org/webpa-common/server#WebPA
-
-########################################
-#   primary endpoint Configuration
-########################################
-
-# primary defines the details needed for the primary endpoint.  The
-# primary endpoint accepts the events from talaria (typically).
-# define https://godoc.org/github.com/xmidt-org/webpa-common/server#Basic
 primary:
-  # address provides the port number for the endpoint to bind to.
-  # ":443" is ideal, but may require some special handling due to it being
-  # a reserved (by the kernel) port.
   address: ":6200"
-  # HTTPS/TLS
-  #
-  # certificateFile provides the public key and CA chain in PEM format if
-  # TLS is used.  Note: the certificate needs to match the fqdn for clients
-  # to accept without issue.
-  #
-  # keyFile provides the private key that matches the certificateFile
-  # (Optional)
-  # certificateFile: "/etc/talaria/public.pem"
-  # keyFile: "/etc/talaria/private.pem"
-########################################
-#   health endpoint Configuration
-########################################
 
-# health defines the details needed for the health check endpoint.  The
-# health check endpoint is generally used by services (like AWS Route53
-# or consul) to determine if this particular machine is healthy or not.
-# define https://godoc.org/github.com/xmidt-org/webpa-common/server#Health
 health:
-  # address provides the port number for the endpoint to bind to.
-  # ":80" is ideal, but may require some special handling due to it being
-  # a reserved (by the kernel) port.
   address: ":6201"
 
-  # logInterval appears to be present from before we had formal metrics
-  # (Deprecated)
-  # logInterval: "60s"
-  # options appears to be present from before we had formal metrics
-  # (Deprecated)
-  # options:
-  #  - "PayloadsOverZero"
-  #  - "PayloadsOverHundred"
-  #  - "PayloadsOverThousand"
-  #  - "PayloadsOverTenThousand"
-
-########################################
-#   Debugging/pprof Configuration
-########################################
-
-# pprof defines the details needed for the pprof debug endpoint.
-# define https://godoc.org/github.com/xmidt-org/webpa-common/server#Basic
-# (Optional)
 pprof:
-  # address provides the port number for the endpoint to bind to.
   address: ":6202"
 
-########################################
-#   Control Configuration
-########################################
-
-# control configures the details needed for the control server.
-# defined https://godoc.org/github.com/xmidt-org/webpa-common/xhttp#ServerOptions
 control:
-  # address provides the port number for the endpoint to bind to.
-  # defaults to the internal net/http default
   address: ":6203"
 
-########################################
-#   Metrics Configuration
-########################################
-
-# metric defines the details needed for the prometheus metrics endpoint
-# define https://godoc.org/github.com/xmidt-org/webpa-common/server#Metric
-# (Optional)
 metric:
-  # address provides the port number for the endpoint to bind to.  Port 6204
-  # was chosen because it does not conflict with any of the other prometheus
-  # metrics or other machines in the xmidt cluster.  You may use any port you
-  # wish.
   address: ":6204"
-
-  # metricsOptions provides the details needed to configure the prometheus
-  # metric data.  Metrics generally have the form:
-  #
-  # {namespace}_{subsystem}_{metric}
-  #
-  # so if you use the suggested value below, your metrics are prefixed like
-  # this:
-  #
-  # xmidt_talaria_{metric}
-  #
-  # (Optional)
   metricsOptions:
-    # namespace is the namespace of the metrics provided
-    # (Optional)
     namespace: "xmidt"
-    # subsystem is the subsystem of the metrics provided
-    # (Optional)
     subsystem: "talaria"
 
-########################################
-#   Logging Related Configuration
-########################################
-
-# log configures the logging subsystem details
 log:
-  # file is the name of the most recent log file.  If set to "stdout" this
-  # will log to os.Stdout.
-  # (Optional) defaults to os.TempDir()
-  # file: "/var/log/talaria/talaria.log"
   file: "stdout"
-
-  # level is the logging level to use - INFO, DEBUG, WARN, ERROR
-  # (Optional) defaults to ERROR
   level: "DEBUG"
-
-  # maxsize is the maximum file size in MB
-  # (Optional) defaults to max 100MB
   maxsize: 50
-
-  # maxage is the maximum number of days to retain old log files
-  # (Optional) defaults to ignore age limit (0)
   maxage: 30
-
-  # maxbackups is the maximum number of old log files to retain
-  # (Optional) defaults to retain all (0)
   maxbackups: 10
-
-  # json is a flag indicating whether JSON logging output should be used.
-  # (Optional) defaults to false
   json: true
 
-########################################
-#   Device  Related Configuration
-########################################
-
-# device configures the generic talaria configuration.
-# It has four parts: manager, rehasher, outbound, and inbound.
-# The manager section handles the actual device connection configuration.
-# The rehasher section configures the services for whose events the
-# rehasher (a service discovery listener) should respond to.
-# The outbound section configures the outbound requests to caduceus or some other receiver of messages.
-# The inbound section configures the api inbound requests.
 device:
-  # manager handles the device manager related configuration.
-  # defined by https://godoc.org/github.com/xmidt-org/webpa-common/device#Options
   manager:
-    # wrpSourceCheck configures behavior around source validation of WRP messages
-    # originating from the device. It's intended to prevent connected devices from
-    # spoofing the source of the messages they send.
     wrpSourceCheck:
-      # When type=enforce, all messages with a source which doesn't match the device
-      # ID of the websocket connection (1) will be ignored, (2) logged as a security event and
-      # (3) the wrp_source_check counter will be updated accordingly. When the type=monitor,
-      # only the last two take place.
       type: monitor
-    # upgrader is the gorilla mux websocket configuration, which upgrades an
-    # incoming device connection from http to websocket.
-    # defined by https://godoc.org/github.com/gorilla/websocket#Upgrader
     upgrader:
-      # handshakeTimeout is the time to wait before rejecting an incoming/new websocket connection.
-      # (Optional) defaults to (0), aka do not timeout
       handshakeTimeout: "10s"
-
-    # maxDevices is the maximum number of devices allowed to connect to the talaria.
-    # (Optional) defaults to math.MaxUint32
     maxDevices: 100
-
-    # deviceMessageQueueSize is the capacity of the channel which stores messages waiting
-    # to be transmitted to a device.
-    # (Optional) defaults to 100
     deviceMessageQueueSize: 1000
-
-    # pingPeriod is the time between pings sent to each device to ensure they
-    # are still reachable.
-    # (Optional) defaults to 45s
     pingPeriod: "1m"
-
-    # writeTimeout is the length of time a device connection is allowed to be idle,
-    # with no traffic coming from talaria. Must be longer than pingPeriod to maintain
-    # a persistent connection when idle.
-    # (Optional) defaults to 60s
     writeTimeout: "2m"
-
-    # idlePeriod is the length of time a device connection is allowed to be idle,
-    # with no traffic coming from the device. Must be longer than pingPeriod to
-    # maintain a persistent connection when idle.
-    # (Optional) defaults to 135s
     idlePeriod: "2m"
 
-
-  # # rehasher defines the services for which a monitor listener will rehash
-  # # and disconnect devices in response to service discovery events.
-  # # https://pkg.go.dev/github.com/xmidt-org/webpa-common@v1.9.0/device/rehasher
-  # # (Optional) rehasher.services defaults to ["talaria"]
-  # rehasher:
-  #   services:
-  #     - talaria
-
-  # outbound handles api request to push messages to a receiver (usually caduceus).
-  # defined by https://github.com/xmidt-org/talaria/blob/main/outbounder.go
-  # TODO: link godoc instead
   outbound:
-    # method is the http method to use against the receiving server.
-    # (Optional) defaults to POST
     method: "POST"
-
-    # retries is the number attempts to sent the message to the receiver.
-    # (Optional) defaults to 1
     retries: 3
-
-    # eventEndpoints is a map defining where to send the events to,
-    # where the key is the device event type (https://godoc.org/github.com/xmidt-org/webpa-common/device#EventType)
-    # and the value is the url.
     eventEndpoints:
       default: CADUCEUS_URL
-
-    # enableConsulRoundRobin will overwrite the eventEndpoints with using consul to discover the caduceus in the datacenter.
-    # NOTE: eventEndpoints still must be set, and in the service section of this config caduceus must be added to the list
-    # of services to watch.
-    # if no services are found, talaria will fail back to the defined endpoint.
-    # (Optional) defaults to false
     enableConsulRoundRobin: true
-
-    # requestTimeout is how long an event will be held on to starting from when it is
-    # received till completing the http request.
-    # So if the event was in the queue for 124s and using the default value
-    # the http request only has 1s to complete before moving on.
-    # (Optional) defaults to 125s
     requestTimeout: "2m"
-
-    # TODO:// double check if this is correct
-    # defaultScheme is the default scheme for the http request.
-    # (Optional) defaults to https
     defaultScheme: "https"
-
-    # allowedSchemes is a list of schemes, used in conjunction with the defaultScheme
-    # for the URLFilter.
-    # (Optional) defaults to []string{"https"}
     allowedSchemes:
       - "http"
       - "https"
-
-    # outboundQueueSize is the size of the buffer to queue messages for each
-    # receiver.
-    # (Optional) defaults to 1000
     outboundQueueSize: 2000
     source: "dns:integration-test.talaria.com"
-
-    # workerPoolSize configures how many active go threads send messages to the receivers.
-    # (Optional) defaults to 100
     workerPoolSize: 50
-
-    # transport is a way to overwrite the default golang http.Transport configuration.
-    # defined  https://golang.org/pkg/net/http/#Transport
-    # (Optional) defaults described below
     transport:
-      # (Optional) defaults to 0, aka do not limit it
       maxIdleConns: 0
-      # (Optional) defaults to 100
       maxIdleConnsPerHost: 100
-      # (Optional) defaults to 0s, aka do not timeout while in idle
       idleConnTimeout: "120s"
-
-    # clientTimeout specifies a time limit for requests made by this
-    # Client. The timeout includes connection time, any
-    # redirects, and reading the response body. The timer remains
-    # running after Get, Head, Post, or Do return and will
-    # interrupt reading of the Response.Body.
-    # defined  https://golang.org/pkg/net/http/#Client
-    # (Optional) defaults to 160s
     clientTimeout: "2m"
-
-    # authKey is the basic auth token used for sending messages to the receiver.
-    # (Optional) defaults to no auth token
-    # WARNING: This is an example auth token. DO NOT use this in production.
     authKey: dXNlcjpwYXNz
 
-# inbound configures the api inbound requests.
-# (Optional) defaults described below
 inbound:
-  # authKey is the basic auth token incoming api requests like /stat, and /devices
-  # (Optional) defaults to no auth token
-  # WARNING: This is an example auth token. DO NOT use this in production.
   authKey: dXNlcjpwYXNz
-
-  # The timeout for all inbound HTTP requests.
-  # (Optional) defaults to 120s
   timeout: "120s"
-
-########################################
-#   Authorization Related Configuration
-########################################
 
 jwtValidator:
   Config:
     Resolve:
-      # Template is a URI template used to fetch keys.  This template may
-      # use a single parameter named keyID, e.g. http://keys.com/{keyID}.
-      # This field is required and has no default.
-      #
-      # FUTURE: When Talaria supports 2 JWT validators (device vs API endpoints),
-      # this will be split into DEVICE_THEMIS_URL and API_THEMIS_URL.
-      # For now, both endpoints use the same validator.
       Template: DEVICE_THEMIS_URL
-      # API endpoints will use: API_THEMIS_URL (not yet supported by Talaria)
 
-# Any combination of these configurations may be used for authorization.
-# If ANY match, the request goes onwards.  If none are provided, no requests
-# will be accepted.
-
-# # jwtValidator provides the details about where to get the keys for JWT
-# # kid values and their associated information (expiration, etc) for JWTs
-# # used as authorization.
-# # If configured, it is used to authenticate devices during registration.
-# # (Optional)
-# jwtValidator:
-#   keys:
-#     factory:
-#       uri: "https://jwt.example.com/keys/{keyId}"
-#     purpose: 0
-#     updateInterval: 604800000000000
-
-# # deviceAccessCheck configures the strategy to ensure WRP messages only reach those devices they
-# # are authorized to (essential to secure multi-tenant clouds). The type can be "monitor" or "enforce".
-# # If restrictions must be applied, select the "enforce" type, otherwise use "monitor" to view the
-# # unauthorized events without explicit rejections. For either type, transaction
-# # metrics are collected. If no valid type is provided, no checks are provided.
-# # (Optional)
-# deviceAccessCheck:
-#   type: "enforce"
-#   # sep is the delimeter used for the credential paths below
-#   # (Optional) Defaults to "."
-#   sep: ","
-
-#   checks:
-#     -
-#       # name should be a concise, helpful description of the check
-#       name: "PartnerID"
-
-#       # deviceCredentialPath is the path to the credential within the device's metadata map representation.
-#       # deviceCredentialPath: partner-ids
-
-#       # wrpCredentialPath is the path to the credential within the WRP Message map representation.
-#       # (Optional if inputValue is provided. If both provided, inputValue will be used during check).
-#       wrpCredentialPath: PartnerIDs
-
-#       # operation is the name of the operation that's is meant to be performed.
-#       # Supported operations include: "intersects", "contains", "eq" (equal) and "gt" (greater than).
-#       # Note: By default operation is applied from deviceCredential to wrpCredential
-#       operation: intersect
-
-#       # inversed should be set to true if operation must be applied from wrpCredential to deviceCredential
-#       # (Optional)
-#       inversed: true
-
-#     -
-#       name: "Devices with trust level > 999"
-#       # For this check to succeed, the device should have connected with a JWT with the claims:
-#       # {
-#       # ...
-#       #   "security": {
-#       #     "trust": 1000
-#       #   }
-#       # ...
-#       # }
-#       #
-#       #
-#       deviceCredentialPath: "security,trust"
-#       inputValue: 999
-#       operation: gt
-
-########################################
-#   Service Discovery Configuration
-########################################
-
-# service configures the server for service discovery.
-# defined https://godoc.org/github.com/xmidt-org/webpa-common/service/servicecfg#Options
-# this is required, consul or fixed must be used.
 service:
-  # defaultScheme, used for the registered servers for communication.
-  # (Optional) defaults to https
   defaultScheme: http
-
-  # vnodeCount used for consistent hash calculation github.com/billhathaway/consistentHash.
-  # number of virtual nodes. should be a prime number
-  # it is a tradeoff of memory and ~ log(N) speed versus how well the hash spreads
-  # (Optional) defaults to 211
   vnodeCount: 211
-
-  # disableFilter disables filtering.
-  # (Deprecated) does not do anything
-  # disableFilter: false
-
-  # fixed is the list of servers in the datacenter.
-  # (Optional) default to empty list
   fixed:
     - http://talaria:6200
-  # # consul configures consul for service discovery.
-  # # defined https://godoc.org/github.com/xmidt-org/webpa-common/service/consul#Options
-  # # (Optional) defaults define https://sourcegraph.com/github.com/hashicorp/consul/-/blob/api/api.go#L347
-  # consul:
-  #   # client is the configuration needed to connect to consul.
-  #   # defined https://godoc.org/github.com/hashicorp/consul/api#Config
-  #   client:
-  #     # address is the address of the consul client or cluster.
-  #     # (Optional) defaults to 127.0.0.1:8500
-  #     address: "consul0:8500"
-  #
-  #     # scheme is the scheme to use for api calls to the consul agent.
-  #     # (Optional) defaults to http
-  #     scheme: "http"
-  #
-  #     # waitTime limits how long a Watch will block.
-  #     # (Optional) defaults to 0s, aka wait forever before update
-  #     waitTime: 30s
-  #
-  #   # DisableGenerateID disables consul from generating the id.
-  #   # (Optional) defaults to false
-  #   disableGenerateID: true
-  #
-  #   # DatacenterRetries is the number of attempts to get the datacenters
-  #   # (Optional) defaults to 10
-  #   datacenterRetries: 3
-  #
-  #   # Registrations is a list of service(s) to register with consul.
-  #   # defined https://godoc.org/github.com/hashicorp/consul/api#AgentServiceRegistration
-  #   # (Optional) defaults to empty list
-  #   registrations:
-  #     - # id is the unique id for the service registration.
-  #       id: "talaria-1"
-  #
-  #       # name is the service name.
-  #       name: "talaria"
-  #
-  #       # tags are a list of strings that others talking to consul can use to
-  #       # filter services.  These are meant to help in grouping similar
-  #       # services in consul.
-  #       # (Optional) defaults to empty list
-  #       tags:
-  #         - "dev"
-  #         - "docker"
-  #         - "stage=dev"
-  #         - "flavor=docker"
-  #
-  #       # address tells consul where to contact the service.
-  #       address: "https://talaria-2"
-  #
-  #       # port tells consul what port to use to contact the service.  This is
-  #       # used with the address for calls to this server.
-  #       port: 6200
-  #
-  #       # checks is a list of checks to see if the service is healthy.
-  #       # defined https://godoc.org/github.com/hashicorp/consul/api#AgentServiceCheck
-  #       # (Optional) defaults to empty list
-  #       # Warning: if there are no checks, this service will stay around even
-  #       # when it is in a bad state.  This will cause other healthy servers
-  #       # to send requests that will fail.
-  #       checks:
-  #         - # CheckID is a unique id for the check.
-  #           checkID: "talaria-2:http"
-  #
-  #           # http tells consul to check via http rest request at the url
-  #           # provided.
-  #           http: "http://talaria-2:6221/health"
-  #
-  #           # interval is how often to check.
-  #           interval: "30s"
-  #
-  #           # deregisterCriticalServiceAfter is how long to wait before this
-  #           # service is considered bad.
-  #           deregisterCriticalServiceAfter: "70s"
-  #
-  #   # Watches is a list of service(s) to watch from consul. The address of the
-  #   # of the services are stored in memory. Upon update, the internal memory is
-  #   # updated.
-  #   # defined https://godoc.org/github.com/xmidt-org/webpa-common/service/consul#Watch
-  #   # (Optional) defaults to empty list
-  #   watches:
-  #     - # service name to watch for updates.
-  #       service: "talaria"
-  #
-  #       # tags is a list of strings that must be attached to the services
-  #       # being watched.
-  #       # (Optional) defaults to empty list
-  #       tags:
-  #         - "dev"
-  #         - "docker"
-  #
-  #       # passingOnly determines if only services passing the consul check are returned.
-  #       # (Optional) defaults to false
-  #       passingOnly: true
-  #
-  #       # crossDatacenter determines if there is a watch for all datacenter changes, split by datacenter.
-  #       # change this to have the devices hash across all datacenters instead of
-  #       # the single datacenter. The datacenter is known by the consul agent who is
-  #       # aware of which datacenter it is in.
-  #       # It is recommended to keep this as false for talaria.
-  #       # (Optional) defaults to false, aka only watch for services in the
-  #       # current datacenter.
-  #       crossDatacenter: false
-  #
-  #       # queryOptions are options for the consul query, used in conjunction
-  #       # with passingOnly.
-  #       # defined by https://godoc.org/github.com/hashicorp/consul/api#QueryOptions
-  #       # (Optional) defaults to empty struct
-  #       # queryOptions:
-  #       #   useCache: true
-  #     - # service name to watch for which caduceus to send events to.
-  #       # NOTE: enableConsulRoundRobin must be set to true in order for this to work.
-  #       service: "caduceus"
-  #
-  #       # tags is a list of strings that must be attached to the services
-  #       # being watched.
-  #       # (Optional) defaults to empty list
-  #       tags:
-  #         - "dev"
-  #         - "docker"
-  #
-  #       # passingOnly determines if only services passing the consul check are returned.
-  #       # (Optional) defaults to false
-  #       passingOnly: true
-  #
-  #       # crossDatacenter determines if there is a watch for all datacenter changes, split by datacenter
-  #       # change this to have the devices hash across all datacenters instead of
-  #       # the single datacenter. The datacenter is known by the consul agent who is
-  #       # aware of which datacenter it is in.
-  #       # It is recommended to keep this as false for talaria.
-  #       # (Optional) defaults to false, aka only watch for services in the
-  #       # current datacenter.
-  #       crossDatacenter: false
-  #
-  #       # queryOptions are options for the consul query, used in conjunction
-  #       # with passingOnly.
-  #       # defined by https://godoc.org/github.com/hashicorp/consul/api#QueryOptions
-  #       # (Optional) defaults to empty struct
-  #       # queryOptions:
-  #       #   useCache: true
-  #       #   datacenter: "dc1"
 
-# tracing provides configuration around traces using OpenTelemetry.
-# (Optional). By default, a 'noop' tracer provider is used and tracing is disabled.
 tracing:
-  # provider is the name of the trace provider to use. Currently, otlp/grpc, otlp/http, stdout, jaeger and zipkin are supported.
-  # 'noop' can also be used as provider to explicitly disable tracing.
   provider: "noop"
-
-  # skipTraceExport only applies when provider is stdout. Set skipTraceExport to true
-  # so that trace information is not written to stdout.
-  # skipTraceExport: true
-
-  # endpoint is where trace information should be routed. Applies to otlp, zipkin, and jaegar. OTLP/gRPC uses port 4317 by default.
-  # OTLP/HTTP uses port 4318 by default.
-  # endpoint: "http://localhost:9411/api/v2/spans"
-
-  # ParentBased and NoParent dictate if and when new spans should be created.
-  # ParentBased = "ignore" (default), tracing is effectively turned off and the "NoParent" value is ignored
-  # ParentBased = "honor", the sampling decision is made by the parent of the span
   parentBased: ignore
-
-  # NoParent decides if a root span should be initiated in the case where there is no existing parent
-  # This value is ignored if ParentBased = "ignore"
-  # NoParent = "never" (default), root spans are not initiated
-  # NoParent = "always", roots spans are initiated
   noParent: never
 
-
 zap:
-  # OutputPaths is a list of URLs or file paths to write logging output to.
   outputPaths:
     - stdout
-    # - /var/log/talaria/talaria.log
-
-  # Level is the minimum enabled logging level. Note that this is a dynamic
-  # level, so calling Config.Level.SetLevel will atomically change the log
-  # level of all loggers descended from this config.
   level: debug
-
-  # EncoderConfig sets options for the chosen encoder. See
-  # zapcore.EncoderConfig for details.
   errorOutputPaths:
     - stderr
-    # - /var/log/talaria/talaria.log
-
-  # DisableCaller stops annotating logs with the calling function's file
-  # name and line number. By default, all logs are annotated.
   disableCaller: true
-
-  # EncoderConfig sets options for the chosen encoder. See
-  # zapcore.EncoderConfig for details.
   encoderConfig:
     messageKey: message
     levelKey: key
     callerKey: caller
     levelEncoder: lowercase
-
-  # Encoding sets the logger's encoding. Valid values are "json" and
-  # "console", as well as any third-party encodings registered via
-  # RegisterEncoder.
   encoding: json
 
-#(Optional) failOpen determines if talaria should allow devices without authentication to connect or not
-#default is to allow for fail open
 failOpen: true
 
-# kafka configures the Kafka publisher for streaming WRP messages to Kafka
-# All WRP event messages will be published to a single Kafka topic
 kafka:
-  # enabled determines whether the Kafka publisher is enabled
-  # (Optional) defaults to false
   enabled: true
-
   allowAutoTopicCreation: true
-
-  # brokers is the list of Kafka broker addresses
-  # (Required if enabled is true)
   brokers:
     - KAFKA_BROKER
-
-  # maxBufferedRecords is the maximum number of records the publisher can buffer
-  # (Optional) defaults to 10000
   maxBufferedRecords: 10000
-
-  # maxBufferedBytes is the maximum number of bytes the publisher can buffer
-  # (Optional) defaults to 100MB (104857600 bytes)
   maxBufferedBytes: 104857600
-
-  # maxRetries is the maximum number of retries for failed produce requests
-  # (Optional) defaults to 3
   maxRetries: 3
-
-  # requestTimeout is the timeout for produce requests
-  # (Optional) defaults to 30s
   requestTimeout: "30s"
-
-  # tls configures TLS for Kafka connections
-  # (Optional) defaults to disabled
   tls:
-    # enabled determines whether TLS is enabled
-    # (Optional) defaults to false
     enabled: false
-
-    # insecureSkipVerify controls whether a client verifies the server's certificate chain
-    # WARNING: Setting this to true is insecure and should only be used in development
-    # (Optional) defaults to false
     insecureSkipVerify: false
-
-    # certFile is the path to the client certificate file
-    # (Optional) only needed for mutual TLS
     certFile: ""
-
-    # keyFile is the path to the client key file
-    # (Optional) only needed for mutual TLS
     keyFile: ""
-
-    # caFile is the path to the CA certificate file
-    # (Optional) only needed if using a custom CA
     caFile: ""
-
-  # sasl configures SASL authentication for Kafka
-  # (Optional) defaults to no authentication
   sasl:
-    # mechanism is the SASL mechanism to use
-    # Supported values: PLAIN, SCRAM-SHA-256, SCRAM-SHA-512
-    # (Optional) leave empty to disable SASL
     mechanism: ""
-
-    # username is the SASL username
-    # (Required if mechanism is set)
     username: ""
-
-    # password is the SASL password
-    # (Required if mechanism is set)
     password: ""
-
-  # initialDynamicConfig is the initial dynamic configuration for wrpkafka
-  # This allows advanced configuration of topic routing, compression, etc.
-  # (Optional) defaults to sending all messages to the configured topic
   initialDynamicConfig:
-    # topicMap defines routing patterns for messages
-    # If not specified, all messages go to the configured topic
-    # (Optional)
     topicMap:
-      - pattern: "*"  # Catch-all pattern
+      - pattern: "*"
         topic: "device-events"
-
-    # linger sets the batching delay - how long to wait before sending batched messages
-    # Setting this to a low value (like 10ms) ensures messages are sent quickly
-    # (Optional) defaults to 0 (no linger, send immediately when other conditions met)
-    # linger: "10ms"  # COMMENTED OUT - use default 0 for immediate drain like wrpkafka tests
-
-    # compression configures message compression
-    # Supported values: none, gzip, snappy, lz4, zstd
-    # (Optional) defaults to none
     compression: "snappy"
-
-    # headers defines static headers to add to all messages
-    # (Optional) defaults to no additional headers
     headers: []
