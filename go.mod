@@ -19,7 +19,7 @@ require (
 	github.com/testcontainers/testcontainers-go v0.40.0
 	github.com/testcontainers/testcontainers-go/modules/kafka v0.40.0
 	github.com/thedevsaddam/gojsonq/v2 v2.5.2
-	github.com/twmb/franz-go v1.20.4
+	github.com/twmb/franz-go v1.20.6
 	github.com/xmidt-org/bascule v0.11.7
 	github.com/xmidt-org/candlelight v0.2.1
 	github.com/xmidt-org/clortho v0.0.4
@@ -29,7 +29,7 @@ require (
 	github.com/xmidt-org/webpa-common/v2 v2.7.7
 	github.com/xmidt-org/wrp-go/v3 v3.7.0
 	github.com/xmidt-org/wrp-go/v5 v5.4.0
-	github.com/xmidt-org/wrpkafka v0.0.0-20251121012331-5f8f4296e54f
+	github.com/xmidt-org/wrpkafka v0.1.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.64.0
 	go.uber.org/zap v1.27.1
 )
@@ -84,7 +84,7 @@ require (
 	github.com/hashicorp/serf v0.10.1 // indirect
 	github.com/influxdata/influxdb1-client v0.0.0-20220302092344-a9ab5670611c // indirect
 	github.com/jtacoma/uritemplates v1.0.0 // indirect
-	github.com/klauspost/compress v1.18.0 // indirect
+	github.com/klauspost/compress v1.18.2 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.4 // indirect
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect
 	github.com/lestrrat-go/httprc v1.0.6 // indirect
