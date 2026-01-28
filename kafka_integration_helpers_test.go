@@ -27,10 +27,6 @@ import (
 	"github.com/xmidt-org/wrp-go/v5"
 )
 
-const (
-	messageConsumeWait = 60 * time.Second
-)
-
 // testLogConsumer is a custom log consumer that sends container logs to the test logger
 type testLogConsumer struct {
 	t      *testing.T

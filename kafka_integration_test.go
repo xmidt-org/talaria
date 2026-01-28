@@ -14,6 +14,10 @@ import (
 	"github.com/xmidt-org/wrp-go/v5"
 )
 
+const (
+	messageConsumeWait = 30 * time.Second
+)
+
 type testConfig struct {
 	configFile   string
 	writeToKafka bool
