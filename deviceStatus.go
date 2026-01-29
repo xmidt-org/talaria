@@ -39,6 +39,7 @@ func statusMetadata(d device.Interface) map[string]string {
 	}
 
 	metadata["/hw-deviceid"] = string(d.ID())
+	metadata["/intermediate-context"] = d.IntermediateContext()
 	return metadata
 }
 
