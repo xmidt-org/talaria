@@ -1,0 +1,114 @@
+---
+# SPDX-FileCopyrightText: 2017 Comcast Cable Communications Management, LLC
+# SPDX-License-Identifier: Apache-2.0
+
+server: "talaria"
+build: "0.1.4"
+region: "east"
+flavor: "mint"
+primary:
+  address: ":6200"
+health:
+  address: ":6201"
+pprof:
+  address: ":6202"
+control:
+  address: ":6203"
+metric:
+  address: ":6204"
+  metricsOptions:
+    namespace: "xmidt"
+    subsystem: "talaria"
+log:
+  file: "stdout"
+  level: "DEBUG"
+  maxsize: 50
+  maxage: 30
+  maxbackups: 10
+  json: true
+device:
+  manager:
+    wrpSourceCheck:
+      type: monitor
+    upgrader:
+      handshakeTimeout: "10s"
+    maxDevices: 100
+    deviceMessageQueueSize: 1000
+    pingPeriod: "1m"
+    writeTimeout: "2m"
+    idlePeriod: "2m"
+  outbound:
+    method: "POST"
+    retries: 3
+    eventEndpoints:
+      default: CADUCEUS_URL
+    enableConsulRoundRobin: true
+    requestTimeout: "2m"
+    defaultScheme: "https"
+    allowedSchemes:
+      - "http"
+      - "https"
+    outboundQueueSize: 2000
+    source: "dns:integration-test.talaria.com"
+    workerPoolSize: 50
+    transport:
+      maxIdleConns: 0
+      maxIdleConnsPerHost: 100
+      idleConnTimeout: "120s"
+    clientTimeout: "2m"
+    authKey: dXNlcjpwYXNz
+inbound:
+  authKey: dXNlcjpwYXNz
+  timeout: "120s"
+jwtValidator:
+  Config:
+    Resolve:
+      Template: DEVICE_THEMIS_URL
+service:
+  defaultScheme: http
+  vnodeCount: 211
+  fixed:
+    - http://talaria:6200
+tracing:
+  provider: "noop"
+  parentBased: ignore
+  noParent: never
+zap:
+  outputPaths:
+    - stdout
+  level: debug
+  errorOutputPaths:
+    - stderr
+  disableCaller: true
+  encoderConfig:
+    messageKey: message
+    levelKey: key
+    callerKey: caller
+    levelEncoder: lowercase
+  encoding: json
+failOpen: true
+kafka:
+  enabled: true
+  allowAutoTopicCreation: true
+  brokers:
+    - KAFKA_BROKER
+  maxBufferedRecords: 10000
+  maxBufferedBytes: 104857600
+  maxRetries: 3
+  requestTimeout: "30s"
+  tls:
+    enabled: false
+    insecureSkipVerify: false
+    certFile: ""
+    keyFile: ""
+    caFile: ""
+  sasl:
+    mechanism: ""
+    username: ""
+    password: ""
+  initialDynamicConfig:
+    topicMap:
+      - pattern: "*"  # Catch-all pattern
+        topic: "device-events"
+    compression: "snappy"
+    headers: []

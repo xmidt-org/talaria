@@ -339,7 +339,7 @@ jwtValidator:
       # Template is a URI template used to fetch keys.  This template may
       # use a single parameter named keyID, e.g. http://keys.com/{keyID}.
       # This field is required and has no default.
-      Template: THEMIS_URL
+      Template: DEVICE_THEMIS_URL
 
 # Any combination of these configurations may be used for authorization.
 # If ANY match, the request goes onwards.  If none are provided, no requests
