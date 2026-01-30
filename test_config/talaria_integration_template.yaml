@@ -1,4 +1,7 @@
 ---
+# SPDX-FileCopyrightText: 2017 Comcast Cable Communications Management, LLC
+# SPDX-License-Identifier: Apache-2.0
+
 server: "talaria"
 build: "0.1.4"
 region: "east"
