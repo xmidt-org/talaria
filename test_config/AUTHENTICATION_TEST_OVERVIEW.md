@@ -128,7 +128,7 @@ The test suite covers authentication for these four endpoints:
 
 ### Configuration Files
 
-- **Talaria**: `test_config/talaria_template.yaml` - Template with placeholders
+- **Talaria**: `test_config/talaria_integration_template.yaml` - Template with placeholders
 - **Themis**: Multiple configurations (`themis.yaml`, `themis_read_only.yaml`, etc.)
 - **xmidt-agent**: `test_config/xmidt-agent.yaml` - Generic test device configuration
 

@@ -6,7 +6,7 @@
 package main
 
 // TODO: When Talaria supports multiple JWT validators (separate for device vs API endpoints):
-// 1. Add API_THEMIS_URL placeholder to talaria_template.yaml
+// 1. Add API_THEMIS_URL placeholder to talaria_integration_template.yaml
 // 2. Search and replace: grep -r 'WithThemisInstance("api".*DEVICE_THEMIS_URL' to update all api instances
 // 3. Change DEVICE_THEMIS_URL -> API_THEMIS_URL for api instances
 
@@ -36,7 +36,7 @@ type authTestCase struct {
 func TestGetDevices_Auth(t *testing.T) {
 	// Start both device and api Themis instances
 	// Note: xmidt-agent NOT needed - this endpoint works without connected devices
-	fixture := setupIntegrationTest(t, "talaria_template.yaml",
+	fixture := setupIntegrationTest(t, "talaria_integration_template.yaml",
 		WithThemisInstance("device", "themis.yaml", "DEVICE_THEMIS_URL"),
 		WithThemisInstance("api", "themis.yaml"),
 		WithCaduceus(),
@@ -159,7 +159,7 @@ func TestGetDevices_Auth(t *testing.T) {
 // This is an API endpoint - it will use the API JWT validator (not device validator).
 func TestGetDeviceStat_Auth(t *testing.T) {
 	// Start both device and api Themis instances
-	fixture := setupIntegrationTest(t, "talaria_template.yaml",
+	fixture := setupIntegrationTest(t, "talaria_integration_template.yaml",
 		WithThemisInstance("device", "themis.yaml", "DEVICE_THEMIS_URL"),
 		WithThemisInstance("api", "themis.yaml"),
 		WithCaduceus(),
@@ -280,7 +280,7 @@ func TestGetDeviceStat_Auth(t *testing.T) {
 // This is an API endpoint - it will use the API JWT validator (not device validator).
 func TestPostDeviceSend_Auth(t *testing.T) {
 	// Start both device and api Themis instances
-	fixture := setupIntegrationTest(t, "talaria_template.yaml",
+	fixture := setupIntegrationTest(t, "talaria_integration_template.yaml",
 		WithThemisInstance("device", "themis.yaml", "DEVICE_THEMIS_URL"),
 		WithThemisInstance("api", "themis.yaml"),
 		WithCaduceus(),
@@ -463,7 +463,7 @@ func TestPostDeviceSend_Auth(t *testing.T) {
 // at /api/v2/device. This endpoint requires special headers for WebSocket upgrade.
 // 2-THEMIS-AWARE: This is the DEVICE endpoint - it will use the DEVICE JWT validator (not API validator).
 func TestDeviceConnect_Auth(t *testing.T) {
-	fixture := setupIntegrationTest(t, "talaria_template.yaml",
+	fixture := setupIntegrationTest(t, "talaria_integration_template.yaml",
 		WithThemisInstance("device", "themis.yaml", "DEVICE_THEMIS_URL"),
 		WithCaduceus(),
 		WithXmidtAgent(),
@@ -598,7 +598,7 @@ func TestTrustedVsUntrustedJWT(t *testing.T) {
 		t.Skip("TODO: Enable when Talaria supports multiple JWT validators. See function documentation.")
 
 		// Setup: Start 2 Themis instances, trusted is mapped to config
-		fixture := setupIntegrationTest(t, "talaria_template.yaml",
+		fixture := setupIntegrationTest(t, "talaria_integration_template.yaml",
 			WithKafka(),
 			WithThemisInstance("trusted", "themis.yaml", "DEVICE_THEMIS_URL"), // Mapped to config
 			WithThemisInstance("untrusted", "themis.yaml"),                    // Standalone (not in config)
@@ -637,7 +637,7 @@ func TestTrustedVsUntrustedJWT(t *testing.T) {
 	t.Run("POST_DeviceSend_Trusted_vs_Untrusted", func(t *testing.T) {
 		t.Skip("TODO: Enable when Talaria supports multiple JWT validators. See function documentation.")
 
-		fixture := setupIntegrationTest(t, "talaria_template.yaml",
+		fixture := setupIntegrationTest(t, "talaria_integration_template.yaml",
 			WithKafka(),
 			WithThemisInstance("trusted", "themis.yaml", "DEVICE_THEMIS_URL"),
 			WithThemisInstance("untrusted", "themis.yaml"),
@@ -671,7 +671,7 @@ func TestTrustedVsUntrustedJWT(t *testing.T) {
 	t.Run("WebSocket_Device_Connect_Trusted_vs_Untrusted", func(t *testing.T) {
 		t.Skip("TODO: Enable when Talaria supports multiple JWT validators. See function documentation.")
 
-		fixture := setupIntegrationTest(t, "talaria_template.yaml",
+		fixture := setupIntegrationTest(t, "talaria_integration_template.yaml",
 			WithKafka(),
 			WithThemisInstance("trusted", "themis.yaml", "DEVICE_THEMIS_URL"),
 			WithThemisInstance("untrusted", "themis.yaml"),
@@ -724,7 +724,7 @@ func TestTrustedVsUntrustedJWT(t *testing.T) {
 	t.Run("GET_DeviceStat_Trusted_vs_Untrusted", func(t *testing.T) {
 		t.Skip("TODO: Enable when Talaria supports multiple JWT validators. See function documentation.")
 
-		fixture := setupIntegrationTest(t, "talaria_template.yaml",
+		fixture := setupIntegrationTest(t, "talaria_integration_template.yaml",
 			WithKafka(),
 			WithThemisInstance("trusted", "themis.yaml", "DEVICE_THEMIS_URL"),
 			WithThemisInstance("untrusted", "themis.yaml"),
@@ -758,7 +758,7 @@ func TestTrustedVsUntrustedJWT(t *testing.T) {
 func TestExpiredJWT(t *testing.T) {
 	t.Run("GET_Devices_With_Expired_JWT", func(t *testing.T) {
 		// Start Themis with short-lived JWTs (2 second expiration)
-		fixture := setupIntegrationTest(t, "talaria_template.yaml",
+		fixture := setupIntegrationTest(t, "talaria_integration_template.yaml",
 			WithThemisInstance("api", "themis_short_expiration.yaml", "DEVICE_THEMIS_URL"),
 			WithCaduceus(),
 		)
@@ -792,12 +792,12 @@ func TestExpiredJWT(t *testing.T) {
 		body2, statusCode2, err2 := fixture.DoAndReadBody(req2)
 		require.NoError(t, err2)
 		t.Logf("Expired JWT - Status: %d, Body: %s", statusCode2, body2)
-		require.Equal(t, http.StatusUnauthorized, statusCode2, "Expired JWT should be rejected")
+		require.Equal(t, http.StatusForbidden, statusCode2, "Expired JWT should be rejected")
 	})
 
 	t.Run("POST_DeviceSend_With_Expired_JWT", func(t *testing.T) {
 		// Start Themis with short-lived JWTs (2 second expiration)
-		fixture := setupIntegrationTest(t, "talaria_template.yaml",
+		fixture := setupIntegrationTest(t, "talaria_integration_template.yaml",
 			WithThemisInstance("api", "themis_short_expiration.yaml", "DEVICE_THEMIS_URL"),
 			WithCaduceus(),
 		)
@@ -849,7 +849,7 @@ func TestExpiredJWT(t *testing.T) {
 
 	t.Run("WebSocket_Device_Connect_With_Expired_JWT", func(t *testing.T) {
 		// Start Themis with short-lived JWTs (2 second expiration)
-		fixture := setupIntegrationTest(t, "talaria_template.yaml",
+		fixture := setupIntegrationTest(t, "talaria_integration_template.yaml",
 			WithThemisInstance("device", "themis_short_expiration.yaml", "DEVICE_THEMIS_URL"),
 			WithCaduceus(),
 		)
@@ -906,7 +906,7 @@ func TestExpiredJWT(t *testing.T) {
 		require.Error(t, err2, "Expired JWT should fail WebSocket connection")
 		if resp2 != nil {
 			t.Logf("Expired JWT - Status: %d", resp2.StatusCode)
-			require.Equal(t, http.StatusUnauthorized, resp2.StatusCode, "Expired JWT should be rejected")
+			require.Equal(t, http.StatusForbidden, resp2.StatusCode, "Expired JWT should be rejected")
 		}
 	})
 }

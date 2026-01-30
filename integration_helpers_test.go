@@ -1261,3 +1261,37 @@ func setupIntegrationTestWithCapabilities(t *testing.T, talariaConfigFile, themi
 
 	return fixture
 }
+
+// setupDeviceSimulator builds and starts the device-simulator as a subprocess.
+// Returns a command that can be started and stopped by the test.
+func setupDeviceSimulator(t *testing.T, themisURL string) *exec.Cmd {
+	t.Helper()
+
+	// Get the workspace root directory
+	_, filename, _, _ := runtime.Caller(0)
+	workspaceRoot := filepath.Dir(filename)
+	deviceSimulatorDir := filepath.Join(workspaceRoot, "cmd", "device-simulator")
+	deviceSimulatorBinary := filepath.Join(deviceSimulatorDir, "device-simulator")
+
+	t.Log("Building device-simulator...")
+	buildCmd := exec.Command("go", "build", "-o", deviceSimulatorBinary, ".")
+	buildCmd.Dir = deviceSimulatorDir
+	if output, err := buildCmd.CombinedOutput(); err != nil {
+		t.Logf("Build output: %s", string(output))
+		t.Fatalf("Failed to build device-simulator: %v", err)
+	}
+	t.Log("✓ Device-simulator built successfully")
+
+	simCmd := exec.Command(deviceSimulatorBinary,
+		"-themis", themisURL,
+		"-talaria", "ws://localhost:6200/api/v2/device",
+		"-device-id", "mac:4ca161000109",
+		"-serial", "1800deadbeef",
+		"-ping-interval", "10s",
+	)
+	simCmd.Dir = workspaceRoot
+	simCmd.Stdout = os.Stdout
+	simCmd.Stderr = os.Stderr
+
+	return simCmd
+}
