@@ -239,9 +239,14 @@ func (o *Outbounder) clientTimeout() time.Duration {
 
 // Start spawns all necessary goroutines and returns a device.Listener
 func (o *Outbounder) Start(om OutboundMeasures) ([]device.Listener, error) {
+	return o.StartWithKafka(om, nil)
+}
+
+// StartWithKafka spawns all necessary goroutines with optional Kafka publisher and returns a device.Listener
+func (o *Outbounder) StartWithKafka(om OutboundMeasures, kafkaPublisher Publisher) ([]device.Listener, error) {
 	logger := o.logger()
 	logger.Info("Starting outbounder")
-	eventDispatcher, outbounds, err := NewEventDispatcher(om, o, nil)
+	eventDispatcher, outbounds, err := NewEventDispatcher(om, o, nil, kafkaPublisher)
 	if err != nil {
 		return nil, err
 	}
