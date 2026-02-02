@@ -6,7 +6,6 @@
 package main
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -15,88 +14,58 @@ import (
 )
 
 const (
-	messageConsumeWait = 30 * time.Second
+	kafkaMessageConsumeWait = 30 * time.Second
 )
 
-type testConfig struct {
-	configFile   string
-	writeToKafka bool
-}
-
-// TestIntegration_ReceiveEvent tests basic event publishing to Kafka.
+// TestKafkaPublishing_DeviceOnline tests that device online events are published to Kafka.
 //
 // Verifies:
 // - Device connect messages are published to Kafka
 // - Message content in Kafka is correct
-//
-// This test uses the device-simulator to connect to Talaria and generate events.
-func runIt(t *testing.T, cfg testConfig) {
-	// Disable Ryuk (testcontainers reaper) to avoid port mapping issues
-	t.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
-
-	// 1. Start Kafka with dynamic port
-	_, broker := setupKafka(t)
-	t.Logf("Kafka broker started at: %s", broker)
-
-	// 2. Start supporting services for themis and "caduceus"
-	_, themisIssuerUrl, themisKeysUrl := setupThemis(t)
-	t.Logf("Themis issuer started at: %s", themisIssuerUrl)
-	t.Logf("Themis keys started at: %s", themisKeysUrl)
-
-	// Channel for "caduceus" to receive wrp message
-	receivedBodyChan := make(chan string, 1)
-
-	// 1. Create a mock caduceus server using httptest.Server
-	testServer := setupCaduceusMockServer(t, receivedBodyChan)
-	defer testServer.Close() // Clean up the server after the test
-
-	// TODO - pass in config file and try to use env variables
-	// 3. Start Talaria with the dynamic Kafka broker and Themis keys URL
-	cleanupTalaria := setupTalaria(t, broker, themisKeysUrl, testServer.URL, cfg.configFile)
-	defer cleanupTalaria()
-
-	// 4. Build and start device-simulator
-	simCmd := setupDeviceSimulator(t, themisIssuerUrl)
-	if err := simCmd.Start(); err != nil {
-		t.Fatalf("Failed to start device-simulator: %v", err)
-	}
-	t.Logf("✓ Device-simulator started with PID %d", simCmd.Process.Pid)
-
-	// Cleanup: Kill the simulator when test ends
-	defer func() {
-		if simCmd.Process != nil {
-			t.Log("Stopping device-simulator...")
-			simCmd.Process.Kill()
-			simCmd.Wait()
-		}
-	}()
+// - Messages are also sent to Caduceus
+func TestKafkaPublishing_DeviceOnline(t *testing.T) {
+	// Setup full stack with Kafka enabled
+	fixture := setupIntegrationTest(t, "talaria_integration_template.yaml",
+		WithKafka(),
+		WithThemis(),
+		WithCaduceus(),
+		WithXmidtAgent(),
+	)
 
 	// Wait for device to connect and events to be published
 	time.Sleep(10 * time.Second)
 
-	// expected online message
-	msg := &wrp.Message{
+	// Expected online message
+	expectedMsg := &wrp.Message{
 		Type:        wrp.SimpleEventMessageType,
 		Source:      "dns:integration-test.talaria.com",
 		Destination: "event:device-status/mac:4ca161000109/online",
 	}
 
-	if cfg.writeToKafka {
-		// 6. Verify messages in Kafka
-		records := consumeMessages(t, broker, "device-events", messageConsumeWait)
-		require.Len(t, records, 1, "Expected exactly 1 message in Kafka")
+	// Verify message in Kafka
+	records := consumeMessages(t, fixture.KafkaBroker, "device-events", kafkaMessageConsumeWait)
+	require.NotEmpty(t, records, "Expected at least 1 message in Kafka")
 
-		verifyWRPMessage(t, records[0].Value, msg)
-		require.Equal(t, msg.Source, string(records[0].Key), "Partition key should match Source")
+	// Find the online event (there may be multiple events)
+	foundOnlineEvent := false
+	for _, record := range records {
+		msg := decodeWRPMessage(t, record.Value)
+		if msg.Destination == expectedMsg.Destination {
+			foundOnlineEvent = true
+			verifyWRPMessage(t, record.Value, expectedMsg)
+			require.Equal(t, expectedMsg.Source, string(record.Key), "Partition key should match Source")
+			t.Log("✓ Found and verified device-online event in Kafka")
+			break
+		}
 	}
+	require.True(t, foundOnlineEvent, "Expected to find device-online event in Kafka")
 
-	// 7. Verify that "caduceus" received the expected WRP message
+	// Verify that Caduceus also received the WRP message
 	select {
-	case receivedBody := <-receivedBodyChan:
-		fmt.Println(receivedBody)
-		verifyWRPMessage(t, []byte(receivedBody), msg)
-		t.Log("✓ Mock server received expected WRP message")
+	case receivedBody := <-fixture.ReceivedBodyChan:
+		verifyWRPMessage(t, []byte(receivedBody), expectedMsg)
+		t.Log("✓ Caduceus received expected WRP message")
 	case <-time.After(5 * time.Second):
-		t.Fatal("Timed out waiting for WRP message to be received by mock server")
+		t.Fatal("Timed out waiting for WRP message to be received by Caduceus")
 	}
 }
