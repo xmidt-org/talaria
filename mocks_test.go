@@ -264,6 +264,19 @@ func (m *mockWrpKafkaPublisher) Produce(ctx context.Context, msg *wrpv5.Message)
 	return args.Get(0).(wrpkafka.Outcome), args.Error(1)
 }
 
+func (m *mockWrpKafkaPublisher) AddPublishEventListener(fn func(*wrpkafka.PublishEvent)) func() {
+	args := m.Called(fn)
+	if cancelFunc := args.Get(0); cancelFunc != nil {
+		return cancelFunc.(func())
+	}
+	return func() {} // Return no-op cancel function
+}
+
+func (m *mockWrpKafkaPublisher) BufferedRecords() (currentRecords, maxRecords int, currentBytes, maxBytes int64) {
+	args := m.Called()
+	return args.Int(0), args.Int(1), args.Get(2).(int64), args.Get(3).(int64)
+}
+
 // mockPublisher is a mock implementation of the Publisher interface
 type mockPublisher struct {
 	mock.Mock

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2025 Comcast Cable Communications Management, LLC
+// SPDX-FileCopyrightText: 2026 Comcast Cable Communications Management, LLC
 // SPDX-License-Identifier: Apache-2.0
 
 //go:build integration
@@ -17,19 +17,44 @@ const (
 	kafkaMessageConsumeWait = 30 * time.Second
 )
 
-// TestKafkaPublishing_DeviceOnline tests that device online events are published to Kafka.
-//
-// Verifies:
-// - Device connect messages are published to Kafka
-// - Message content in Kafka is correct
-// - Messages are also sent to Caduceus
-func TestKafkaPublishing_DeviceOnline(t *testing.T) {
-	// Setup full stack with Kafka enabled
+// TestReceiveOnlineEvent tests that device online events are sent to Caduceus (without Kafka).
+func TestReceiveEventWithoutKafka(t *testing.T) {
+	// Setup without Kafka - events only go to Caduceus
+	fixture := setupIntegrationTest(t, "talaria_no_kafka_template.yaml",
+		WithThemis(),
+		WithCaduceus(),
+		WithDeviceSimulator(),
+		WithoutKafka(),
+	)
+
+	// Wait for device to connect and events to be published
+	time.Sleep(10 * time.Second)
+
+	// Expected online message
+	expectedMsg := &wrp.Message{
+		Type:        wrp.SimpleEventMessageType,
+		Source:      "dns:integration-test.talaria.com",
+		Destination: "event:device-status/mac:4ca161000109/online",
+	}
+
+	// Verify that Caduceus received the WRP message
+	select {
+	case receivedBody := <-fixture.ReceivedBodyChan:
+		verifyWRPMessage(t, []byte(receivedBody), expectedMsg)
+		t.Log("✓ Caduceus received expected WRP message (no Kafka)")
+	case <-time.After(5 * time.Second):
+		t.Fatal("Timed out waiting for WRP message to be received by Caduceus")
+	}
+}
+
+// TestReceiveEventWithKafka tests that device online events are sent to both Kafka and Caduceus.
+func TestReceiveEventWithKafka(t *testing.T) {
+	// Setup with Kafka enabled
 	fixture := setupIntegrationTest(t, "talaria_integration_template.yaml",
 		WithKafka(),
 		WithThemis(),
 		WithCaduceus(),
-		WithXmidtAgent(),
+		WithDeviceSimulator(),
 	)
 
 	// Wait for device to connect and events to be published
@@ -46,7 +71,7 @@ func TestKafkaPublishing_DeviceOnline(t *testing.T) {
 	records := consumeMessages(t, fixture.KafkaBroker, "device-events", kafkaMessageConsumeWait)
 	require.NotEmpty(t, records, "Expected at least 1 message in Kafka")
 
-	// Find the online event (there may be multiple events)
+	// Find the online event
 	foundOnlineEvent := false
 	for _, record := range records {
 		msg := decodeWRPMessage(t, record.Value)
@@ -54,7 +79,7 @@ func TestKafkaPublishing_DeviceOnline(t *testing.T) {
 			foundOnlineEvent = true
 			verifyWRPMessage(t, record.Value, expectedMsg)
 			require.Equal(t, expectedMsg.Source, string(record.Key), "Partition key should match Source")
-			t.Log("✓ Found and verified device-online event in Kafka")
+			t.Log("✓ Found device-online event in Kafka")
 			break
 		}
 	}
@@ -64,7 +89,7 @@ func TestKafkaPublishing_DeviceOnline(t *testing.T) {
 	select {
 	case receivedBody := <-fixture.ReceivedBodyChan:
 		verifyWRPMessage(t, []byte(receivedBody), expectedMsg)
-		t.Log("✓ Caduceus received expected WRP message")
+		t.Log("✓ Caduceus received expected WRP message (with Kafka)")
 	case <-time.After(5 * time.Second):
 		t.Fatal("Timed out waiting for WRP message to be received by Caduceus")
 	}

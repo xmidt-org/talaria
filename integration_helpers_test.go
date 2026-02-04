@@ -27,10 +27,6 @@ import (
 	"github.com/xmidt-org/wrp-go/v5"
 )
 
-const (
-	messageConsumeWait = 60 * time.Second
-)
-
 // ThemisInstance represents a single Themis JWT issuer instance.
 // Allows testing with multiple JWT issuers for different endpoints or scenarios.
 type ThemisInstance struct {
@@ -350,7 +346,7 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisURLs map[string]string
 	// Example: {"DEVICE_THEMIS_URL": "http://localhost:6500/keys", "API_THEMIS_URL": "http://localhost:6501/keys"}
 	for placeholder, keysUrl := range themisURLs {
 		themisKeysTemplate := fmt.Sprintf("%s/{keyID}", keysUrl)
-		configContent = strings.Replace(configContent, placeholder, themisKeysTemplate, -1)
+		configContent = strings.ReplaceAll(configContent, placeholder, themisKeysTemplate)
 		t.Logf("Replacing %s with %s", placeholder, themisKeysTemplate)
 	}
 
@@ -415,7 +411,7 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisURLs map[string]string
 	//   // GET /api/v2/devices with untrustedJWT → 401 Unauthorized
 
 	// write the test config file
-	if err := os.WriteFile(testConfigFile, []byte(configContent), 0644); err != nil {
+	if err := os.WriteFile(testConfigFile, []byte(configContent), 0600); err != nil {
 		t.Fatalf("Failed to write test config: %v", err)
 	}
 	t.Logf("Created test config file: %s", testConfigFile)
@@ -699,6 +695,7 @@ func setupCaduceusMockServer(t *testing.T, receivedBodyChan chan<- string) *http
 	return testServer
 }
 
+//nolint:unused
 func setupXmidtAgent(t *testing.T, themisURL string, debug bool) *exec.Cmd {
 	t.Helper()
 
@@ -742,7 +739,7 @@ func setupXmidtAgent(t *testing.T, themisURL string, debug bool) *exec.Cmd {
 
 	// Write test-specific config
 	testConfigFile := filepath.Join(testTempDir, "xmidt-agent.yaml")
-	if err := os.WriteFile(testConfigFile, []byte(configStr), 0644); err != nil {
+	if err := os.WriteFile(testConfigFile, []byte(configStr), 0600); err != nil {
 		t.Fatalf("Failed to write test config: %v", err)
 	}
 	t.Logf("✓ Created test-specific config with isolated storage")
@@ -862,10 +859,11 @@ type setupOption func(*setupConfig)
 
 // setupConfig holds configuration for which services to start
 type setupConfig struct {
-	startKafka      bool
-	startThemis     bool
-	startCaduceus   bool
-	startXmidtAgent bool
+	startKafka           bool
+	startThemis          bool
+	startCaduceus        bool
+	startXmidtAgent      bool
+	startDeviceSimulator bool
 
 	// xmidtAgentDebug enables debug logging (-d flag) for xmidt-agent.
 	// When false (default), xmidt-agent runs without -d flag (less verbose).
@@ -911,6 +909,11 @@ func WithCaduceus() setupOption {
 // WithXmidtAgent enables xmidt-agent device simulator in the test setup
 func WithXmidtAgent() setupOption {
 	return func(c *setupConfig) { c.startXmidtAgent = true }
+}
+
+// WithDeviceSimulator enables xmidt-agent as a docker cotainer in the test setup
+func WithDeviceSimulator() setupOption {
+	return func(c *setupConfig) { c.startDeviceSimulator = true }
 }
 
 // WithXmidtAgentDebug enables xmidt-agent with debug logging (-d flag).
@@ -1048,6 +1051,11 @@ func WithoutCaduceus() setupOption {
 // WithoutXmidtAgent disables xmidt-agent
 func WithoutXmidtAgent() setupOption {
 	return func(c *setupConfig) { c.startXmidtAgent = false }
+}
+
+// WithoutDeviceSimulator disables the device simulator
+func WithoutDeviceSimulator() setupOption {
+	return func(c *setupConfig) { c.startDeviceSimulator = false }
 }
 
 // setupIntegrationTest creates and starts all services needed for integration testing.
@@ -1221,29 +1229,47 @@ func setupIntegrationTestWithCapabilities(t *testing.T, talariaConfigFile, themi
 	t.Logf("✓ Talaria started at: %s", talariaURL)
 
 	// 7. Build and start xmidt-agent (if enabled)
-	if config.startXmidtAgent {
-		simCmd := setupXmidtAgent(t, themisIssuerURL, config.xmidtAgentDebug)
-		if err := simCmd.Start(); err != nil {
-			t.Fatalf("Failed to start xmidt-agent: %v", err)
-		}
-		t.Logf("✓ xmidt-agent started with PID %d", simCmd.Process.Pid)
+	// if config.startXmidtAgent {
+	// 	simCmd := setupXmidtAgent(t, themisIssuerURL, config.xmidtAgentDebug)
+	// 	if err := simCmd.Start(); err != nil {
+	// 		t.Fatalf("Failed to start xmidt-agent: %v", err)
+	// 	}
+	// 	t.Logf("✓ xmidt-agent started with PID %d", simCmd.Process.Pid)
 
-		// Register cleanup for xmidt-agent
+	// 	// Register cleanup for xmidt-agent
+	// 	t.Cleanup(func() {
+	// 		if simCmd.Process != nil {
+	// 			t.Log("Stopping xmidt-agent...")
+	// 			simCmd.Process.Kill()
+	// 			simCmd.Wait()
+	// 			t.Log("✓ xmidt-agent stopped")
+	// 		}
+	// 	})
+
+	// 	// 7. Wait for device to connect
+	// 	t.Log("Waiting for device to connect...")
+	// 	time.Sleep(10 * time.Second)
+	// 	t.Log("✓ Device connection window complete")
+	// } else {
+	// 	t.Log("⊘ xmidt-agent disabled")
+	// }
+
+	// start local device simulator (instead of xmidt-agent)
+	if config.startDeviceSimulator {
+		// 4. Build and start device-simulator
+		simCmd := setupDeviceSimulator(t, themisIssuerURL)
+		if err := simCmd.Start(); err != nil {
+			t.Fatalf("Failed to start device-simulator: %v", err)
+		}
+		t.Logf("✓ Device-simulator started with PID %d", simCmd.Process.Pid)
 		t.Cleanup(func() {
 			if simCmd.Process != nil {
-				t.Log("Stopping xmidt-agent...")
+				t.Log("Stopping device-simulator...")
 				simCmd.Process.Kill()
 				simCmd.Wait()
-				t.Log("✓ xmidt-agent stopped")
+				t.Log("✓ device-simulator stopped")
 			}
 		})
-
-		// 7. Wait for device to connect
-		t.Log("Waiting for device to connect...")
-		time.Sleep(10 * time.Second)
-		t.Log("✓ Device connection window complete")
-	} else {
-		t.Log("⊘ xmidt-agent disabled")
 	}
 
 	// 8. Create and return fixture
@@ -1262,8 +1288,6 @@ func setupIntegrationTestWithCapabilities(t *testing.T, talariaConfigFile, themi
 	return fixture
 }
 
-// setupDeviceSimulator builds and starts the device-simulator as a subprocess.
-// Returns a command that can be started and stopped by the test.
 func setupDeviceSimulator(t *testing.T, themisURL string) *exec.Cmd {
 	t.Helper()
 
@@ -1272,7 +1296,6 @@ func setupDeviceSimulator(t *testing.T, themisURL string) *exec.Cmd {
 	workspaceRoot := filepath.Dir(filename)
 	deviceSimulatorDir := filepath.Join(workspaceRoot, "cmd", "device-simulator")
 	deviceSimulatorBinary := filepath.Join(deviceSimulatorDir, "device-simulator")
-
 	t.Log("Building device-simulator...")
 	buildCmd := exec.Command("go", "build", "-o", deviceSimulatorBinary, ".")
 	buildCmd.Dir = deviceSimulatorDir
