@@ -1229,30 +1229,30 @@ func setupIntegrationTestWithCapabilities(t *testing.T, talariaConfigFile, themi
 	t.Logf("✓ Talaria started at: %s", talariaURL)
 
 	// 7. Build and start xmidt-agent (if enabled)
-	// if config.startXmidtAgent {
-	// 	simCmd := setupXmidtAgent(t, themisIssuerURL, config.xmidtAgentDebug)
-	// 	if err := simCmd.Start(); err != nil {
-	// 		t.Fatalf("Failed to start xmidt-agent: %v", err)
-	// 	}
-	// 	t.Logf("✓ xmidt-agent started with PID %d", simCmd.Process.Pid)
+	if config.startXmidtAgent {
+		simCmd := setupXmidtAgent(t, themisIssuerURL, config.xmidtAgentDebug)
+		if err := simCmd.Start(); err != nil {
+			t.Fatalf("Failed to start xmidt-agent: %v", err)
+		}
+		t.Logf("✓ xmidt-agent started with PID %d", simCmd.Process.Pid)
 
-	// 	// Register cleanup for xmidt-agent
-	// 	t.Cleanup(func() {
-	// 		if simCmd.Process != nil {
-	// 			t.Log("Stopping xmidt-agent...")
-	// 			simCmd.Process.Kill()
-	// 			simCmd.Wait()
-	// 			t.Log("✓ xmidt-agent stopped")
-	// 		}
-	// 	})
+		// Register cleanup for xmidt-agent
+		t.Cleanup(func() {
+			if simCmd.Process != nil {
+				t.Log("Stopping xmidt-agent...")
+				simCmd.Process.Kill()
+				simCmd.Wait()
+				t.Log("✓ xmidt-agent stopped")
+			}
+		})
 
-	// 	// 7. Wait for device to connect
-	// 	t.Log("Waiting for device to connect...")
-	// 	time.Sleep(10 * time.Second)
-	// 	t.Log("✓ Device connection window complete")
-	// } else {
-	// 	t.Log("⊘ xmidt-agent disabled")
-	// }
+		// 7. Wait for device to connect
+		t.Log("Waiting for device to connect...")
+		time.Sleep(10 * time.Second)
+		t.Log("✓ Device connection window complete")
+	} else {
+		t.Log("⊘ xmidt-agent disabled")
+	}
 
 	// start local device simulator (instead of xmidt-agent)
 	if config.startDeviceSimulator {

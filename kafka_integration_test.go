@@ -25,6 +25,7 @@ func TestReceiveEventWithoutKafka(t *testing.T) {
 		WithCaduceus(),
 		WithDeviceSimulator(),
 		WithoutKafka(),
+		WithoutXmidtAgent(),
 	)
 
 	// Wait for device to connect and events to be published
@@ -55,6 +56,7 @@ func TestReceiveEventWithKafka(t *testing.T) {
 		WithThemis(),
 		WithCaduceus(),
 		WithDeviceSimulator(),
+		WithoutXmidtAgent(),
 	)
 
 	// Wait for device to connect and events to be published
