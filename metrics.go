@@ -34,6 +34,12 @@ const (
 	OutboundAckSuccessLatencyHistogram = "outbound_ack_success_latency_seconds"
 	OutboundAckFailureLatencyHistogram = "outbound_ack_failure_latency_seconds"
 
+	// Kafka publisher metrics (from wrpkafka event listeners)
+	KafkaPublishedMessagesCounter = "kafka_messages_published_total"
+	KafkaPublishErrorsCounter     = "kafka_publish_errors_total"
+	KafkaPublishLatencyHistogram  = "kafka_publish_latency_seconds"
+	KafkaBufferUtilizationGauge   = "kafka_buffer_utilization"
+
 	GateStatus   = "gate_status"
 	DrainStatus  = "drain_status"
 	DrainCounter = "drain_count"
@@ -50,6 +56,12 @@ const (
 	messageType    = "message_type"
 	codeLabel      = "code"
 	schemeLabel    = "scheme"
+
+	// Kafka-specific labels (from wrpkafka PublishEvent)
+	eventTypeLabel          = "event_type"
+	topicLabel              = "topic"
+	topicShardStrategyLabel = "topic_shard_strategy"
+	errorTypeLabel          = "error_type"
 )
 
 // label values
@@ -146,6 +158,12 @@ type OutboundMeasures struct {
 	AckFailure           CounterVec
 	AckSuccessLatency    HistogramVec
 	AckFailureLatency    HistogramVec
+
+	// Kafka publisher metrics (wrpkafka event listeners)
+	KafkaPublished         CounterVec
+	KafkaPublishErrors     CounterVec
+	KafkaPublishLatency    HistogramVec
+	KafkaBufferUtilization prometheus.GaugeFunc
 }
 
 func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs error) {
@@ -317,6 +335,44 @@ func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs erro
 			NativeHistogramExemplarTTL:  time.Minute * 5,
 		},
 		[]string{qosLevelLabel, partnerIDLabel, messageType}...,
+	)
+	errs = errors.Join(errs, err)
+
+	// Kafka publisher metrics (for wrpkafka event listeners)
+	om.KafkaPublished, err = tf.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: KafkaPublishedMessagesCounter,
+			Help: "Total number of messages successfully published to Kafka",
+		},
+		[]string{eventTypeLabel, topicLabel, topicShardStrategyLabel}...,
+	)
+	errs = errors.Join(errs, err)
+
+	om.KafkaPublishErrors, err = tf.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: KafkaPublishErrorsCounter,
+			Help: "Total number of Kafka publish errors",
+		},
+		[]string{eventTypeLabel, topicLabel, topicShardStrategyLabel, errorTypeLabel}...,
+	)
+	errs = errors.Join(errs, err)
+
+	om.KafkaPublishLatency, err = tf.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name: KafkaPublishLatencyHistogram,
+			Help: "Latency of Kafka publish operations",
+			// Each bucket is at most 10% wider than the previous one),
+			// which will result in each power of two divided into 8 buckets.
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramZeroThreshold:    0.001, // 1ms
+			NativeHistogramMaxBucketNumber:  10,
+			NativeHistogramMinResetDuration: time.Hour * 24 * 7,
+			NativeHistogramMaxZeroThreshold: 0.010, // 10ms
+			// Disable exemplars.
+			NativeHistogramMaxExemplars: -1,
+			NativeHistogramExemplarTTL:  time.Minute * 5,
+		},
+		[]string{eventTypeLabel, topicLabel, topicShardStrategyLabel}...,
 	)
 
 	return om, errors.Join(errs, err)

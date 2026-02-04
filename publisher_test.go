@@ -5,7 +5,6 @@ package main
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -96,7 +95,7 @@ func TestNewKafkaPublisher(t *testing.T) {
 			}
 
 			logger := zap.NewNop()
-			publisher, err := NewKafkaPublisher(logger, v)
+			publisher, err := NewKafkaPublisher(logger, v, nil)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -141,7 +140,7 @@ func TestKafkaPublisher_NotStarted(t *testing.T) {
 	v.Set("kafka.topic", "test-topic")
 
 	logger := zap.NewNop()
-	publisher, err := NewKafkaPublisher(logger, v)
+	publisher, err := NewKafkaPublisher(logger, v, nil)
 	require.NoError(t, err)
 
 	msg := &wrp.Message{
@@ -190,24 +189,4 @@ func TestConvertV3ToV5(t *testing.T) {
 func TestConvertV3ToV5_Nil(t *testing.T) {
 	v5msg := convertV3ToV5(nil)
 	assert.Nil(t, v5msg)
-}
-
-func TestKafkaConfig_Defaults(t *testing.T) {
-	v := viper.New()
-	v.Set("kafka.enabled", true)
-	v.Set("kafka.brokers", []string{"localhost:9092"})
-	v.Set("kafka.topic", "test-topic")
-
-	logger := zap.NewNop()
-	publisher, err := NewKafkaPublisher(logger, v)
-	require.NoError(t, err)
-
-	kp, ok := publisher.(*kafkaPublisher)
-	require.True(t, ok)
-
-	// Check defaults
-	assert.Equal(t, 10000, kp.config.MaxBufferedRecords)
-	assert.Equal(t, 100*1024*1024, kp.config.MaxBufferedBytes)
-	assert.Equal(t, 3, kp.config.MaxRetries)
-	assert.Equal(t, 30*time.Second, kp.config.RequestTimeout)
 }

@@ -11,6 +11,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/viper"
 	"github.com/twmb/franz-go/pkg/sasl"
 	"github.com/twmb/franz-go/pkg/sasl/plain"
@@ -101,6 +102,8 @@ type wrpKafkaPublisher interface {
 	Start() error
 	Stop(ctx context.Context)
 	Produce(ctx context.Context, msg *wrpv5.Message) (wrpkafka.Outcome, error)
+	AddPublishEventListener(fn func(*wrpkafka.PublishEvent)) func()
+	BufferedRecords() (currentRecords, maxRecords int, currentBytes, maxBytes int64)
 }
 
 // kafkaPublisher implements the Publisher interface using wrpkafka
@@ -110,10 +113,11 @@ type kafkaPublisher struct {
 	publisher        wrpKafkaPublisher
 	started          bool
 	publisherFactory func(*KafkaConfig) (wrpKafkaPublisher, error) // for testing
+	metrics          *OutboundMeasures                             // for Prometheus metrics
 }
 
 // NewKafkaPublisher creates a new Kafka publisher from Viper configuration
-func NewKafkaPublisher(logger *zap.Logger, v *viper.Viper) (Publisher, error) {
+func NewKafkaPublisher(logger *zap.Logger, v *viper.Viper, om *OutboundMeasures) (Publisher, error) {
 	if v == nil {
 		return nil, errors.New("viper config is required")
 	}
@@ -140,20 +144,6 @@ func NewKafkaPublisher(logger *zap.Logger, v *viper.Viper) (Publisher, error) {
 		return nil, errors.New("kafka.brokers is required")
 	}
 
-	// Set defaults
-	if config.MaxBufferedRecords == 0 {
-		config.MaxBufferedRecords = 10000
-	}
-	if config.MaxBufferedBytes == 0 {
-		config.MaxBufferedBytes = 100 * 1024 * 1024 // 100MB
-	}
-	if config.MaxRetries == 0 {
-		config.MaxRetries = 3
-	}
-	if config.RequestTimeout == 0 {
-		config.RequestTimeout = 30 * time.Second
-	}
-
 	logger.Info("Creating Kafka publisher",
 		zap.Strings("brokers", config.Brokers),
 		zap.Bool("allowAutoTopicCreation", config.AllowAutoTopicCreation),
@@ -168,6 +158,7 @@ func NewKafkaPublisher(logger *zap.Logger, v *viper.Viper) (Publisher, error) {
 		config:           &config,
 		logger:           logger,
 		publisherFactory: publisherFactory,
+		metrics:          om,
 	}, nil
 }
 
@@ -251,6 +242,56 @@ func (k *kafkaPublisher) Start() error {
 	publisher, err := k.publisherFactory(k.config)
 	if err != nil {
 		return fmt.Errorf("failed to create wrpkafka publisher: %w", err)
+	}
+
+	// Configure Prometheus metrics via event listeners (if metrics provided)
+	if k.metrics != nil {
+		// Add event listener for all publish events (success and failure)
+		publisher.AddPublishEventListener(func(event *wrpkafka.PublishEvent) {
+			labels := prometheus.Labels{
+				eventTypeLabel:          event.EventType,
+				topicLabel:              event.Topic,
+				topicShardStrategyLabel: event.TopicShardStrategy,
+			}
+
+			// Record latency for all events
+			k.metrics.KafkaPublishLatency.With(labels).Observe(event.Duration.Seconds())
+
+			if event.Error != nil {
+				// Record error
+				errorLabels := prometheus.Labels{
+					eventTypeLabel:          event.EventType,
+					topicLabel:              event.Topic,
+					topicShardStrategyLabel: event.TopicShardStrategy,
+					errorTypeLabel:          event.ErrorType,
+				}
+				k.metrics.KafkaPublishErrors.With(errorLabels).Inc()
+			} else {
+				// Record success
+				k.metrics.KafkaPublished.With(labels).Inc()
+			}
+		})
+
+		// Set up buffer utilization gauge (only if MaxBufferedRecords is configured)
+		// find a better way - set up GaugeFunc with publisher instance and touchstone
+		if k.config.MaxBufferedRecords > 0 {
+			k.metrics.KafkaBufferUtilization = prometheus.NewGaugeFunc(
+				prometheus.GaugeOpts{
+					Name: KafkaBufferUtilizationGauge,
+					Help: "Kafka buffer utilization (0.0-1.0)",
+				},
+				func() float64 {
+					current, max, _, _ := publisher.BufferedRecords()
+					if max == 0 {
+						return 0.0
+					}
+					return float64(current) / float64(max)
+				},
+			)
+			// Note: The gauge will be automatically scraped by Prometheus
+			// but we need to register it with the Prometheus registry
+			prometheus.MustRegister(k.metrics.KafkaBufferUtilization)
+		}
 	}
 
 	// Start the publisher

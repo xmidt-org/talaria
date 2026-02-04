@@ -80,8 +80,8 @@ func newDeviceManager(logger *zap.Logger, r xmetrics.Registry, tf *touchstone.Fa
 		return nil, nil, nil, fmt.Errorf("failed to get OutboundMeasures: %s", err)
 	}
 
-	// Create and start Kafka publisher
-	kafkaPublisher, err := NewKafkaPublisher(logger, v)
+	// Create and start Kafka publisher (pass metrics for integration)
+	kafkaPublisher, err := NewKafkaPublisher(logger, v, &om)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to create kafka publisher: %w", err)
 	}
