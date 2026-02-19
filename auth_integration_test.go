@@ -738,8 +738,8 @@ func TestTrustedVsUntrustedJWT(t *testing.T) {
 // Uses a Themis instance configured to issue JWTs with very short expiration (2 seconds).
 func TestExpiredJWT(t *testing.T) {
 
-	t.Skip("Enable when Talaria supports JWT authentication on API endpoints")
 	t.Run("GET_Devices_With_Expired_JWT", func(t *testing.T) {
+		t.Skip("Enable when Talaria supports JWT authentication on API endpoints")
 		// Start Themis with short-lived JWTs (2 second expiration)
 		fixture := setupIntegrationTest(t, "talaria_integration_template.yaml",
 			WithThemisInstance("api", "themis_short_expiration.yaml", "DEVICE_THEMIS_URL"),
@@ -779,6 +779,7 @@ func TestExpiredJWT(t *testing.T) {
 	})
 
 	t.Run("POST_DeviceSend_With_Expired_JWT", func(t *testing.T) {
+		t.Skip("Enable when Talaria supports JWT authentication on API endpoints")
 		// Start Themis with short-lived JWTs (2 second expiration)
 		fixture := setupIntegrationTest(t, "talaria_integration_template.yaml",
 			WithThemisInstance("api", "themis_short_expiration.yaml", "DEVICE_THEMIS_URL"),
@@ -887,9 +888,8 @@ func TestExpiredJWT(t *testing.T) {
 			conn2.Close()
 		}
 		require.Error(t, err2, "Expired JWT should fail WebSocket connection")
-		if resp2 != nil {
-			t.Logf("Expired JWT - Status: %d", resp2.StatusCode)
-			require.Equal(t, http.StatusForbidden, resp2.StatusCode, "Expired JWT should be rejected")
-		}
+		require.NotNil(t, resp2, "Expected HTTP response for expired JWT rejection")
+		t.Logf("Expired JWT - Status: %d", resp2.StatusCode)
+		require.Equal(t, http.StatusForbidden, resp2.StatusCode, "Expired JWT should be rejected with 403")
 	})
 }
