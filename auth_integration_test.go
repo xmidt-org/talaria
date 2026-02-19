@@ -90,7 +90,7 @@ func TestGetDevices_Auth(t *testing.T) {
 		body, statusCode, err := fixture.DoAndReadBody(req)
 		require.NoError(t, err)
 		t.Logf("API JWT - Status: %d, Body: %s", statusCode, body)
-		// the evice endpoint only accepts basic auth, future iteration is to accept a api jwt and this will need to be updated
+		// the device endpoint only accepts basic auth, future iteration is to accept a api jwt and this will need to be updated
 		require.Equal(t, http.StatusForbidden, statusCode, "API JWT should not be accepted on API endpoint")
 	})
 
