@@ -249,27 +249,24 @@ func (k *kafkaPublisher) Start() error {
 		// Add event listener for all publish events (success and failure)
 		publisher.AddPublishEventListener(func(event *wrpkafka.PublishEvent) {
 			labels := prometheus.Labels{
-				eventTypeLabel:          event.EventType,
 				topicLabel:              event.Topic,
 				topicShardStrategyLabel: event.TopicShardStrategy,
+				errorTypeLabel:          "success",
 			}
-
-			// Record latency for all events
-			k.metrics.KafkaPublishLatency.With(labels).Observe(event.Duration.Seconds())
 
 			if event.Error != nil {
 				// Record error
-				errorLabels := prometheus.Labels{
-					eventTypeLabel:          event.EventType,
+				labels = prometheus.Labels{
 					topicLabel:              event.Topic,
 					topicShardStrategyLabel: event.TopicShardStrategy,
 					errorTypeLabel:          event.ErrorType,
 				}
-				k.metrics.KafkaPublishErrors.With(errorLabels).Inc()
-			} else {
-				// Record success
-				k.metrics.KafkaPublished.With(labels).Inc()
 			}
+
+			k.metrics.KafkaPublished.With(labels).Inc()
+
+			// Record latency for all events
+			k.metrics.KafkaPublishLatency.With(labels).Observe(event.Duration.Seconds())
 		})
 
 		// Set up buffer utilization gauge (only if MaxBufferedRecords is configured)
@@ -342,6 +339,11 @@ func (k *kafkaPublisher) Publish(ctx context.Context, msg *wrp.Message) error {
 		)
 		return fmt.Errorf("failed to publish to kafka: %w", err)
 	}
+
+	labels := prometheus.Labels{
+		outcomeLabel: outcome.String(),
+	}
+	k.metrics.PublishOutcome.With(labels).Inc()
 
 	k.logger.Debug("Published message to Kafka",
 		zap.String("destination", msg.Destination),
