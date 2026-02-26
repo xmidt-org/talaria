@@ -357,8 +357,13 @@ func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs erro
 		prometheus.HistogramOpts{
 			Name: KafkaPublishLatencyHistogram,
 			Help: "Latency of Kafka publish operations",
-			// Each bucket is at most 10% wider than the previous one),
-			// which will result in each power of two divided into 8 buckets.
+			// Classic histogram buckets covering 1ms–10s, centred around the
+			// observed ~15ms average.  These are required for p50/p99 queries
+			// in Grafana; without them Prometheus only emits le="+Inf" and
+			// percentile calculations are impossible.
+			Buckets: []float64{0.001, 0.005, 0.010, 0.025, 0.050, 0.100, 0.250, 0.500, 1.0, 5.0, 10.0},
+			// Native histogram settings (used when the Prometheus scrape is
+			// configured with native_histogram_bucket_factor).
 			NativeHistogramBucketFactor:     1.1,
 			NativeHistogramZeroThreshold:    0.001, // 1ms
 			NativeHistogramMaxBucketNumber:  10,
