@@ -169,6 +169,9 @@ type OutboundMeasures struct {
 
 	// Publish Outcome
 	PublishOutcome CounterVec
+
+	// kafkaBufferRecordsFunc is set by the Kafka publisher to provide buffer statistics
+	kafkaBufferRecordsFunc func() (currentRecords, maxRecords int, currentBytes, maxBytes int64)
 }
 
 func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs error) {
@@ -382,6 +385,25 @@ func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs erro
 			Help: "Publish outcome of events processed by Kafka publisher",
 		},
 		[]string{outcomeLabel}...,
+	)
+	errs = errors.Join(errs, err)
+
+	// Create Kafka buffer utilization gauge (function will be set by publisher)
+	om.KafkaBufferUtilization, err = tf.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Name: KafkaBufferUtilizationGauge,
+			Help: "Kafka buffer utilization (0.0-1.0)",
+		},
+		func() float64 {
+			if om.kafkaBufferRecordsFunc == nil {
+				return 0.0
+			}
+			current, max, _, _ := om.kafkaBufferRecordsFunc()
+			if max == 0 {
+				return 0.0
+			}
+			return float64(current) / float64(max)
+		},
 	)
 	errs = errors.Join(errs, err)
 

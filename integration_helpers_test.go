@@ -746,14 +746,14 @@ func setupXmidtAgent(t *testing.T, themisURL string, debug bool) *exec.Cmd {
 	}
 	t.Logf("✓ Created test-specific config with isolated storage")
 
-	t.Log("Building device-simulator...")
+	t.Log("Building xmidt-agent...")
 	buildCmd := exec.Command("go", "build", "-o", XmidtAgentBinary, ".")
 	buildCmd.Dir = XmidtAgentDir
 	if output, err := buildCmd.CombinedOutput(); err != nil {
 		t.Logf("Build output: %s", string(output))
-		t.Fatalf("Failed to build device-simulator: %v", err)
+		t.Fatalf("Failed to build xmidt-agent: %v", err)
 	}
-	t.Log("✓ Device-simulator built successfully")
+	t.Log("✓ xmidt-agent built successfully")
 
 	// Build command with optional debug flag
 	args := []string{}
