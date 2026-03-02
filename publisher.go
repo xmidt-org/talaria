@@ -269,25 +269,10 @@ func (k *kafkaPublisher) Start() error {
 			k.metrics.KafkaPublishLatency.With(labels).Observe(event.Duration.Seconds())
 		})
 
-		// Set up buffer utilization gauge (only if MaxBufferedRecords is configured)
-		// find a better way - set up GaugeFunc with publisher instance and touchstone
+		// Set up buffer utilization gauge function (only if MaxBufferedRecords is configured)
+		// The GaugeFunc was already created in NewOutboundMeasures() with proper namespace/subsystem
 		if k.config.MaxBufferedRecords > 0 {
-			k.metrics.KafkaBufferUtilization = prometheus.NewGaugeFunc(
-				prometheus.GaugeOpts{
-					Name: KafkaBufferUtilizationGauge,
-					Help: "Kafka buffer utilization (0.0-1.0)",
-				},
-				func() float64 {
-					current, max, _, _ := publisher.BufferedRecords()
-					if max == 0 {
-						return 0.0
-					}
-					return float64(current) / float64(max)
-				},
-			)
-			// Note: The gauge will be automatically scraped by Prometheus
-			// but we need to register it with the Prometheus registry
-			prometheus.MustRegister(k.metrics.KafkaBufferUtilization)
+			k.metrics.kafkaBufferRecordsFunc = publisher.BufferedRecords
 		}
 	}
 
