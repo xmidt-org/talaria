@@ -128,19 +128,22 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 		_, err = d.encodeAndDispatchEvent(eventType, wrp.Msgpack, message)
 		if err != nil {
 			d.logger.Error("Error dispatching online event", zap.Any("eventType", eventType), zap.Any("destination", message.Destination), zap.Error(err))
-		} else if d.kafkaPublisher.IsEnabled() {
+		}
+
+		if d.kafkaPublisher.IsEnabled() {
 			// Publish Connect event to Kafka
 			d.logger.Debug("Publishing connect event to Kafka", zap.Any("destination", message.Destination))
 			d.sendToKafka(message)
 		}
-
 	case device.Disconnect:
 		scheme = wrp.SchemeEvent
 		eventType, message := newOfflineMessage(d.source, event.Device)
 		_, err = d.encodeAndDispatchEvent(eventType, wrp.Msgpack, message)
 		if err != nil {
 			d.logger.Error("Error dispatching offline event", zap.Any("eventType", eventType), zap.Any("destination", message.Destination), zap.Error(err))
-		} else if d.kafkaPublisher.IsEnabled() {
+		}
+
+		if d.kafkaPublisher.IsEnabled() {
 			// Publish Disconnect event to Kafka
 			d.sendToKafka(message)
 		}
@@ -149,8 +152,9 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 		if err != nil {
 			scheme = unknown
 		}
+
 		// Publish to Kafka if enabled and event was successfully processed
-		if err == nil && scheme == wrp.SchemeEvent && d.kafkaPublisher.IsEnabled() {
+		if l, err := getEventDestLocator(event); err == nil && l.Scheme == wrp.SchemeEvent && d.kafkaPublisher.IsEnabled() {
 			// Extract WRP message from event
 			if msg, ok := event.Message.(*wrp.Message); ok {
 				d.sendToKafka(msg)
@@ -179,18 +183,12 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 }
 
 func (d *eventDispatcher) routeMessageReceivedEvent(event *device.Event) (scheme string, err error) {
-	routable, ok := event.Message.(wrp.Routable)
-	if !ok {
-		return "", errors.New("wrp event message is not routable")
-	}
-
-	destination := routable.To()
-	contentType := event.Format.ContentType()
-	var l wrp.Locator
-	if l, err = wrp.ParseLocator(destination); err != nil {
+	l, err := getEventDestLocator(event)
+	if err != nil {
 		return "", err
 	}
 
+	contentType := event.Format.ContentType()
 	scheme = l.Scheme
 	eventType := l.Authority
 	switch scheme {
@@ -206,7 +204,7 @@ func (d *eventDispatcher) routeMessageReceivedEvent(event *device.Event) (scheme
 	}
 
 	if err != nil {
-		d.logger.Error("Error dispatching event", zap.String(schemeLabel, scheme), zap.Any("destination", destination), zap.Error(err))
+		d.logger.Error("Error dispatching event", zap.String(schemeLabel, scheme), zap.Any("destination", l.String()), zap.Error(err))
 	}
 
 	return scheme, err
@@ -356,4 +354,13 @@ func getDroppedMessageReason(err error) string {
 
 	// check for http `Do` related errors
 	return getDoErrReason(err)
+}
+
+func getEventDestLocator(event *device.Event) (wrp.Locator, error) {
+	routable, ok := event.Message.(wrp.Routable)
+	if !ok {
+		return wrp.Locator{}, errors.New("wrp event message is not routable")
+	}
+
+	return wrp.ParseLocator(routable.To())
 }
