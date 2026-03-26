@@ -232,6 +232,8 @@ func (d *eventDispatcher) sendToKafka(msg *wrp.Message) {
 func (d *eventDispatcher) send(parent context.Context, request *http.Request) error {
 	// increment the queue size first, so that we always keep a positive queue size
 	d.queueSize.Add(1.0)
+	// `cancel` is called once the event is picked up by the worker pool.
+	// nolint: gosec
 	ctx, cancel := context.WithTimeout(parent, d.timeout)
 	select {
 	case d.outbounds <- outboundEnvelope{request.WithContext(ctx), cancel}:

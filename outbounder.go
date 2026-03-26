@@ -98,7 +98,7 @@ func NewOutbounder(logger *zap.Logger, v *viper.Viper) (o *Outbounder, watcher *
 
 // String emits a JSON string representing this outbounder, primarily useful for debugging.
 func (o *Outbounder) String() string {
-	// nolint: staticcheck
+	// nolint: staticcheck, gosec
 	if data, err := json.Marshal(o); err != nil {
 		return err.Error()
 	} else {

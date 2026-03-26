@@ -360,7 +360,7 @@ func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs erro
 		prometheus.HistogramOpts{
 			Name: KafkaPublishLatencyHistogram,
 			Help: "Latency of Kafka publish operations",
-			// Classic histogram buckets covering 1ms–10s, centred around the
+			// Classic histogram buckets covering 1ms–10s, centered around the
 			// observed ~15ms average.  These are required for p50/p99 queries
 			// in Grafana; without them Prometheus only emits le="+Inf" and
 			// percentile calculations are impossible.
@@ -378,6 +378,7 @@ func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs erro
 		},
 		[]string{errorTypeLabel, topicLabel, topicShardStrategyLabel}...,
 	)
+	errs = errors.Join(errs, err)
 
 	om.PublishOutcome, err = tf.NewCounterVec(
 		prometheus.CounterOpts{
