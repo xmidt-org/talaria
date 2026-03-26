@@ -65,6 +65,7 @@ func TestParseDeviceAccessCheck(t *testing.T) {
 
 		{
 			name: "Happpy path",
+			// nolint: gosec
 			config: deviceAccessCheck{
 				Name:                 "    trimWhiteSpaces    ",
 				DeviceCredentialPath: "   dcp",
