@@ -437,8 +437,8 @@ github.com/xmidt-org/wrp-go/v3 v3.7.0 h1:m9ghdq79Zzb0WjomUJ02rzFpI0RK8KTjArYpNIw
 github.com/xmidt-org/wrp-go/v3 v3.7.0/go.mod h1:eyMj+q/7LQ4SU6Z3s6VOwuTVSh6/DJBb2soBGBFSung=
 github.com/xmidt-org/wrp-go/v5 v5.4.0 h1:9bOO8e3uR+qek9uTmpZRahVJHbz6FM0Y7dLleLZ3MNY=
 github.com/xmidt-org/wrp-go/v5 v5.4.0/go.mod h1:SQlOnkDG5HnaziOf83g+/38GQfE2mIInPWP+Wdw3/FE=
-github.com/xmidt-org/wrpkafka v0.1.1 h1:Cgm4v1AdU79ocJrKef4VJrWdUIn8/oUeb3cuVPyqrm0=
-github.com/xmidt-org/wrpkafka v0.1.1/go.mod h1:OrQDfmzIOESfLCPBQDbC6iOT7pFZLpvxrbL50tQ79v4=
+github.com/xmidt-org/wrpkafka v0.1.2 h1:6sKSujPhi40YWgSWwnImuDNw4tnjZHoRD7KsJtiWnPg=
+github.com/xmidt-org/wrpkafka v0.1.2/go.mod h1:OrQDfmzIOESfLCPBQDbC6iOT7pFZLpvxrbL50tQ79v4=
 github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo0=
 github.com/yusufpapurcu/wmi v1.2.4/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=
