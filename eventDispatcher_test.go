@@ -847,6 +847,15 @@ func testEventDispatcherKafkaIntegration(t *testing.T) {
 				d.On("Convey").Return(convey.C(nil))
 				d.On("Statistics").Return(device.NewStatistics(nil, time.Now()))
 				d.On("CloseReason").Return(device.CloseReason{})
+			case device.MessageReceived:
+				// MessageReceived events need ID() for hw-deviceid enrichment only when Kafka is enabled
+				if msg, ok := tc.event.Message.(*wrp.Message); ok {
+					locator, _ := wrp.ParseLocator(msg.Destination)
+					if locator.Scheme == wrp.SchemeEvent && tc.kafkaEnabled {
+						// For event:// scheme with Kafka enabled, we add hw-deviceid metadata
+						d.On("ID").Return(device.ID("mac:123412341234"))
+					}
+				}
 			}
 
 			// Setup Kafka publisher mock
@@ -860,21 +869,8 @@ func testEventDispatcherKafkaIntegration(t *testing.T) {
 			// Setup metrics
 			om, err := NewTestOutboundMeasures()
 			require.NoError(err)
-			om.KafkaDroppedMessages = kafkaDroppedCounter
-			om.KafkaOutboundEvents = kafkaOutboundCounter
-			om.OutboundEvents = outboundEventsCounter
 
-			// Setup regular outbound event expectations (for HTTP dispatch)
-			outboundEventsCounter.On("With", mock.AnythingOfType("prometheus.Labels")).Return().Maybe()
-			outboundEventsCounter.On("Add", 1.0).Return().Maybe()
-
-			// Create dispatcher
-			dispatcher, outbounds, err := NewEventDispatcher(om, o, urlFilter, mockPub)
-			require.NotNil(dispatcher)
-			require.NotNil(outbounds)
-			require.NoError(err)
-
-			// Setup metric expectations
+			// Setup specific metric expectations first (before .Maybe() setup)
 			if tc.expectedKafkaDropped {
 				kafkaDroppedCounter.On("With", prometheus.Labels{
 					schemeLabel: wrp.SchemeEvent,
@@ -892,6 +888,30 @@ func testEventDispatcherKafkaIntegration(t *testing.T) {
 				}).Return().Once()
 				kafkaOutboundCounter.On("Add", 1.0).Return().Once()
 			}
+
+			om.KafkaDroppedMessages = kafkaDroppedCounter
+			om.KafkaOutboundEvents = kafkaOutboundCounter
+			om.OutboundEvents = outboundEventsCounter
+
+			// Setup metrics to handle any unexpected calls (e.g., from panic recovery)
+			// Only add .Maybe() if we don't have specific expectations
+			om.DroppedMessages = new(mockCounter)
+			om.DroppedMessages.(*mockCounter).On("With", mock.AnythingOfType("prometheus.Labels")).Return().Maybe()
+			om.DroppedMessages.(*mockCounter).On("Add", mock.Anything).Return().Maybe()
+			if !tc.expectedKafkaDropped {
+				kafkaDroppedCounter.On("With", mock.AnythingOfType("prometheus.Labels")).Return().Maybe()
+				kafkaDroppedCounter.On("Add", mock.Anything).Return().Maybe()
+			}
+
+			// Setup regular outbound event expectations (for HTTP dispatch)
+			outboundEventsCounter.On("With", mock.AnythingOfType("prometheus.Labels")).Return().Maybe()
+			outboundEventsCounter.On("Add", 1.0).Return().Maybe()
+
+			// Create dispatcher
+			dispatcher, outbounds, err := NewEventDispatcher(om, o, urlFilter, mockPub)
+			require.NotNil(dispatcher)
+			require.NotNil(outbounds)
+			require.NoError(err)
 
 			// Execute
 			tc.event.Device = d
