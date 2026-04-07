@@ -155,8 +155,14 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 
 		// Publish to Kafka if enabled and event was successfully processed
 		if l, err := getEventDestLocator(event); err == nil && l.Scheme == wrp.SchemeEvent && d.kafkaPublisher.IsEnabled() {
-			// Extract WRP message from event
+			// Extract WRP message from event and add hw-deviceid to metadata for uniformity
 			if msg, ok := event.Message.(*wrp.Message); ok {
+				if msg.Metadata == nil {
+					msg.Metadata = make(map[string]string)
+				}
+				if _, exists := msg.Metadata["/hw-deviceid"]; !exists {
+					msg.Metadata["/hw-deviceid"] = string(event.Device.ID())
+				}
 				d.sendToKafka(msg)
 			}
 		}

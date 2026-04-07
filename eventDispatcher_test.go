@@ -1007,6 +1007,119 @@ func testEventDispatcherSendToKafka(t *testing.T) {
 	}
 }
 
+func testEventDispatcherHwDeviceIDEnrichment(t *testing.T) {
+	tests := []struct {
+		description          string
+		initialMetadata      map[string]string
+		expectedHwDeviceID   string
+		shouldEnrichMetadata bool
+	}{
+		{
+			description:          "Adds hw-deviceid when metadata is nil",
+			initialMetadata:      nil,
+			expectedHwDeviceID:   "mac:112233445566",
+			shouldEnrichMetadata: true,
+		},
+		{
+			description:          "Adds hw-deviceid when metadata exists but field missing",
+			initialMetadata:      map[string]string{"other-field": "value"},
+			expectedHwDeviceID:   "mac:112233445566",
+			shouldEnrichMetadata: true,
+		},
+		{
+			description:          "Preserves existing hw-deviceid",
+			initialMetadata:      map[string]string{"/hw-deviceid": "mac:existing-device"},
+			expectedHwDeviceID:   "mac:existing-device",
+			shouldEnrichMetadata: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			var (
+				require              = require.New(t)
+				assert               = assert.New(t)
+				d                    = new(device.MockDevice)
+				mockPub              = new(mockPublisher)
+				kafkaOutboundCounter = new(mockCounter)
+				publishedMsg         *wrp.Message
+			)
+
+			// Setup device mock
+			d.On("ID").Return(device.ID("mac:112233445566"))
+
+			// Setup Kafka publisher to capture the message
+			mockPub.On("IsEnabled").Return(true)
+			mockPub.On("Publish", mock.Anything, mock.AnythingOfType("*wrp.Message")).
+				Run(func(args mock.Arguments) {
+					publishedMsg = args.Get(1).(*wrp.Message)
+				}).
+				Return(nil)
+
+			// Setup metrics
+			om, err := NewTestOutboundMeasures()
+			require.NoError(err)
+			om.KafkaOutboundEvents = kafkaOutboundCounter
+
+			kafkaOutboundCounter.On("With", mock.AnythingOfType("prometheus.Labels")).Return().Once()
+			kafkaOutboundCounter.On("Add", 1.0).Return().Once()
+
+			o := &Outbounder{
+				Method:         "POST",
+				EventEndpoints: map[string]interface{}{"default": []string{"http://nowhere.com"}},
+			}
+
+			// Create dispatcher
+			dispatcher, outbounds, err := NewEventDispatcher(om, o, nil, mockPub)
+			require.NotNil(dispatcher)
+			require.NotNil(outbounds)
+			require.NoError(err)
+
+			// Create test message with initial metadata
+			msg := &wrp.Message{
+				Type:        wrp.SimpleEventMessageType,
+				Source:      "mac:112233445566/service",
+				Destination: "event:device-status/mac:112233445566/online",
+				Metadata:    tc.initialMetadata,
+			}
+
+			// Create MessageReceived event
+			event := &device.Event{
+				Type:    device.MessageReceived,
+				Device:  d,
+				Message: msg,
+			}
+
+			// Execute
+			dispatcher.OnDeviceEvent(event)
+
+			// Verify message was published
+			mockPub.AssertExpectations(t)
+			require.NotNil(publishedMsg, "Message should have been published to Kafka")
+
+			// Verify hw-deviceid in metadata
+			assert.NotNil(publishedMsg.Metadata, "Metadata should not be nil")
+			assert.Contains(publishedMsg.Metadata, "/hw-deviceid", "Metadata should contain /hw-deviceid")
+			assert.Equal(tc.expectedHwDeviceID, publishedMsg.Metadata["/hw-deviceid"], "hw-deviceid value mismatch")
+
+			// If we had initial metadata with other fields, verify they're preserved
+			if tc.initialMetadata != nil {
+				for key, value := range tc.initialMetadata {
+					if key != "/hw-deviceid" {
+						assert.Equal(value, publishedMsg.Metadata[key], "Existing metadata field %s should be preserved", key)
+					}
+				}
+			}
+
+			// Clean up outbounds channel
+			for len(outbounds) > 0 {
+				e := <-outbounds
+				e.cancel()
+			}
+		})
+	}
+}
+
 func TestEventDispatcherOnDeviceEvent(t *testing.T) {
 	tests := []struct {
 		description string
@@ -1026,6 +1139,7 @@ func TestEventDispatcherOnDeviceEvent(t *testing.T) {
 		{"EventDispatcherMetrics", testEventDispatcherMetrics},
 		{"KafkaIntegration", testEventDispatcherKafkaIntegration},
 		{"SendToKafka", testEventDispatcherSendToKafka},
+		{"HwDeviceIDEnrichment", testEventDispatcherHwDeviceIDEnrichment},
 	}
 
 	for _, tc := range tests {
