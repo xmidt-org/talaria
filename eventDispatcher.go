@@ -160,7 +160,7 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 				if msg.Metadata == nil {
 					msg.Metadata = make(map[string]string)
 				}
-				if _, exists := msg.Metadata["/hw-deviceid"]; !exists {
+				if msg.Metadata["/hw-deviceid"] == "" {
 					msg.Metadata["/hw-deviceid"] = string(event.Device.ID())
 				}
 				d.sendToKafka(msg)
