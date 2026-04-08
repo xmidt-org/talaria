@@ -1052,6 +1052,12 @@ func testEventDispatcherHwDeviceIDEnrichment(t *testing.T) {
 			expectedHwDeviceID:   "mac:existing-device",
 			shouldEnrichMetadata: false,
 		},
+		{
+			description:          "Adds hw-deviceid when metadata exists but field is empty",
+			initialMetadata:      map[string]string{"/hw-deviceid": ""},
+			expectedHwDeviceID:   "mac:112233445566",
+			shouldEnrichMetadata: true,
+		},
 	}
 
 	for _, tc := range tests {
