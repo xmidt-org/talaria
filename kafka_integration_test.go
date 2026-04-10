@@ -80,7 +80,8 @@ func TestReceiveEventWithKafka(t *testing.T) {
 		if msg.Destination == expectedMsg.Destination {
 			foundOnlineEvent = true
 			verifyWRPMessage(t, record.Value, expectedMsg)
-			require.Equal(t, expectedMsg.Source, string(record.Key), "Partition key should match Source")
+			// Kafka partition key is the device ID for consistent hashing
+			require.Equal(t, "mac:4ca161000109", string(record.Key), "Partition key should be device ID")
 			t.Log("✓ Found device-online event in Kafka")
 			break
 		}
