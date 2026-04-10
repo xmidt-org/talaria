@@ -1,9 +1,12 @@
 .PHONY: test test-unit test-integration test-all clean
 
+# IMPORTANT: -tags="" is explicitly set to exclude files with build tags
+# Without this flag, Go may include integration test files despite having //go:build integration tags
+
 # Run unit tests only (excludes integration tests via build tags)
 test-unit:
 	@echo "Running unit tests..."
-	@go test -v -timeout=30s ./...
+	@go test -v -tags="" -timeout=30s ./...
 
 # Run integration tests only
 test-integration:
