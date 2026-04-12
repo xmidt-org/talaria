@@ -18,11 +18,16 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  pull-requests: read
+  contents:      write
+  packages:      write
+
 jobs:
   ci:
     uses: xmidt-org/shared-go/.github/workflows/ci.yml@2927c6f3ebb0f1fb32856842d21a3ef4ed80efe6 # v4.9.36
     with:
-      release-type:          program
+      release-type:          library
       release-arch-amd64:    true
       release-arch-arm64:    true
       release-docker:        true
