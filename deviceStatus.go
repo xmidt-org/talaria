@@ -31,6 +31,8 @@ func statusMetadata(d device.Interface) map[string]string {
 		wrpmeta.Field{From: "wan-ipv4-address", To: "/wan-ipv4-address"}).
 		Set("/trust", strconv.Itoa(d.Metadata().TrustClaim())).
 		Set("/account-id", d.Metadata().AccountIDClaim()).
+		Set("/hw-deviceid", string(d.ID())).
+		Set("/intermediate-context", d.IntermediateContext()).
 		Build()
 
 	if allFieldsPresent {
@@ -39,8 +41,6 @@ func statusMetadata(d device.Interface) map[string]string {
 		metadata["/compliance"] = convey.MissingFields.String()
 	}
 
-	metadata["/hw-deviceid"] = string(d.ID())
-	metadata["/intermediate-context"] = d.IntermediateContext()
 	return metadata
 }
 
