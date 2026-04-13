@@ -28,6 +28,7 @@ func genTestMetadata() *device.Metadata {
 	claims := map[string]interface{}{
 		device.PartnerIDClaimKey: "partner-1",
 		device.TrustClaimKey:     0,
+		device.AccountIDClaimKey: "0123456789",
 	}
 
 	m.SetClaims(claims)
@@ -854,6 +855,7 @@ func testEventDispatcherKafkaIntegration(t *testing.T) {
 					if locator.Scheme == wrp.SchemeEvent && tc.kafkaEnabled {
 						// For event:// scheme with Kafka enabled, we add hw-deviceid metadata
 						d.On("ID").Return(device.ID("mac:123412341234"))
+						d.On("Metadata").Return(deviceMetadata)
 					}
 				}
 			}
@@ -1073,7 +1075,7 @@ func testEventDispatcherHwDeviceIDEnrichment(t *testing.T) {
 
 			// Setup device mock
 			d.On("ID").Return(device.ID("mac:112233445566"))
-
+			d.On("Metadata").Return(genTestMetadata())
 			// Setup Kafka publisher to capture the message
 			mockPub.On("IsEnabled").Return(true)
 			mockPub.On("Publish", mock.Anything, mock.AnythingOfType("*wrp.Message")).

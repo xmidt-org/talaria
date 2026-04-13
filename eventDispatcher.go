@@ -160,6 +160,8 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 				if msg.Metadata == nil {
 					msg.Metadata = make(map[string]string)
 				}
+
+				msg.Metadata["/account-id"] = event.Device.Metadata().AccountIDClaim()
 				if msg.Metadata["/hw-deviceid"] == "" {
 					msg.Metadata["/hw-deviceid"] = string(event.Device.ID())
 				}
