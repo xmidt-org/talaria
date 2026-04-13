@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"strconv"
 	"testing"
 	"time"
 
@@ -44,7 +45,10 @@ func testEventDispatcherOnDeviceEventConnectEvent(t *testing.T) {
 
 	om, err := NewTestOutboundMeasures()
 	require.NoError(err)
-	dispatcher, outbounds, err := NewEventDispatcher(om, nil, nil, nil)
+	dispatcher, outbounds, err := NewEventDispatcher(om, &Outbounder{
+		Method:         "POST",
+		EventEndpoints: map[string]any{"default": []string{"https://example.com"}},
+	}, nil, nil)
 	require.NotNil(dispatcher)
 	require.NotNil(outbounds)
 	require.NoError(err)
@@ -56,8 +60,34 @@ func testEventDispatcherOnDeviceEventConnectEvent(t *testing.T) {
 	d.On("Convey").Return(convey.C(nil))
 
 	dispatcher.OnDeviceEvent(&device.Event{Type: device.Connect, Device: d})
-	assert.Equal(0, len(outbounds))
+	assert.Equal(1, len(outbounds))
 	d.AssertExpectations(t)
+
+	// Verify the outbound event contains the expected online event metadata/contents.
+	e := <-outbounds
+	e.cancel()
+	<-e.request.Context().Done()
+	actual := new(wrp.Message)
+	assert.NoError(wrp.NewDecoder(e.request.Body, wrp.Msgpack).Decode(actual))
+	mTime, err := time.Parse(time.RFC3339Nano, actual.Metadata[device.WRPTimestampMetadataKey])
+	require.NoError(err)
+	expected := wrp.Message{
+		Type:        wrp.SimpleEventMessageType,
+		Source:      "localhost",
+		Destination: "event:device-status/mac:123412341234/online",
+		ContentType: wrp.MimeTypeJson,
+		Metadata: map[string]string{
+			"/trust":                       strconv.Itoa(d.Metadata().TrustClaim()),
+			"/account-id":                  d.Metadata().AccountIDClaim(),
+			"/hw-deviceid":                 string(d.ID()),
+			"/intermediate-context":        d.IntermediateContext(),
+			device.WRPTimestampMetadataKey: mTime.Format(time.RFC3339Nano),
+			"/compliance":                  convey.MissingFields.String(),
+		},
+		Payload:    onlinePayload(mTime, d),
+		PartnerIDs: []string{deviceMetadata.PartnerIDClaim()},
+	}
+	assert.Equal(expected, *actual)
 }
 
 func testEventDispatcherOnDeviceEventDisconnectEvent(t *testing.T) {
@@ -69,7 +99,10 @@ func testEventDispatcherOnDeviceEventDisconnectEvent(t *testing.T) {
 
 	om, err := NewTestOutboundMeasures()
 	require.NoError(err)
-	dispatcher, outbounds, err := NewEventDispatcher(om, nil, nil, nil)
+	dispatcher, outbounds, err := NewEventDispatcher(om, &Outbounder{
+		Method:         "POST",
+		EventEndpoints: map[string]any{"default": []string{"https://example.com"}},
+	}, nil, nil)
 	require.NotNil(dispatcher)
 	require.NotNil(outbounds)
 	require.NoError(err)
@@ -79,13 +112,39 @@ func testEventDispatcherOnDeviceEventDisconnectEvent(t *testing.T) {
 	d.On("ID").Return(device.ID("mac:123412341234"))
 	d.On("Metadata").Return(deviceMetadata)
 	d.On("Convey").Return(convey.C(nil))
-	d.On("Statistics").Return(device.NewStatistics(nil, time.Now()))
-	d.On("Statistics").Return(device.NewStatistics(nil, time.Now()))
+	mtime := time.Now()
+	d.On("Statistics").Return(device.NewStatistics(func() time.Time { return mtime.Add(time.Minute) }, mtime))
 	d.On("CloseReason").Return(device.CloseReason{})
 
 	dispatcher.OnDeviceEvent(&device.Event{Type: device.Disconnect, Device: d})
-	assert.Equal(0, len(outbounds))
+	assert.Equal(1, len(outbounds))
 	d.AssertExpectations(t)
+
+	// Verify the outbound event contains the expected offline event metadata/contents.
+	e := <-outbounds
+	e.cancel()
+	<-e.request.Context().Done()
+	actual := new(wrp.Message)
+	assert.NoError(wrp.NewDecoder(e.request.Body, wrp.Msgpack).Decode(actual))
+	mTime, err := time.Parse(time.RFC3339Nano, actual.Metadata[device.WRPTimestampMetadataKey])
+	require.NoError(err)
+	expected := wrp.Message{
+		Type:        wrp.SimpleEventMessageType,
+		Source:      "localhost",
+		Destination: "event:device-status/mac:123412341234/offline",
+		ContentType: wrp.MimeTypeJson,
+		Metadata: map[string]string{
+			"/trust":                       strconv.Itoa(d.Metadata().TrustClaim()),
+			"/account-id":                  d.Metadata().AccountIDClaim(),
+			"/hw-deviceid":                 string(d.ID()),
+			"/intermediate-context":        d.IntermediateContext(),
+			device.WRPTimestampMetadataKey: mTime.Format(time.RFC3339Nano),
+			"/compliance":                  convey.MissingFields.String(),
+		},
+		Payload:    offlinePayload(mTime, d),
+		PartnerIDs: []string{deviceMetadata.PartnerIDClaim()},
+	}
+	assert.Equal(expected, *actual)
 }
 
 func testEventDispatcherOnDeviceEventUnroutable(t *testing.T) {

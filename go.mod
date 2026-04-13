@@ -1,6 +1,6 @@
 module github.com/xmidt-org/talaria
 
-go 1.25.5
+go 1.26
 
 require (
 	github.com/fatih/structs v1.1.0
@@ -27,7 +27,7 @@ require (
 	github.com/xmidt-org/httpaux v0.4.2
 	github.com/xmidt-org/sallust v0.2.4
 	github.com/xmidt-org/touchstone v0.1.7
-	github.com/xmidt-org/webpa-common/v2 v2.8.0
+	github.com/xmidt-org/webpa-common/v2 v2.8.2
 	github.com/xmidt-org/wrp-go/v3 v3.7.0
 	github.com/xmidt-org/wrp-go/v5 v5.4.0
 	github.com/xmidt-org/wrpkafka v0.1.3
