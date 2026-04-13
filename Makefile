@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Comcast Cable Communications Management, LLC
+# SPDX-License-Identifier: Apache-2.0
 .PHONY: test test-unit test-integration test-all clean
 
 # IMPORTANT: -tags="" is explicitly set to exclude files with build tags
