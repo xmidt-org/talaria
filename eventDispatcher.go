@@ -34,23 +34,26 @@ var (
 // via the returned channel. The channel may be used to spawn one or more workers
 // to process the envelopes
 type eventDispatcher struct {
-	logger           *zap.Logger
-	urlFilter        URLFilter
-	method           string
-	timeout          time.Duration
-	authorizationKey string
-	source           string
-	eventMap         event.MultiMap
-	queueSize        prometheus.Gauge
-	droppedMessages  CounterVec
-	outboundEvents   CounterVec
-	outbounds        chan<- outboundEnvelope
+	logger               *zap.Logger
+	urlFilter            URLFilter
+	method               string
+	timeout              time.Duration
+	authorizationKey     string
+	source               string
+	eventMap             event.MultiMap
+	queueSize            prometheus.Gauge
+	droppedMessages      CounterVec
+	outboundEvents       CounterVec
+	outbounds            chan<- outboundEnvelope
+	kafkaPublisher       Publisher
+	kafkaDroppedMessages CounterVec
+	kafkaOutboundEvents  CounterVec
 }
 
 // NewEventDispatcher is an eventDispatcher factory which sends envelopes via
 // the returned channel. The channel may be used to spawn one or more workers
 // to process the envelopes.
-func NewEventDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFilter) (Dispatcher, <-chan outboundEnvelope, error) {
+func NewEventDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFilter, kafkaPublisher Publisher) (Dispatcher, <-chan outboundEnvelope, error) {
 	if urlFilter == nil {
 		var err error
 		urlFilter, err = NewURLFilter(o)
@@ -68,18 +71,26 @@ func NewEventDispatcher(om OutboundMeasures, o *Outbounder, urlFilter URLFilter)
 
 	logger.Info("eventMap created", zap.Any("eventMap", eventMap))
 
+	// Default to noop publisher if not provided
+	if kafkaPublisher == nil {
+		kafkaPublisher = &noopPublisher{}
+	}
+
 	return &eventDispatcher{
-		logger:           logger,
-		urlFilter:        urlFilter,
-		method:           o.method(),
-		timeout:          o.requestTimeout(),
-		authorizationKey: o.authKey(),
-		eventMap:         eventMap,
-		queueSize:        om.QueueSize,
-		source:           o.source(),
-		droppedMessages:  om.DroppedMessages,
-		outboundEvents:   om.OutboundEvents,
-		outbounds:        outbounds,
+		logger:               logger,
+		urlFilter:            urlFilter,
+		method:               o.method(),
+		timeout:              o.requestTimeout(),
+		authorizationKey:     o.authKey(),
+		eventMap:             eventMap,
+		queueSize:            om.QueueSize,
+		source:               o.source(),
+		droppedMessages:      om.DroppedMessages,
+		outboundEvents:       om.OutboundEvents,
+		kafkaDroppedMessages: om.KafkaDroppedMessages,
+		kafkaOutboundEvents:  om.KafkaOutboundEvents,
+		outbounds:            outbounds,
+		kafkaPublisher:       kafkaPublisher,
 	}, outbounds, nil
 }
 
@@ -98,6 +109,7 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 			case device.Connect, device.Disconnect, device.MessageReceived:
 				d.logger.Error("Dropped message, event not sent", zap.String(schemeLabel, scheme), zap.String(codeLabel, messageDroppedCode), zap.String(reasonLabel, panicReason), zap.Any("panic", r))
 				d.droppedMessages.With(prometheus.Labels{schemeLabel: scheme, codeLabel: messageDroppedCode, reasonLabel: panicReason}).Add(1.0)
+				d.kafkaDroppedMessages.With(prometheus.Labels{schemeLabel: scheme, codeLabel: messageDroppedCode, reasonLabel: panicReason}).Add(1.0)
 				d.outboundEvents.With(prometheus.Labels{schemeLabel: scheme, reasonLabel: panicReason, outcomeLabel: failureOutcome}).Add(1.0)
 			}
 		}
@@ -110,6 +122,7 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 
 	switch event.Type {
 	case device.Connect:
+		d.logger.Debug("Processing connect event")
 		scheme = wrp.SchemeEvent
 		eventType, message := newOnlineMessage(d.source, event.Device)
 		_, err = d.encodeAndDispatchEvent(eventType, wrp.Msgpack, message)
@@ -117,6 +130,11 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 			d.logger.Error("Error dispatching online event", zap.Any("eventType", eventType), zap.Any("destination", message.Destination), zap.Error(err))
 		}
 
+		if d.kafkaPublisher.IsEnabled() {
+			// Publish Connect event to Kafka
+			d.logger.Debug("Publishing connect event to Kafka", zap.Any("destination", message.Destination))
+			d.sendToKafka(message)
+		}
 	case device.Disconnect:
 		scheme = wrp.SchemeEvent
 		eventType, message := newOfflineMessage(d.source, event.Device)
@@ -124,10 +142,29 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 		if err != nil {
 			d.logger.Error("Error dispatching offline event", zap.Any("eventType", eventType), zap.Any("destination", message.Destination), zap.Error(err))
 		}
+
+		if d.kafkaPublisher.IsEnabled() {
+			// Publish Disconnect event to Kafka
+			d.sendToKafka(message)
+		}
 	case device.MessageReceived:
 		scheme, err = d.routeMessageReceivedEvent(event)
 		if err != nil {
 			scheme = unknown
+		}
+
+		// Publish to Kafka if enabled and event was successfully processed
+		if l, err := getEventDestLocator(event); err == nil && l.Scheme == wrp.SchemeEvent && d.kafkaPublisher.IsEnabled() {
+			// Extract WRP message from event and add hw-deviceid to metadata for uniformity
+			if msg, ok := event.Message.(*wrp.Message); ok {
+				if msg.Metadata == nil {
+					msg.Metadata = make(map[string]string)
+				}
+				if msg.Metadata["/hw-deviceid"] == "" {
+					msg.Metadata["/hw-deviceid"] = string(event.Device.ID())
+				}
+				d.sendToKafka(msg)
+			}
 		}
 	default:
 		err = ErrorUnsupportedEvent
@@ -152,18 +189,12 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 }
 
 func (d *eventDispatcher) routeMessageReceivedEvent(event *device.Event) (scheme string, err error) {
-	routable, ok := event.Message.(wrp.Routable)
-	if !ok {
-		return "", errors.New("wrp event message is not routable")
-	}
-
-	destination := routable.To()
-	contentType := event.Format.ContentType()
-	var l wrp.Locator
-	if l, err = wrp.ParseLocator(destination); err != nil {
+	l, err := getEventDestLocator(event)
+	if err != nil {
 		return "", err
 	}
 
+	contentType := event.Format.ContentType()
 	scheme = l.Scheme
 	eventType := l.Authority
 	switch scheme {
@@ -179,10 +210,24 @@ func (d *eventDispatcher) routeMessageReceivedEvent(event *device.Event) (scheme
 	}
 
 	if err != nil {
-		d.logger.Error("Error dispatching event", zap.String(schemeLabel, scheme), zap.Any("destination", destination), zap.Error(err))
+		d.logger.Error("Error dispatching event", zap.String(schemeLabel, scheme), zap.Any("destination", l.String()), zap.Error(err))
 	}
 
 	return scheme, err
+}
+
+func (d *eventDispatcher) sendToKafka(msg *wrp.Message) {
+	kafkaErr := d.kafkaPublisher.Publish(context.Background(), msg)
+	if kafkaErr != nil {
+		d.kafkaDroppedMessages.With(prometheus.Labels{schemeLabel: wrp.SchemeEvent, codeLabel: messageDroppedCode, reasonLabel: kafkaSendFailure}).Add(1.0)
+		d.logger.Error("Failed to publish connect event to Kafka",
+			zap.String("destination", msg.Destination),
+			zap.Error(kafkaErr),
+		)
+		return
+	}
+	outboundEventsLabels := prometheus.Labels{schemeLabel: wrp.SchemeEvent, reasonLabel: noErrReason, outcomeLabel: successOutcome}
+	d.kafkaOutboundEvents.With(outboundEventsLabels).Add(1.0)
 }
 
 // send wraps the given request in an outboundEnvelope together with a cancellable context,
@@ -193,6 +238,8 @@ func (d *eventDispatcher) routeMessageReceivedEvent(event *device.Event) (scheme
 func (d *eventDispatcher) send(parent context.Context, request *http.Request) error {
 	// increment the queue size first, so that we always keep a positive queue size
 	d.queueSize.Add(1.0)
+	// `cancel` is called once the event is picked up by the worker pool.
+	// nolint: gosec
 	ctx, cancel := context.WithTimeout(parent, d.timeout)
 	select {
 	case d.outbounds <- outboundEnvelope{request.WithContext(ctx), cancel}:
@@ -315,4 +362,13 @@ func getDroppedMessageReason(err error) string {
 
 	// check for http `Do` related errors
 	return getDoErrReason(err)
+}
+
+func getEventDestLocator(event *device.Event) (wrp.Locator, error) {
+	routable, ok := event.Message.(wrp.Routable)
+	if !ok {
+		return wrp.Locator{}, errors.New("wrp event message is not routable")
+	}
+
+	return wrp.ParseLocator(routable.To())
 }

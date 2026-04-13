@@ -14,6 +14,8 @@ import (
 	"github.com/xmidt-org/clortho"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/wrp-go/v3"
+	wrpv5 "github.com/xmidt-org/wrp-go/v5"
+	"github.com/xmidt-org/wrpkafka"
 
 	dto "github.com/prometheus/client_model/go"
 )
@@ -241,4 +243,61 @@ func (resolver *MockResolver) Resolve(ctx context.Context, keyId string) (clorth
 func (resolver *MockResolver) AddListener(l clortho.ResolveListener) clortho.CancelListenerFunc {
 	arguments := resolver.Called(l)
 	return arguments.Get(0).(clortho.CancelListenerFunc)
+}
+
+// mockWrpKafkaPublisher is a mock implementation of wrpKafkaPublisher interface
+type mockWrpKafkaPublisher struct {
+	mock.Mock
+}
+
+func (m *mockWrpKafkaPublisher) Start() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
+func (m *mockWrpKafkaPublisher) Stop(ctx context.Context) {
+	m.Called(ctx)
+}
+
+func (m *mockWrpKafkaPublisher) Produce(ctx context.Context, msg *wrpv5.Message) (wrpkafka.Outcome, error) {
+	args := m.Called(ctx, msg)
+	return args.Get(0).(wrpkafka.Outcome), args.Error(1)
+}
+
+func (m *mockWrpKafkaPublisher) AddPublishEventListener(fn func(*wrpkafka.PublishEvent)) func() {
+	args := m.Called(fn)
+	if cancelFunc := args.Get(0); cancelFunc != nil {
+		return cancelFunc.(func())
+	}
+	return func() {} // Return no-op cancel function
+}
+
+func (m *mockWrpKafkaPublisher) BufferedRecords() (currentRecords, maxRecords int, currentBytes, maxBytes int64) {
+	args := m.Called()
+	return args.Int(0), args.Int(1), args.Get(2).(int64), args.Get(3).(int64)
+}
+
+// mockPublisher is a mock implementation of the Publisher interface
+type mockPublisher struct {
+	mock.Mock
+}
+
+func (m *mockPublisher) Start() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
+func (m *mockPublisher) Stop(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
+func (m *mockPublisher) Publish(ctx context.Context, msg *wrp.Message) error {
+	args := m.Called(ctx, msg)
+	return args.Error(0)
+}
+
+func (m *mockPublisher) IsEnabled() bool {
+	args := m.Called()
+	return args.Bool(0)
 }

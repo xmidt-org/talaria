@@ -24,13 +24,24 @@ const (
 	OutboundRequestCounter             = "outbound_requests"
 	OutboundRequestSizeBytes           = "outbound_request_size"
 	TotalOutboundEvents                = "total_outbound_events"
+	KafkaTotalOutboundEvents           = "kafka_total_outbound_events"
 	OutboundQueueSize                  = "outbound_queue_size"
 	OutboundDroppedMessageCounter      = "outbound_dropped_messages"
+	KafkaOutboundDroppedMessageCounter = "kafka_outbound_dropped_messages"
 	OutboundRetries                    = "outbound_retries"
 	OutboundAckSuccessCounter          = "outbound_ack_success"
 	OutboundAckFailureCounter          = "outbound_ack_failure"
 	OutboundAckSuccessLatencyHistogram = "outbound_ack_success_latency_seconds"
 	OutboundAckFailureLatencyHistogram = "outbound_ack_failure_latency_seconds"
+
+	// Kafka publisher metrics (from wrpkafka event listeners)
+	KafkaPublishedMessagesCounter = "kafka_messages_published_total"
+	KafkaPublishErrorsCounter     = "kafka_publish_errors_total"
+	KafkaPublishLatencyHistogram  = "kafka_publish_latency_seconds"
+	KafkaBufferUtilizationGauge   = "kafka_buffer_utilization"
+
+	// publisher outcome
+	PublishOutcomeCounter = "publish_outcome_total"
 
 	GateStatus   = "gate_status"
 	DrainStatus  = "drain_status"
@@ -48,6 +59,12 @@ const (
 	messageType    = "message_type"
 	codeLabel      = "code"
 	schemeLabel    = "scheme"
+
+	// Kafka-specific labels (from wrpkafka PublishEvent)
+	eventTypeLabel          = "event_type"
+	topicLabel              = "topic"
+	topicShardStrategyLabel = "topic_shard_strategy"
+	errorTypeLabel          = "error_type"
 )
 
 // label values
@@ -89,6 +106,7 @@ const (
 	noErrReason                           = "no_err"
 	expectedCodeReason                    = "expected_code"
 	non202CodeReason                      = "non202"
+	kafkaSendFailure                      = "kafka_send_failure"
 
 	// dropped message codes
 	messageDroppedCode = "message_dropped"
@@ -129,18 +147,31 @@ type GaugeVec interface {
 }
 
 type OutboundMeasures struct {
-	InFlight          prometheus.Gauge
-	RequestDuration   HistogramVec
-	RequestCounter    CounterVec
-	RequestSize       HistogramVec
-	OutboundEvents    CounterVec
-	QueueSize         prometheus.Gauge
-	Retries           prometheus.Counter
-	DroppedMessages   CounterVec
-	AckSuccess        CounterVec
-	AckFailure        CounterVec
-	AckSuccessLatency HistogramVec
-	AckFailureLatency HistogramVec
+	InFlight             prometheus.Gauge
+	RequestDuration      HistogramVec
+	RequestCounter       CounterVec
+	RequestSize          HistogramVec
+	OutboundEvents       CounterVec
+	QueueSize            prometheus.Gauge
+	Retries              prometheus.Counter
+	DroppedMessages      CounterVec
+	KafkaDroppedMessages CounterVec
+	KafkaOutboundEvents  CounterVec
+	AckSuccess           CounterVec
+	AckFailure           CounterVec
+	AckSuccessLatency    HistogramVec
+	AckFailureLatency    HistogramVec
+
+	// Kafka publisher metrics (wrpkafka event listeners)
+	KafkaPublished         CounterVec
+	KafkaPublishLatency    HistogramVec
+	KafkaBufferUtilization prometheus.GaugeFunc
+
+	// Publish Outcome
+	PublishOutcome CounterVec
+
+	// kafkaBufferRecordsFunc is set by the Kafka publisher to provide buffer statistics
+	kafkaBufferRecordsFunc func() (currentRecords, maxRecords int, currentBytes, maxBytes int64)
 }
 
 func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs error) {
@@ -212,6 +243,15 @@ func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs erro
 	)
 	errs = errors.Join(errs, err)
 
+	om.KafkaOutboundEvents, err = tf.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: KafkaTotalOutboundEvents,
+			Help: "Total count of kafkaoutbound events",
+		},
+		[]string{schemeLabel, reasonLabel, outcomeLabel}...,
+	)
+	errs = errors.Join(errs, err)
+
 	om.QueueSize, err = tf.NewGauge(
 		prometheus.GaugeOpts{
 			Name: OutboundQueueSize,
@@ -232,6 +272,15 @@ func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs erro
 		prometheus.CounterOpts{
 			Name: OutboundDroppedMessageCounter,
 			Help: "The total count of messages dropped",
+		},
+		[]string{schemeLabel, codeLabel, reasonLabel}...,
+	)
+	errs = errors.Join(errs, err)
+
+	om.KafkaDroppedMessages, err = tf.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: KafkaOutboundDroppedMessageCounter,
+			Help: "The total count of kafka messages dropped",
 		},
 		[]string{schemeLabel, codeLabel, reasonLabel}...,
 	)
@@ -295,6 +344,69 @@ func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs erro
 		},
 		[]string{qosLevelLabel, partnerIDLabel, messageType}...,
 	)
+	errs = errors.Join(errs, err)
+
+	// Kafka publisher metrics (for wrpkafka event listeners)
+	om.KafkaPublished, err = tf.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: KafkaPublishedMessagesCounter,
+			Help: "Total number of messages successfully published to Kafka",
+		},
+		[]string{errorTypeLabel, topicLabel, topicShardStrategyLabel}...,
+	)
+	errs = errors.Join(errs, err)
+
+	om.KafkaPublishLatency, err = tf.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name: KafkaPublishLatencyHistogram,
+			Help: "Latency of Kafka publish operations",
+			// Classic histogram buckets covering 1ms–10s, centered around the
+			// observed ~15ms average.  These are required for p50/p99 queries
+			// in Grafana; without them Prometheus only emits le="+Inf" and
+			// percentile calculations are impossible.
+			Buckets: []float64{0.001, 0.005, 0.010, 0.025, 0.050, 0.100, 0.250, 0.500, 1.0, 5.0, 10.0},
+			// Native histogram settings (used when the Prometheus scrape is
+			// configured with native_histogram_bucket_factor).
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramZeroThreshold:    0.001, // 1ms
+			NativeHistogramMaxBucketNumber:  10,
+			NativeHistogramMinResetDuration: time.Hour * 24 * 7,
+			NativeHistogramMaxZeroThreshold: 0.010, // 10ms
+			// Disable exemplars.
+			NativeHistogramMaxExemplars: -1,
+			NativeHistogramExemplarTTL:  time.Minute * 5,
+		},
+		[]string{errorTypeLabel, topicLabel, topicShardStrategyLabel}...,
+	)
+	errs = errors.Join(errs, err)
+
+	om.PublishOutcome, err = tf.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: PublishOutcomeCounter,
+			Help: "Publish outcome of events processed by Kafka publisher",
+		},
+		[]string{outcomeLabel}...,
+	)
+	errs = errors.Join(errs, err)
+
+	// Create Kafka buffer utilization gauge (function will be set by publisher)
+	om.KafkaBufferUtilization, err = tf.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Name: KafkaBufferUtilizationGauge,
+			Help: "Kafka buffer utilization (0.0-1.0)",
+		},
+		func() float64 {
+			if om.kafkaBufferRecordsFunc == nil {
+				return 0.0
+			}
+			current, max, _, _ := om.kafkaBufferRecordsFunc()
+			if max == 0 {
+				return 0.0
+			}
+			return float64(current) / float64(max)
+		},
+	)
+	errs = errors.Join(errs, err)
 
 	return om, errors.Join(errs, err)
 }

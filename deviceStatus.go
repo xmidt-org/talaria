@@ -30,6 +30,7 @@ func statusMetadata(d device.Interface) map[string]string {
 		wrpmeta.Field{From: "webpa-interface-label", To: "/webpa-interface-label"},
 		wrpmeta.Field{From: "wan-ipv4-address", To: "/wan-ipv4-address"}).
 		Set("/trust", strconv.Itoa(d.Metadata().TrustClaim())).
+		Set("/account-id", d.Metadata().AccountIDClaim()).
 		Build()
 
 	if allFieldsPresent {
