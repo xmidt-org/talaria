@@ -62,3 +62,19 @@ License: Apache-2.0
 Files: test_config/mock_tr181.json
 Copyright: SPDX-FileCopyrightText: 2025 Comcast Cable Communications Management, LLC
 License: Apache-2.0
+
+Files: cmd/device-simulator/README.md
+Copyright: SPDX-FileCopyrightText: 2026 Comcast Cable Communications Management, LLC
+License: Apache-2.0
+
+Files: cmd/device-simulator/go.mod
+Copyright: SPDX-FileCopyrightText: 2026 Comcast Cable Communications Management, LLC
+License: Apache-2.0
+
+Files: cmd/device-simulator/go.sum
+Copyright: SPDX-FileCopyrightText: 2026 Comcast Cable Communications Management, LLC
+License: Apache-2.0
+
+Files: cmd/device-simulator/device-simulator
+Copyright: SPDX-FileCopyrightText: 2026 Comcast Cable Communications Management, LLC
+License: Apache-2.0

@@ -697,79 +697,111 @@ func setupCaduceusMockServer(t *testing.T, receivedBodyChan chan<- string) *http
 	return testServer
 }
 
-//nolint:unused
-func setupXmidtAgent(t *testing.T, themisURL string, debug bool) *exec.Cmd {
+func setupXmidtAgent(t *testing.T, themisURL string, debug bool) {
 	t.Helper()
+
+	// Skip if running in short mode
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	ctx := context.Background()
 
 	// Get the workspace root directory
 	_, filename, _, _ := runtime.Caller(0)
 	workspaceRoot := filepath.Dir(filename)
-	XmidtAgentDir := filepath.Join(workspaceRoot, "cmd", "xmidt-agent", "cmd", "xmidt-agent")
-	XmidtAgentBinary := filepath.Join(XmidtAgentDir, "xmidt-agent")
 	XmidtAgentConfigTemplate := filepath.Join(workspaceRoot, "test_config", "xmidt-agent.yaml")
 
-	// Create a test-specific temporary directory for token storage (parallel-safe)
+	// Create a test-specific temporary directory for config (parallel-safe)
 	testTempDir := t.TempDir() // Automatically cleaned up after test
-	tokenCacheDir := filepath.Join(testTempDir, "temporary")
-	durableCacheDir := filepath.Join(testTempDir, "durable")
 
-	// Create directories
-	if err := os.MkdirAll(tokenCacheDir, 0755); err != nil {
-		t.Fatalf("Failed to create token cache directory: %v", err)
-	}
-	if err := os.MkdirAll(durableCacheDir, 0755); err != nil {
-		t.Fatalf("Failed to create durable cache directory: %v", err)
-	}
-
-	// Create a test-specific config file with unique storage paths
+	// Create a test-specific config file
 	configContent, err := os.ReadFile(XmidtAgentConfigTemplate)
 	if err != nil {
-		t.Fatalf("Failed to read device simulator config template: %v", err)
+		t.Fatalf("Failed to read xmidt-agent config template: %v", err)
 	}
 
-	// Replace storage paths with test-specific directories
-	// hardcoded paths in the template for now
+	// Replace storage paths with container-friendly paths
+	// The container will use these paths internally
 	configStr := string(configContent)
-	configStr = strings.Replace(configStr, "./local-rdk-testing/temporary", tokenCacheDir, 1)
-	configStr = strings.Replace(configStr, "./local-rdk-testing/durable", durableCacheDir, 1)
+	configStr = strings.Replace(configStr, "./local-rdk-testing/temporary", "/tmp/xmidt-agent/temporary", 1)
+	configStr = strings.Replace(configStr, "./local-rdk-testing/durable", "/tmp/xmidt-agent/durable", 1)
 
-	// DYNAMIC PORT ALLOCATION: Update Themis URL with the actual dynamic port
-	// The xmidt-agent needs to get its JWT from Themis, which now runs on a random port.
-	// Replace the hardcoded "http://localhost:6501/issue" with the actual Themis issuer URL.
-	configStr = strings.Replace(configStr, "http://localhost:6501/issue", themisURL, 1)
-	t.Logf("✓ Updated xmidt-agent config to use Themis at: %s", themisURL)
+	// Update URLs to use host.docker.internal for container-to-host communication
+	// This allows the container to reach services running on the host (Talaria, Themis)
+	themisURLForContainer := strings.Replace(themisURL, "localhost", "host.docker.internal", 1)
+	themisURLForContainer = strings.Replace(themisURLForContainer, "127.0.0.1", "host.docker.internal", 1)
+	configStr = strings.Replace(configStr, "http://localhost:6501/issue", themisURLForContainer, 1)
+
+	// Also update Talaria WebSocket URL if present in config
+	configStr = strings.Replace(configStr, "ws://localhost:6200", "ws://host.docker.internal:6200", -1)
+	configStr = strings.Replace(configStr, "ws://127.0.0.1:6200", "ws://host.docker.internal:6200", -1)
+
+	t.Logf("✓ Updated xmidt-agent config to use Themis at: %s", themisURLForContainer)
 
 	// Write test-specific config
 	testConfigFile := filepath.Join(testTempDir, "xmidt-agent.yaml")
 	if err := os.WriteFile(testConfigFile, []byte(configStr), 0600); err != nil {
 		t.Fatalf("Failed to write test config: %v", err)
 	}
-	t.Logf("✓ Created test-specific config with isolated storage")
+	t.Logf("✓ Created test-specific config")
 
-	t.Log("Building xmidt-agent...")
-	buildCmd := exec.Command("go", "build", "-o", XmidtAgentBinary, ".")
-	buildCmd.Dir = XmidtAgentDir
-	if output, err := buildCmd.CombinedOutput(); err != nil {
-		t.Logf("Build output: %s", string(output))
-		t.Fatalf("Failed to build xmidt-agent: %v", err)
-	}
-	t.Log("✓ xmidt-agent built successfully")
+	// Configure testcontainers to use Podman if DOCKER_HOST is set
+	configureTestContainersForPodman(t)
 
-	// Build command with optional debug flag
-	args := []string{}
+	// Build container command with optional debug flag
+	cmd := []string{"-f", "/etc/xmidt-agent/xmidt-agent.yaml"}
 	if debug {
-		args = append(args, "-d")
+		cmd = append([]string{"-d"}, cmd...)
 		t.Log("Starting xmidt-agent with DEBUG mode enabled (-d flag)")
 	}
-	args = append(args, "-f", testConfigFile)
 
-	simCmd := exec.Command(XmidtAgentBinary, args...)
-	simCmd.Dir = workspaceRoot
-	simCmd.Stdout = os.Stdout
-	simCmd.Stderr = os.Stderr
+	req := testcontainers.ContainerRequest{
+		Image: "ghcr.io/xmidt-org/xmidt-agent:v0.9.9-amd64",
+		Cmd:   cmd,
+		Files: []testcontainers.ContainerFile{
+			{
+				HostFilePath:      testConfigFile,
+				ContainerFilePath: "/etc/xmidt-agent/xmidt-agent.yaml",
+				FileMode:          0644,
+			},
+		},
+		// Note: host.docker.internal works on macOS and Windows by default
+		// On Linux, may need additional configuration or use host network mode
+	}
 
-	return simCmd
+	t.Log("Starting xmidt-agent container...")
+	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
+	require.NoError(t, err, "Failed to start xmidt-agent container")
 
+	t.Log("xmidt-agent container started, setting up log streaming...")
+
+	// Create log consumer and start log producer
+	logConsumer := newTestLogConsumer(t, "xmidt-agent")
+	if err := container.StartLogProducer(ctx); err != nil {
+		t.Logf("Warning: Failed to start log producer for xmidt-agent: %v", err)
+	} else {
+		container.FollowOutput(logConsumer)
+		t.Log("xmidt-agent log streaming enabled")
+	}
+
+	// Give logs a moment to start streaming
+	time.Sleep(1 * time.Second)
+
+	t.Cleanup(func() {
+		t.Log("Stopping xmidt-agent container...")
+		if err := container.StopLogProducer(); err != nil {
+			t.Logf("Warning: Failed to stop log producer: %v", err)
+		}
+		if err := container.Terminate(ctx); err != nil {
+			t.Logf("Failed to terminate xmidt-agent container: %v", err)
+		}
+	})
+
+	t.Log("✓ xmidt-agent container is running")
 }
 
 func setupThemis(t *testing.T, themisConfigFile string) (*testcontainers.Container, string, string) {
@@ -1085,12 +1117,13 @@ func setupIntegrationTest(t *testing.T, configFile string, opts ...setupOption) 
 func setupIntegrationTestWithCapabilities(t *testing.T, talariaConfigFile, themisConfigFile string, opts ...setupOption) *TalariaTestFixture {
 	t.Helper()
 
-	// Default: start all services (backwards compatible)
+	// Default: start core services but NOT xmidt-agent (most tests don't need a connected device)
+	// Use WithXmidtAgent() or WithFullStack() to explicitly enable it
 	config := setupConfig{
 		startKafka:          true,
 		startThemis:         true,
 		startCaduceus:       true,
-		startXmidtAgent:     true,
+		startXmidtAgent:     false, // Changed from true - explicitly opt-in with WithXmidtAgent()
 		defaultThemisConfig: themisConfigFile,
 	}
 
@@ -1230,25 +1263,11 @@ func setupIntegrationTestWithCapabilities(t *testing.T, talariaConfigFile, themi
 	talariaURL := "http://localhost:6200"
 	t.Logf("✓ Talaria started at: %s", talariaURL)
 
-	// 7. Build and start xmidt-agent (if enabled)
+	// 7. Start xmidt-agent container (if enabled)
 	if config.startXmidtAgent {
-		simCmd := setupXmidtAgent(t, themisIssuerURL, config.xmidtAgentDebug)
-		if err := simCmd.Start(); err != nil {
-			t.Fatalf("Failed to start xmidt-agent: %v", err)
-		}
-		t.Logf("✓ xmidt-agent started with PID %d", simCmd.Process.Pid)
+		setupXmidtAgent(t, themisIssuerURL, config.xmidtAgentDebug)
 
-		// Register cleanup for xmidt-agent
-		t.Cleanup(func() {
-			if simCmd.Process != nil {
-				t.Log("Stopping xmidt-agent...")
-				simCmd.Process.Kill()
-				simCmd.Wait()
-				t.Log("✓ xmidt-agent stopped")
-			}
-		})
-
-		// 7. Wait for device to connect
+		// Wait for device to connect
 		t.Log("Waiting for device to connect...")
 		time.Sleep(10 * time.Second)
 		t.Log("✓ Device connection window complete")
