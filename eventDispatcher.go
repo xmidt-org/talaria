@@ -155,8 +155,14 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 
 		// Publish to Kafka if enabled and event was successfully processed
 		if l, err := getEventDestLocator(event); err == nil && l.Scheme == wrp.SchemeEvent && d.kafkaPublisher.IsEnabled() {
-			// Extract WRP message from event
+			// Extract WRP message from event and add hw-deviceid to metadata for uniformity
 			if msg, ok := event.Message.(*wrp.Message); ok {
+				if msg.Metadata == nil {
+					msg.Metadata = make(map[string]string)
+				}
+				if msg.Metadata["/hw-deviceid"] == "" {
+					msg.Metadata["/hw-deviceid"] = string(event.Device.ID())
+				}
 				d.sendToKafka(msg)
 			}
 		}
@@ -232,6 +238,8 @@ func (d *eventDispatcher) sendToKafka(msg *wrp.Message) {
 func (d *eventDispatcher) send(parent context.Context, request *http.Request) error {
 	// increment the queue size first, so that we always keep a positive queue size
 	d.queueSize.Add(1.0)
+	// `cancel` is called once the event is picked up by the worker pool.
+	// nolint: gosec
 	ctx, cancel := context.WithTimeout(parent, d.timeout)
 	select {
 	case d.outbounds <- outboundEnvelope{request.WithContext(ctx), cancel}:
