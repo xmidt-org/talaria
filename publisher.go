@@ -82,6 +82,10 @@ type KafkaConfig struct {
 	RequestTimeout time.Duration `json:"requestTimeout" yaml:"requestTimeout"`
 	// InitialDynamicConfig is the initial dynamic configuration for wrpkafka
 	InitialDynamicConfig wrpkafka.DynamicConfig `json:"initialDynamicConfig" yaml:"initialDynamicConfig"`
+	// PrometheusNamespace is the prometheus namespace (read from metric.metricsOptions.namespace)
+	PrometheusNamespace string
+	// PrometheusSubsystem is the prometheus subsystem (read from metric.metricsOptions.subsystem)
+	PrometheusSubsystem string
 }
 
 // Publisher is an interface for publishing WRP messages to Kafka
@@ -144,6 +148,15 @@ func NewKafkaPublisher(logger *zap.Logger, v *viper.Viper, om *OutboundMeasures)
 		return nil, errors.New("kafka.brokers is required")
 	}
 
+	// Read prometheus namespace and subsystem from existing metric.metricsOptions config
+	// This avoids duplicating the prometheus config in the kafka section
+	if metricsV := v.Sub("metric"); metricsV != nil {
+		if metricsOptsV := metricsV.Sub("metricsOptions"); metricsOptsV != nil {
+			config.PrometheusNamespace = metricsOptsV.GetString("namespace")
+			config.PrometheusSubsystem = metricsOptsV.GetString("subsystem")
+		}
+	}
+
 	logger.Info("Creating Kafka publisher",
 		zap.Strings("brokers", config.Brokers),
 		zap.Bool("allowAutoTopicCreation", config.AllowAutoTopicCreation),
@@ -174,6 +187,8 @@ func publisherFactory(config *KafkaConfig) (wrpKafkaPublisher, error) {
 		RequestTimeout:         config.RequestTimeout,
 		InitialDynamicConfig:   config.InitialDynamicConfig,
 		AllowAutoTopicCreation: config.AllowAutoTopicCreation,
+		PrometheusNamespace:    config.PrometheusNamespace,
+		PrometheusSubsystem:    config.PrometheusSubsystem,
 	}
 
 	// Configure TLS if enabled
