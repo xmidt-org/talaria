@@ -549,6 +549,35 @@ func TestDefaultPublisherFactory(t *testing.T) {
 			},
 			expectError: false,
 		},
+		{
+			name: "with prometheus namespace and subsystem",
+			config: &KafkaConfig{
+				Enabled: true,
+				Brokers: []string{"localhost:9092"},
+				InitialDynamicConfig: wrpkafka.DynamicConfig{
+					TopicMap: []wrpkafka.TopicRoute{
+						{Pattern: "*", Topic: "test-topic"},
+					},
+				},
+				PrometheusNamespace: "xmidt",
+				PrometheusSubsystem: "talaria",
+			},
+			expectError: false,
+		},
+		{
+			name: "with only prometheus namespace",
+			config: &KafkaConfig{
+				Enabled: true,
+				Brokers: []string{"localhost:9092"},
+				InitialDynamicConfig: wrpkafka.DynamicConfig{
+					TopicMap: []wrpkafka.TopicRoute{
+						{Pattern: "*", Topic: "test-topic"},
+					},
+				},
+				PrometheusNamespace: "custom_ns",
+			},
+			expectError: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -573,6 +602,12 @@ func TestDefaultPublisherFactory(t *testing.T) {
 				assert.Equal(t, tt.config.MaxBufferedBytes, wrpPub.MaxBufferedBytes)
 				assert.Equal(t, tt.config.MaxRetries, wrpPub.MaxRetries)
 				assert.Equal(t, tt.config.RequestTimeout, wrpPub.RequestTimeout)
+
+				// Verify prometheus namespace and subsystem
+				assert.Equal(t, tt.config.PrometheusNamespace, wrpPub.PrometheusNamespace,
+					"PrometheusNamespace should be passed to wrpkafka.Publisher")
+				assert.Equal(t, tt.config.PrometheusSubsystem, wrpPub.PrometheusSubsystem,
+					"PrometheusSubsystem should be passed to wrpkafka.Publisher")
 
 				// Verify topic map is empty if not provided
 				if len(tt.config.InitialDynamicConfig.TopicMap) == 0 {
@@ -706,10 +741,12 @@ func TestConvertV3ToV5_Nil(t *testing.T) {
 
 func TestNewKafkaPublisher(t *testing.T) {
 	tests := []struct {
-		name        string
-		config      map[string]interface{}
-		expectError bool
-		expectNoop  bool
+		name                     string
+		config                   map[string]interface{}
+		expectError              bool
+		expectNoop               bool
+		expectedPrometheusNS     string
+		expectedPrometheusSubsys string
 	}{
 		{
 			name:        "No config returns noop",
@@ -776,6 +813,61 @@ func TestNewKafkaPublisher(t *testing.T) {
 			expectError: false,
 			expectNoop:  false,
 		},
+		{
+			name: "With prometheus config in metricsOptions",
+			config: map[string]interface{}{
+				"kafka": map[string]interface{}{
+					"enabled": true,
+					"brokers": []string{"localhost:9092"},
+				},
+				"metric": map[string]interface{}{
+					"metricsOptions": map[string]interface{}{
+						"namespace": "xmidt",
+						"subsystem": "talaria",
+					},
+				},
+			},
+			expectError:              false,
+			expectNoop:               false,
+			expectedPrometheusNS:     "xmidt",
+			expectedPrometheusSubsys: "talaria",
+		},
+		{
+			name: "With only namespace in metricsOptions",
+			config: map[string]interface{}{
+				"kafka": map[string]interface{}{
+					"enabled": true,
+					"brokers": []string{"localhost:9092"},
+				},
+				"metric": map[string]interface{}{
+					"metricsOptions": map[string]interface{}{
+						"namespace": "custom_namespace",
+					},
+				},
+			},
+			expectError:              false,
+			expectNoop:               false,
+			expectedPrometheusNS:     "custom_namespace",
+			expectedPrometheusSubsys: "",
+		},
+		{
+			name: "With only subsystem in metricsOptions",
+			config: map[string]interface{}{
+				"kafka": map[string]interface{}{
+					"enabled": true,
+					"brokers": []string{"localhost:9092"},
+				},
+				"metric": map[string]interface{}{
+					"metricsOptions": map[string]interface{}{
+						"subsystem": "custom_subsystem",
+					},
+				},
+			},
+			expectError:              false,
+			expectNoop:               false,
+			expectedPrometheusNS:     "",
+			expectedPrometheusSubsys: "custom_subsystem",
+		},
 	}
 
 	for _, tt := range tests {
@@ -802,8 +894,16 @@ func TestNewKafkaPublisher(t *testing.T) {
 				assert.True(t, ok, "Expected noopPublisher")
 			} else {
 				assert.True(t, publisher.IsEnabled())
-				_, ok := publisher.(*kafkaPublisher)
+				kp, ok := publisher.(*kafkaPublisher)
 				assert.True(t, ok, "Expected kafkaPublisher")
+
+				// Verify prometheus namespace and subsystem if specified
+				if tt.expectedPrometheusNS != "" || tt.expectedPrometheusSubsys != "" {
+					assert.Equal(t, tt.expectedPrometheusNS, kp.config.PrometheusNamespace,
+						"PrometheusNamespace should match expected value")
+					assert.Equal(t, tt.expectedPrometheusSubsys, kp.config.PrometheusSubsystem,
+						"PrometheusSubsystem should match expected value")
+				}
 			}
 		})
 	}
