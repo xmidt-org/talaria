@@ -30,7 +30,7 @@ require (
 	github.com/xmidt-org/webpa-common/v2 v2.8.2
 	github.com/xmidt-org/wrp-go/v3 v3.7.0
 	github.com/xmidt-org/wrp-go/v5 v5.4.1
-	github.com/xmidt-org/wrpkafka v0.1.3
+	github.com/xmidt-org/wrpkafka v0.1.4
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.68.0
 	go.uber.org/zap v1.27.1
 )
@@ -131,7 +131,7 @@ require (
 	github.com/twmb/franz-go/pkg/kmsg v1.12.0 // indirect
 	github.com/ugorji/go/codec v1.2.14 // indirect
 	github.com/xmidt-org/chronon v0.1.7 // indirect
-	github.com/xmidt-org/eventor v1.0.39 // indirect
+	github.com/xmidt-org/eventor v1.0.43 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.65.0 // indirect
