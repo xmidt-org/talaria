@@ -64,7 +64,7 @@ func setupDefaultConfigValues(v *viper.Viper) {
 	v.SetDefault(RehasherServicesConfigKey, []string{applicationName})
 }
 
-func newDeviceManager(logger *zap.Logger, r xmetrics.Registry, tf *touchstone.Factory, v *viper.Viper) (device.Manager, devicegate.Interface, *consul.ConsulWatcher, error) {
+func newDeviceManager(logger *zap.Logger, r xmetrics.Registry, tf *touchstone.Factory, v *viper.Viper, promReg prometheus.Registerer) (device.Manager, devicegate.Interface, *consul.ConsulWatcher, error) {
 	deviceOptions, err := device.NewOptions(logger, v.Sub(device.DeviceManagerKey))
 	if err != nil {
 		return nil, nil, nil, err
@@ -81,7 +81,7 @@ func newDeviceManager(logger *zap.Logger, r xmetrics.Registry, tf *touchstone.Fa
 	}
 
 	// Create and start Kafka publisher (pass metrics for integration)
-	kafkaPublisher, err := NewKafkaPublisher(logger, v, &om)
+	kafkaPublisher, err := NewKafkaPublisher(logger, v, &om, promReg)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to create kafka publisher: %w", err)
 	}
@@ -184,7 +184,7 @@ func talaria(arguments []string) int {
 	v.UnmarshalKey("touchstone", &tsConfig)
 	tf := touchstone.NewFactory(tsConfig, logger, promReg)
 
-	manager, filterGate, watcher, err := newDeviceManager(logger, metricsRegistry, tf, v)
+	manager, filterGate, watcher, err := newDeviceManager(logger, metricsRegistry, tf, v, promReg)
 	if err != nil {
 		logger.Error("unable to create device manager", zap.Error(err))
 		return 2

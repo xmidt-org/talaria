@@ -112,16 +112,17 @@ type wrpKafkaPublisher interface {
 
 // kafkaPublisher implements the Publisher interface using wrpkafka
 type kafkaPublisher struct {
-	config           *KafkaConfig
-	logger           *zap.Logger
-	publisher        wrpKafkaPublisher
-	started          bool
-	publisherFactory func(*KafkaConfig) (wrpKafkaPublisher, error) // for testing
-	metrics          *OutboundMeasures                             // for Prometheus metrics
+	config             *KafkaConfig
+	logger             *zap.Logger
+	publisher          wrpKafkaPublisher
+	started            bool
+	publisherFactory   func(*KafkaConfig, prometheus.Registerer) (wrpKafkaPublisher, error) // for testing
+	metrics            *OutboundMeasures                                                    // for Prometheus metrics
+	prometheusRegistry prometheus.Registerer
 }
 
 // NewKafkaPublisher creates a new Kafka publisher from Viper configuration
-func NewKafkaPublisher(logger *zap.Logger, v *viper.Viper, om *OutboundMeasures) (Publisher, error) {
+func NewKafkaPublisher(logger *zap.Logger, v *viper.Viper, om *OutboundMeasures, promReg prometheus.Registerer) (Publisher, error) {
 	if v == nil {
 		return nil, errors.New("viper config is required")
 	}
@@ -168,15 +169,16 @@ func NewKafkaPublisher(logger *zap.Logger, v *viper.Viper, om *OutboundMeasures)
 	)
 
 	return &kafkaPublisher{
-		config:           &config,
-		logger:           logger,
-		publisherFactory: publisherFactory,
-		metrics:          om,
+		config:             &config,
+		logger:             logger,
+		publisherFactory:   publisherFactory,
+		metrics:            om,
+		prometheusRegistry: promReg,
 	}, nil
 }
 
 // publisherFactory creates a real wrpkafka.Publisher
-func publisherFactory(config *KafkaConfig) (wrpKafkaPublisher, error) {
+func publisherFactory(config *KafkaConfig, promReg prometheus.Registerer) (wrpKafkaPublisher, error) {
 
 	// Create wrpkafka publisher
 	publisher := &wrpkafka.Publisher{
@@ -189,6 +191,7 @@ func publisherFactory(config *KafkaConfig) (wrpKafkaPublisher, error) {
 		AllowAutoTopicCreation: config.AllowAutoTopicCreation,
 		PrometheusNamespace:    config.PrometheusNamespace,
 		PrometheusSubsystem:    config.PrometheusSubsystem,
+		PrometheusRegisterer:   promReg,
 	}
 
 	// Configure TLS if enabled
@@ -254,7 +257,7 @@ func (k *kafkaPublisher) Start() error {
 	}
 
 	// Create the wrpkafka publisher using the factory
-	publisher, err := k.publisherFactory(k.config)
+	publisher, err := k.publisherFactory(k.config, k.prometheusRegistry)
 	if err != nil {
 		return fmt.Errorf("failed to create wrpkafka publisher: %w", err)
 	}

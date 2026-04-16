@@ -11,6 +11,9 @@ src/vendor
 +src/talaria/debug
 +src/talaria/output
 
+#artifacts
+cmd/device-simulator/device-simulator
+
  # config
 -src/talaria/talaria.json
 +src/talaria/talaria.json
