@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -75,7 +76,7 @@ func TestKafkaPublisher_Start(t *testing.T) {
 			kp := &kafkaPublisher{
 				config: config,
 				logger: zap.NewNop(),
-				publisherFactory: func(c *KafkaConfig) (wrpKafkaPublisher, error) {
+				publisherFactory: func(c *KafkaConfig, promReg prometheus.Registerer) (wrpKafkaPublisher, error) {
 					if tt.factoryError != nil {
 						return nil, tt.factoryError
 					}
@@ -582,7 +583,7 @@ func TestDefaultPublisherFactory(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			publisher, err := publisherFactory(tt.config)
+			publisher, err := publisherFactory(tt.config, nil)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -656,7 +657,7 @@ func TestKafkaPublisher_Lifecycle(t *testing.T) {
 	kp := &kafkaPublisher{
 		config: config,
 		logger: zap.NewNop(),
-		publisherFactory: func(c *KafkaConfig) (wrpKafkaPublisher, error) {
+		publisherFactory: func(c *KafkaConfig, promReg prometheus.Registerer) (wrpKafkaPublisher, error) {
 			return mockPub, nil
 		},
 		metrics: &om,
@@ -878,7 +879,7 @@ func TestNewKafkaPublisher(t *testing.T) {
 			}
 
 			logger := zap.NewNop()
-			publisher, err := NewKafkaPublisher(logger, v, nil)
+			publisher, err := NewKafkaPublisher(logger, v, nil, nil)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -916,7 +917,7 @@ func TestKafkaPublisher_NotStarted(t *testing.T) {
 	v.Set("kafka.topic", "test-topic")
 
 	logger := zap.NewNop()
-	publisher, err := NewKafkaPublisher(logger, v, nil)
+	publisher, err := NewKafkaPublisher(logger, v, nil, nil)
 	require.NoError(t, err)
 
 	msg := &wrp.Message{
