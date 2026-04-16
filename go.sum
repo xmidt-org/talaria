@@ -395,8 +395,8 @@ github.com/testcontainers/testcontainers-go/modules/kafka v0.42.0 h1:b3plW+MUoF6
 github.com/testcontainers/testcontainers-go/modules/kafka v0.42.0/go.mod h1:U0K+PapjOOVJrQCpvRYe6gKk0Oqh+ffl+J80Ln4EKzg=
 github.com/thedevsaddam/gojsonq/v2 v2.5.2 h1:CoMVaYyKFsVj6TjU6APqAhAvC07hTI6IQen8PHzHYY0=
 github.com/thedevsaddam/gojsonq/v2 v2.5.2/go.mod h1:bv6Xa7kWy82uT0LnXPE2SzGqTj33TAEeR560MdJkiXs=
-github.com/tinylib/msgp v1.6.3 h1:bCSxiTz386UTgyT1i0MSCvdbWjVW+8sG3PjkGsZQt4s=
-github.com/tinylib/msgp v1.6.3/go.mod h1:RSp0LW9oSxFut3KzESt5Voq4GVWyS+PSulT77roAqEA=
+github.com/tinylib/msgp v1.6.4 h1:mOwYbyYDLPj35mkA2BjjYejgJk9BuHxDdvRnb6v2ZcQ=
+github.com/tinylib/msgp v1.6.4/go.mod h1:RSp0LW9oSxFut3KzESt5Voq4GVWyS+PSulT77roAqEA=
 github.com/tklauser/go-sysconf v0.3.16 h1:frioLaCQSsF5Cy1jgRBrzr6t502KIIwQ0MArYICU0nA=
 github.com/tklauser/go-sysconf v0.3.16/go.mod h1:/qNL9xxDhc7tx3HSRsLWNnuzbVfh3e7gh/BmM179nYI=
 github.com/tklauser/numcpus v0.11.0 h1:nSTwhKH5e1dMNsCdVBukSZrURJRoHbSEQjdEbY+9RXw=
@@ -430,8 +430,8 @@ github.com/xmidt-org/webpa-common/v2 v2.8.2 h1:DIFtlRlHsnfbF5/1PgSk36xuaCp6gC0Re
 github.com/xmidt-org/webpa-common/v2 v2.8.2/go.mod h1:LwhIv/MJF9ToSduI37gpkSumOPdB+5i16bXOX/435dA=
 github.com/xmidt-org/wrp-go/v3 v3.7.0 h1:m9ghdq79Zzb0WjomUJ02rzFpI0RK8KTjArYpNIwx1fc=
 github.com/xmidt-org/wrp-go/v3 v3.7.0/go.mod h1:eyMj+q/7LQ4SU6Z3s6VOwuTVSh6/DJBb2soBGBFSung=
-github.com/xmidt-org/wrp-go/v5 v5.4.1 h1:znfW35ur+YhdpSIv2a6UpAnbwV5xh/6pFUAIVeAo0E4=
-github.com/xmidt-org/wrp-go/v5 v5.4.1/go.mod h1:ccLAyLFWYRAtg9kDi2M3cFU+RwsakHCMTogsPyh5EBw=
+github.com/xmidt-org/wrp-go/v5 v5.4.2 h1:SyL4tphp6+eWCdcYMVrQgx7CZyZCBI0+DB2d6WqeD5M=
+github.com/xmidt-org/wrp-go/v5 v5.4.2/go.mod h1:7sr9aQlks68nZkRRnd7HMhe95vDscG4VAvilI6cHGhw=
 github.com/xmidt-org/wrpkafka v0.1.7 h1:y5znySNmkFAVQqbXE1GNrCTAd6zlhaWLOfuV3kUsgtE=
 github.com/xmidt-org/wrpkafka v0.1.7/go.mod h1:ZAp387QesZko0uPbH4T/3K6Of1f+FhZgrQw0HPije1s=
 github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo0=
