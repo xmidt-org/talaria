@@ -605,11 +605,20 @@ func TestDefaultPublisherFactory(t *testing.T) {
 				assert.Equal(t, tt.config.RequestTimeout, wrpPub.RequestTimeout)
 
 				// Verify prometheus namespace and subsystem
-				assert.Equal(t, tt.config.PrometheusNamespace, wrpPub.PrometheusNamespace,
+				assert.Equal(t, tt.config.PrometheusNamespace, wrpPub.Prometheus.Namespace,
 					"PrometheusNamespace should be passed to wrpkafka.Publisher")
-				assert.Equal(t, tt.config.PrometheusSubsystem, wrpPub.PrometheusSubsystem,
+				assert.Equal(t, tt.config.PrometheusSubsystem, wrpPub.Prometheus.Subsystem,
 					"PrometheusSubsystem should be passed to wrpkafka.Publisher")
-
+				assert.Equal(t, tt.config.EnableRecordMetrics, wrpPub.Prometheus.EnableRecordMetrics,
+					"EnableRecordMetrics should be passed to wrpkafka.Publisher")
+				assert.Equal(t, tt.config.EnableBatchMetrics, wrpPub.Prometheus.EnableBatchMetrics,
+					"EnableBatchMetrics should be passed to wrpkafka.Publisher")
+				assert.Equal(t, tt.config.EnableCompressedBytes, wrpPub.Prometheus.EnableCompressedBytes,
+					"EnableCompressedBytes should be passed to wrpkafka.Publisher")
+				assert.Equal(t, tt.config.EnableGoCollectors, wrpPub.Prometheus.EnableGoCollectors,
+					"EnableGoCollectors should be passed to wrpkafka.Publisher")
+				assert.Equal(t, tt.config.WithClientLabel, wrpPub.Prometheus.WithClientLabel,
+					"WithClientLabel should be passed to wrpkafka.Publisher")
 				// Verify topic map is empty if not provided
 				if len(tt.config.InitialDynamicConfig.TopicMap) == 0 {
 					require.Len(t, wrpPub.InitialDynamicConfig.TopicMap, 0)

@@ -86,6 +86,16 @@ type KafkaConfig struct {
 	PrometheusNamespace string
 	// PrometheusSubsystem is the prometheus subsystem (read from metric.metricsOptions.subsystem)
 	PrometheusSubsystem string
+	// EnableRecordMetrics reports the number of records produced/fetched
+	EnableRecordMetrics bool `json:"enableRecordMetrics" yaml:"enableRecordMetrics"`
+	// EnableBatchMetrics reports the number of batches produced/fetched
+	EnableBatchMetrics bool `json:"enableBatchMetrics" yaml:"enableBatchMetrics"`
+	// EnableCompressedBytes reports compressed byte metrics in addition to uncompressed
+	EnableCompressedBytes bool `json:"enableCompressedBytes" yaml:"enableCompressedBytes"`
+	// EnableGoCollectors adds Go runtime metrics (process, goroutines, memory, etc.)
+	EnableGoCollectors bool `json:"enableGoCollectors" yaml:"enableGoCollectors"`
+	// WithClientLabel adds a "client_id" label to all metrics
+	WithClientLabel bool `json:"withClientLabel" yaml:"withClientLabel"`
 }
 
 // Publisher is an interface for publishing WRP messages to Kafka
@@ -189,9 +199,16 @@ func publisherFactory(config *KafkaConfig, promReg prometheus.Registerer) (wrpKa
 		RequestTimeout:         config.RequestTimeout,
 		InitialDynamicConfig:   config.InitialDynamicConfig,
 		AllowAutoTopicCreation: config.AllowAutoTopicCreation,
-		PrometheusNamespace:    config.PrometheusNamespace,
-		PrometheusSubsystem:    config.PrometheusSubsystem,
-		PrometheusRegisterer:   promReg,
+		Prometheus: wrpkafka.PrometheusConfig{
+			Namespace:             config.PrometheusNamespace,
+			Subsystem:             config.PrometheusSubsystem,
+			Registerer:            promReg,
+			EnableRecordMetrics:   config.EnableRecordMetrics,
+			EnableBatchMetrics:    config.EnableBatchMetrics,
+			EnableCompressedBytes: config.EnableCompressedBytes,
+			EnableGoCollectors:    config.EnableGoCollectors,
+			WithClientLabel:       config.WithClientLabel,
+		},
 	}
 
 	// Configure TLS if enabled
