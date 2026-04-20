@@ -86,8 +86,6 @@ type KafkaConfig struct {
 	PrometheusNamespace string
 	// PrometheusSubsystem is the prometheus subsystem (read from metric.metricsOptions.subsystem)
 	PrometheusSubsystem string
-	// EnableRecordMetrics reports the number of records produced/fetched
-	EnableRecordMetrics bool `json:"enableRecordMetrics" yaml:"enableRecordMetrics"`
 	// EnableBatchMetrics reports the number of batches produced/fetched
 	EnableBatchMetrics bool `json:"enableBatchMetrics" yaml:"enableBatchMetrics"`
 	// EnableCompressedBytes reports compressed byte metrics in addition to uncompressed
@@ -203,7 +201,6 @@ func publisherFactory(config *KafkaConfig, promReg prometheus.Registerer) (wrpKa
 			Namespace:             config.PrometheusNamespace,
 			Subsystem:             config.PrometheusSubsystem,
 			Registerer:            promReg,
-			EnableRecordMetrics:   config.EnableRecordMetrics,
 			EnableBatchMetrics:    config.EnableBatchMetrics,
 			EnableCompressedBytes: config.EnableCompressedBytes,
 			EnableGoCollectors:    config.EnableGoCollectors,

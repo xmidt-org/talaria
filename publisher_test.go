@@ -609,8 +609,6 @@ func TestDefaultPublisherFactory(t *testing.T) {
 					"PrometheusNamespace should be passed to wrpkafka.Publisher")
 				assert.Equal(t, tt.config.PrometheusSubsystem, wrpPub.Prometheus.Subsystem,
 					"PrometheusSubsystem should be passed to wrpkafka.Publisher")
-				assert.Equal(t, tt.config.EnableRecordMetrics, wrpPub.Prometheus.EnableRecordMetrics,
-					"EnableRecordMetrics should be passed to wrpkafka.Publisher")
 				assert.Equal(t, tt.config.EnableBatchMetrics, wrpPub.Prometheus.EnableBatchMetrics,
 					"EnableBatchMetrics should be passed to wrpkafka.Publisher")
 				assert.Equal(t, tt.config.EnableCompressedBytes, wrpPub.Prometheus.EnableCompressedBytes,
