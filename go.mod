@@ -30,7 +30,7 @@ require (
 	github.com/xmidt-org/webpa-common/v2 v2.8.2
 	github.com/xmidt-org/wrp-go/v3 v3.7.0
 	github.com/xmidt-org/wrp-go/v5 v5.4.2
-	github.com/xmidt-org/wrpkafka v0.1.12
+	github.com/xmidt-org/wrpkafka v0.1.13
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.68.0
 	go.uber.org/zap v1.27.1
 )
