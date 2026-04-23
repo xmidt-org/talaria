@@ -23,7 +23,7 @@ require (
 	github.com/twmb/franz-go v1.21.0
 	github.com/xmidt-org/bascule v0.11.7
 	github.com/xmidt-org/candlelight v0.2.9
-	github.com/xmidt-org/clortho v0.1.9
+	github.com/xmidt-org/clortho v0.1.10
 	github.com/xmidt-org/httpaux v0.4.3
 	github.com/xmidt-org/sallust v0.2.5
 	github.com/xmidt-org/touchstone v0.1.8
@@ -131,7 +131,7 @@ require (
 	github.com/twmb/franz-go/pkg/kmsg v1.13.1 // indirect
 	github.com/twmb/franz-go/plugin/kprom v1.4.0 // indirect
 	github.com/ugorji/go/codec v1.2.14 // indirect
-	github.com/xmidt-org/chronon v0.1.10 // indirect
+	github.com/xmidt-org/chronon v0.1.11 // indirect
 	github.com/xmidt-org/eventor v1.0.47 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
