@@ -416,8 +416,8 @@ github.com/xmidt-org/candlelight v0.2.9 h1:IqrY6jfKgLyzNSpdEcgtL+Sd+ECyLN5upw84B
 github.com/xmidt-org/candlelight v0.2.9/go.mod h1:5OMLPpvD87Ic5Ve3WeaAcFAElw50EDUad71ANjaG3DY=
 github.com/xmidt-org/chronon v0.1.11 h1:jC2aVERGTZ99fLlEhcaIHzrw29RMcxXo5nykl+RvMFY=
 github.com/xmidt-org/chronon v0.1.11/go.mod h1:KYdgUzy0q+sv7Zp5mXo22oam8zRVRvzv36MlJeRY+vc=
-github.com/xmidt-org/clortho v0.1.10 h1:W/StwE9JrdddELsLqOUs6ttHHfqgCEreC+VSz1+lIgs=
-github.com/xmidt-org/clortho v0.1.10/go.mod h1:ov9ZBWb5VIU07DnNQ+NGIgirxkAXeYEFSkTnby+u0qQ=
+github.com/xmidt-org/clortho v0.1.11 h1:rhuMLAIwaneieRPnL+CtW9n0S6ccn8m42/Ao9fseAkU=
+github.com/xmidt-org/clortho v0.1.11/go.mod h1:ov9ZBWb5VIU07DnNQ+NGIgirxkAXeYEFSkTnby+u0qQ=
 github.com/xmidt-org/eventor v1.0.47 h1:9S38g19mLyj4Cve0XtqM0b9DOZ0isf5+q304KWJLdEg=
 github.com/xmidt-org/eventor v1.0.47/go.mod h1:hDYVga+QLP8ZfwIBtmDvXRtYbY2dPa6i0PNQrqtwYUg=
 github.com/xmidt-org/httpaux v0.4.3 h1:hrA8tAgMFoZkBZrysSmmait9CP7P3hMAYQjnpFJNqk8=
