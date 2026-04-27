@@ -418,8 +418,8 @@ github.com/xmidt-org/chronon v0.1.12 h1:zWC9YExmIz5h2oB5Z/eBK4hXjb3Z+sx4GtiJk0cU
 github.com/xmidt-org/chronon v0.1.12/go.mod h1:KYdgUzy0q+sv7Zp5mXo22oam8zRVRvzv36MlJeRY+vc=
 github.com/xmidt-org/clortho v0.1.12 h1:Zprv4CTlrRUg7q5iFJm/fleOoV82aAd7r7GBl+nFedY=
 github.com/xmidt-org/clortho v0.1.12/go.mod h1:/jo9qKRp7D9sKBZy9rhFsuWcMH1AmkKGHF5i6iEpxtk=
-github.com/xmidt-org/eventor v1.0.47 h1:9S38g19mLyj4Cve0XtqM0b9DOZ0isf5+q304KWJLdEg=
-github.com/xmidt-org/eventor v1.0.47/go.mod h1:hDYVga+QLP8ZfwIBtmDvXRtYbY2dPa6i0PNQrqtwYUg=
+github.com/xmidt-org/eventor v1.0.48 h1:JgCt7zuv0ctt7XEkZzJQZFWZyu7M1r4pHm1vTQBcmco=
+github.com/xmidt-org/eventor v1.0.48/go.mod h1:hDYVga+QLP8ZfwIBtmDvXRtYbY2dPa6i0PNQrqtwYUg=
 github.com/xmidt-org/httpaux v0.4.3 h1:hrA8tAgMFoZkBZrysSmmait9CP7P3hMAYQjnpFJNqk8=
 github.com/xmidt-org/httpaux v0.4.3/go.mod h1:Fb6nJXQFYa52T2GqclJL0Dbb+frEIank2amS+DerJf4=
 github.com/xmidt-org/sallust v0.2.5 h1:j1h2yxXMw+bAoaXMB/WDuYm34E9pYHU98GqUxtqgp8g=
@@ -432,8 +432,8 @@ github.com/xmidt-org/wrp-go/v3 v3.7.0 h1:m9ghdq79Zzb0WjomUJ02rzFpI0RK8KTjArYpNIw
 github.com/xmidt-org/wrp-go/v3 v3.7.0/go.mod h1:eyMj+q/7LQ4SU6Z3s6VOwuTVSh6/DJBb2soBGBFSung=
 github.com/xmidt-org/wrp-go/v5 v5.4.2 h1:SyL4tphp6+eWCdcYMVrQgx7CZyZCBI0+DB2d6WqeD5M=
 github.com/xmidt-org/wrp-go/v5 v5.4.2/go.mod h1:7sr9aQlks68nZkRRnd7HMhe95vDscG4VAvilI6cHGhw=
-github.com/xmidt-org/wrpkafka v0.1.15 h1:6ZCu9wSzBL5BWxs+SPmKgbiWgXPi89ddZSpS0vCCS/k=
-github.com/xmidt-org/wrpkafka v0.1.15/go.mod h1:UrSBQokaZqMECNtH5uW9lhqKujy1DCppOCQ1fcc1Euw=
+github.com/xmidt-org/wrpkafka v0.1.16 h1:OL/jfkZptqAuXtZe/SvbYdhxKjILtfhlibZfG1RIC+E=
+github.com/xmidt-org/wrpkafka v0.1.16/go.mod h1:myPrtwGm4rlg9sLZ1wRZyM5SXhaodGbbGlH9jug0UUA=
 github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo0=
 github.com/yusufpapurcu/wmi v1.2.4/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=
