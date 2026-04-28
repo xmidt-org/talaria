@@ -32,7 +32,7 @@ require (
 	github.com/xmidt-org/wrp-go/v5 v5.4.2
 	github.com/xmidt-org/wrpkafka v0.1.16
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.68.0
-	go.uber.org/zap v1.27.1
+	go.uber.org/zap v1.28.0
 )
 
 require (
