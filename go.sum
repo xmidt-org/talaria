@@ -422,8 +422,8 @@ github.com/xmidt-org/eventor v1.0.48 h1:JgCt7zuv0ctt7XEkZzJQZFWZyu7M1r4pHm1vTQBc
 github.com/xmidt-org/eventor v1.0.48/go.mod h1:hDYVga+QLP8ZfwIBtmDvXRtYbY2dPa6i0PNQrqtwYUg=
 github.com/xmidt-org/httpaux v0.4.3 h1:hrA8tAgMFoZkBZrysSmmait9CP7P3hMAYQjnpFJNqk8=
 github.com/xmidt-org/httpaux v0.4.3/go.mod h1:Fb6nJXQFYa52T2GqclJL0Dbb+frEIank2amS+DerJf4=
-github.com/xmidt-org/sallust v0.2.5 h1:j1h2yxXMw+bAoaXMB/WDuYm34E9pYHU98GqUxtqgp8g=
-github.com/xmidt-org/sallust v0.2.5/go.mod h1:FwymmyVGCwDwux5pm1R3GuPOTSMQAqRWIW6CVPPI6Kk=
+github.com/xmidt-org/sallust v0.2.6 h1:lgwZnRd6QG06jBrijixiSZXHztnTdii8/WQUKAiNhVs=
+github.com/xmidt-org/sallust v0.2.6/go.mod h1:d7ciT2lNGujNLgCKq4t8g/X43D3x+1jizWVYcQz/2V0=
 github.com/xmidt-org/touchstone v0.1.8 h1:jpA7j2pPtuP6hFr/LcT25cvfYkztWOp3Tj1ZCvqIvMw=
 github.com/xmidt-org/touchstone v0.1.8/go.mod h1:3nKZJlgWCDDThy/djXF2/wiwmRyCcDBSWBrSuUSy3ME=
 github.com/xmidt-org/webpa-common/v2 v2.8.2 h1:DIFtlRlHsnfbF5/1PgSk36xuaCp6gC0ReE92Sl6Z2cA=
