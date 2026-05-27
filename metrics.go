@@ -34,9 +34,8 @@ const (
 	OutboundAckSuccessLatencyHistogram = "outbound_ack_success_latency_seconds"
 	OutboundAckFailureLatencyHistogram = "outbound_ack_failure_latency_seconds"
 
-	// Kafka publisher metrics (from wrpkafka event listeners)
+	// Kafka async publisher metrics (from wrpkafka event listeners)
 	KafkaPublishedMessagesCounter = "kafka_messages_published_total"
-	KafkaPublishErrorsCounter     = "kafka_publish_errors_total"
 	KafkaPublishLatencyHistogram  = "kafka_publish_latency_seconds"
 	KafkaBufferUtilizationGauge   = "kafka_buffer_utilization"
 
