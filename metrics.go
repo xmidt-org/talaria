@@ -34,9 +34,8 @@ const (
 	OutboundAckSuccessLatencyHistogram = "outbound_ack_success_latency_seconds"
 	OutboundAckFailureLatencyHistogram = "outbound_ack_failure_latency_seconds"
 
-	// Kafka publisher metrics (from wrpkafka event listeners)
+	// Kafka async publisher metrics (from wrpkafka event listeners)
 	KafkaPublishedMessagesCounter = "kafka_messages_published_total"
-	KafkaPublishErrorsCounter     = "kafka_publish_errors_total"
 	KafkaPublishLatencyHistogram  = "kafka_publish_latency_seconds"
 	KafkaBufferUtilizationGauge   = "kafka_buffer_utilization"
 
@@ -346,11 +345,11 @@ func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs erro
 	)
 	errs = errors.Join(errs, err)
 
-	// Kafka publisher metrics (for wrpkafka event listeners)
+	// async kafka metrics (for wrpkafka event listeners)
 	om.KafkaPublished, err = tf.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: KafkaPublishedMessagesCounter,
-			Help: "Total number of messages successfully published to Kafka",
+			Help: "Async outcomes for events processed by Kafka publisher",
 		},
 		[]string{errorTypeLabel, topicLabel, topicShardStrategyLabel}...,
 	)
@@ -380,10 +379,11 @@ func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs erro
 	)
 	errs = errors.Join(errs, err)
 
+	// sync publisher outcome counter
 	om.PublishOutcome, err = tf.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: PublishOutcomeCounter,
-			Help: "Publish outcome of events processed by Kafka publisher",
+			Help: "Synchronous outcomes for events processed by Kafka publisher",
 		},
 		[]string{outcomeLabel}...,
 	)

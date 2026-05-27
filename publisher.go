@@ -287,7 +287,12 @@ func (k *kafkaPublisher) Start() error {
 			}
 
 			if event.Error != nil {
-				// Record error
+				// Log and record error
+				k.logger.Error("Kafka async publish error",
+					zap.Error(event.Error),
+					zap.String("topic", event.Topic),
+					zap.String("errorType", event.ErrorType))
+
 				labels = prometheus.Labels{
 					topicLabel:              event.Topic,
 					topicShardStrategyLabel: event.TopicShardStrategy,
