@@ -21,6 +21,14 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+const (
+	testKafkaBroker = "localhost:9092"
+	testDeviceMAC   = "mac:112233445566"
+	testEnabled     = "enabled"
+	testSASLPlain   = "PLAIN"
+	testBrokersKey  = "brokers"
+)
+
 // TestKafkaPublisher_Start tests the Start method with various scenarios
 func TestKafkaPublisher_Start(t *testing.T) {
 	tests := []struct {
@@ -63,7 +71,7 @@ func TestKafkaPublisher_Start(t *testing.T) {
 
 			config := &KafkaConfig{
 				Enabled: true,
-				Brokers: []string{"localhost:9092"},
+				Brokers: []string{testKafkaBroker},
 				InitialDynamicConfig: wrpkafka.DynamicConfig{
 					TopicMap: []wrpkafka.TopicRoute{
 						{Pattern: "*", Topic: "test-topic"},
@@ -113,7 +121,7 @@ func TestKafkaPublisher_Start_AlreadyStarted(t *testing.T) {
 				{Pattern: "*", Topic: "test-topic"},
 			},
 		},
-		Brokers: []string{"localhost:9092"},
+		Brokers: []string{testKafkaBroker},
 	}
 
 	kp := &kafkaPublisher{
@@ -163,7 +171,7 @@ func TestKafkaPublisher_Stop(t *testing.T) {
 						{Pattern: "*", Topic: "test-topic"},
 					},
 				},
-				Brokers: []string{"localhost:9092"},
+				Brokers: []string{testKafkaBroker},
 			}
 
 			kp := &kafkaPublisher{
@@ -210,7 +218,7 @@ func TestKafkaPublisher_Publish(t *testing.T) {
 			message: &wrp.Message{
 				Type:        wrp.SimpleEventMessageType,
 				Source:      "test",
-				Destination: "mac:112233445566",
+				Destination: testDeviceMAC,
 			},
 			expectError: false,
 		},
@@ -223,7 +231,7 @@ func TestKafkaPublisher_Publish(t *testing.T) {
 			message: &wrp.Message{
 				Type:        wrp.SimpleEventMessageType,
 				Source:      "test",
-				Destination: "mac:112233445566",
+				Destination: testDeviceMAC,
 			},
 			expectError:   true,
 			errorContains: "not started",
@@ -238,7 +246,7 @@ func TestKafkaPublisher_Publish(t *testing.T) {
 			message: &wrp.Message{
 				Type:        wrp.SimpleEventMessageType,
 				Source:      "test",
-				Destination: "mac:112233445566",
+				Destination: testDeviceMAC,
 			},
 			expectError:   true,
 			errorContains: "failed to publish to kafka",
@@ -253,7 +261,7 @@ func TestKafkaPublisher_Publish(t *testing.T) {
 			message: &wrp.Message{
 				Type:        wrp.SimpleEventMessageType,
 				Source:      "test",
-				Destination: "mac:112233445566",
+				Destination: testDeviceMAC,
 			},
 			expectError:   true,
 			errorContains: "kafka publisher is nil",
@@ -272,7 +280,7 @@ func TestKafkaPublisher_Publish(t *testing.T) {
 						{Pattern: "*", Topic: "test-topic"},
 					},
 				},
-				Brokers: []string{"localhost:9092"},
+				Brokers: []string{testKafkaBroker},
 			}
 
 			om, err := NewTestOutboundMeasures()
@@ -329,7 +337,7 @@ func TestKafkaPublisher_Publish_MessageConversion(t *testing.T) {
 				{Pattern: "*", Topic: "test-topic"},
 			},
 		},
-		Brokers: []string{"localhost:9092"},
+		Brokers: []string{testKafkaBroker},
 	}
 
 	om, err := NewTestOutboundMeasures()
@@ -390,7 +398,7 @@ func TestKafkaPublisher_IsEnabled(t *testing.T) {
 		want    bool
 	}{
 		{
-			name:    "enabled",
+			name:    testEnabled,
 			enabled: true,
 			want:    true,
 		},
@@ -410,7 +418,7 @@ func TestKafkaPublisher_IsEnabled(t *testing.T) {
 						{Pattern: "*", Topic: "test-topic"},
 					},
 				},
-				Brokers: []string{"localhost:9092"},
+				Brokers: []string{testKafkaBroker},
 			}
 
 			kp := &kafkaPublisher{
@@ -440,7 +448,7 @@ func TestDefaultPublisherFactory(t *testing.T) {
 						{Pattern: "*", Topic: "test-topic"},
 					},
 				},
-				Brokers:            []string{"localhost:9092"},
+				Brokers:            []string{testKafkaBroker},
 				MaxBufferedRecords: 1000,
 				MaxBufferedBytes:   1000000,
 				MaxRetries:         3,
@@ -474,9 +482,9 @@ func TestDefaultPublisherFactory(t *testing.T) {
 						{Pattern: "*", Topic: "test-topic"},
 					},
 				},
-				Brokers: []string{"localhost:9092"},
+				Brokers: []string{testKafkaBroker},
 				SASL: KafkaSASLConfig{
-					Mechanism: "PLAIN",
+					Mechanism: testSASLPlain,
 					Username:  "user",
 					Password:  "pass",
 				},
@@ -492,7 +500,7 @@ func TestDefaultPublisherFactory(t *testing.T) {
 						{Pattern: "*", Topic: "test-topic"},
 					},
 				},
-				Brokers: []string{"localhost:9092"},
+				Brokers: []string{testKafkaBroker},
 				SASL: KafkaSASLConfig{
 					Mechanism: "SCRAM-SHA-256",
 					Username:  "user",
@@ -510,7 +518,7 @@ func TestDefaultPublisherFactory(t *testing.T) {
 						{Pattern: "*", Topic: "test-topic"},
 					},
 				},
-				Brokers: []string{"localhost:9092"},
+				Brokers: []string{testKafkaBroker},
 				SASL: KafkaSASLConfig{
 					Mechanism: "SCRAM-SHA-512",
 					Username:  "user",
@@ -528,7 +536,7 @@ func TestDefaultPublisherFactory(t *testing.T) {
 						{Pattern: "*", Topic: "test-topic"},
 					},
 				},
-				Brokers: []string{"localhost:9092"},
+				Brokers: []string{testKafkaBroker},
 				SASL: KafkaSASLConfig{
 					Mechanism: "INVALID",
 					Username:  "user",
@@ -542,11 +550,11 @@ func TestDefaultPublisherFactory(t *testing.T) {
 			name: "with InitialDynamicConfig",
 			config: &KafkaConfig{
 				Enabled: true,
-				Brokers: []string{"localhost:9092"},
+				Brokers: []string{testKafkaBroker},
 				InitialDynamicConfig: wrpkafka.DynamicConfig{
 					TopicMap: []wrpkafka.TopicRoute{
 						{Pattern: "online", Topic: "lifecycle"},
-						{Pattern: "*", Topic: "default"},
+						{Pattern: "*", Topic: DefaultEventType},
 					},
 				},
 			},
@@ -556,7 +564,7 @@ func TestDefaultPublisherFactory(t *testing.T) {
 			name: "with prometheus namespace and subsystem",
 			config: &KafkaConfig{
 				Enabled: true,
-				Brokers: []string{"localhost:9092"},
+				Brokers: []string{testKafkaBroker},
 				InitialDynamicConfig: wrpkafka.DynamicConfig{
 					TopicMap: []wrpkafka.TopicRoute{
 						{Pattern: "*", Topic: "test-topic"},
@@ -571,7 +579,7 @@ func TestDefaultPublisherFactory(t *testing.T) {
 			name: "with only prometheus namespace",
 			config: &KafkaConfig{
 				Enabled: true,
-				Brokers: []string{"localhost:9092"},
+				Brokers: []string{testKafkaBroker},
 				InitialDynamicConfig: wrpkafka.DynamicConfig{
 					TopicMap: []wrpkafka.TopicRoute{
 						{Pattern: "*", Topic: "test-topic"},
@@ -657,7 +665,7 @@ func TestKafkaPublisher_Lifecycle(t *testing.T) {
 				{Pattern: "*", Topic: "test-topic"},
 			},
 		},
-		Brokers: []string{"localhost:9092"},
+		Brokers: []string{testKafkaBroker},
 	}
 
 	om, err := NewTestOutboundMeasures()
@@ -683,7 +691,7 @@ func TestKafkaPublisher_Lifecycle(t *testing.T) {
 		msg := &wrp.Message{
 			Type:        wrp.SimpleEventMessageType,
 			Source:      "test",
-			Destination: "mac:112233445566",
+			Destination: testDeviceMAC,
 		}
 		err = kp.Publish(ctx, msg)
 		require.NoError(t, err)
@@ -707,7 +715,7 @@ func TestNoopPublisher(t *testing.T) {
 	msg := &wrp.Message{
 		Type:        wrp.SimpleEventMessageType,
 		Source:      "test",
-		Destination: "mac:112233445566",
+		Destination: testDeviceMAC,
 	}
 	assert.NoError(t, noop.Publish(context.Background(), msg))
 }
@@ -717,7 +725,7 @@ func TestConvertV3ToV5(t *testing.T) {
 	v3msg := &wrp.Message{
 		Type:             wrp.SimpleEventMessageType,
 		Source:           "test-source",
-		Destination:      "mac:112233445566",
+		Destination:      testDeviceMAC,
 		TransactionUUID:  "test-uuid",
 		ContentType:      "application/json",
 		Status:           &status,
@@ -767,10 +775,10 @@ func TestNewKafkaPublisher(t *testing.T) {
 		{
 			name: "Disabled config returns noop",
 			config: map[string]interface{}{
-				"kafka": map[string]interface{}{
-					"enabled": false,
-					"brokers": []string{"localhost:9092"},
-					"topic":   "test-topic",
+				KafkaConfigKey: map[string]interface{}{
+					testEnabled:    false,
+					testBrokersKey: []string{testKafkaBroker},
+					"topic":        "test-topic",
 				},
 			},
 			expectError: false,
@@ -779,9 +787,9 @@ func TestNewKafkaPublisher(t *testing.T) {
 		{
 			name: "Missing brokers returns error",
 			config: map[string]interface{}{
-				"kafka": map[string]interface{}{
-					"enabled": true,
-					"topic":   "test-topic",
+				KafkaConfigKey: map[string]interface{}{
+					testEnabled: true,
+					"topic":     "test-topic",
 				},
 			},
 			expectError: true,
@@ -789,10 +797,10 @@ func TestNewKafkaPublisher(t *testing.T) {
 		{
 			name: "Valid config creates publisher",
 			config: map[string]interface{}{
-				"kafka": map[string]interface{}{
-					"enabled": true,
-					"brokers": []string{"localhost:9092"},
-					"topic":   "test-topic",
+				KafkaConfigKey: map[string]interface{}{
+					testEnabled:    true,
+					testBrokersKey: []string{testKafkaBroker},
+					"topic":        "test-topic",
 				},
 			},
 			expectError: false,
@@ -801,9 +809,9 @@ func TestNewKafkaPublisher(t *testing.T) {
 		{
 			name: "Valid config with all options",
 			config: map[string]interface{}{
-				"kafka": map[string]interface{}{
-					"enabled":            true,
-					"brokers":            []string{"localhost:9092", "localhost:9093"},
+				KafkaConfigKey: map[string]interface{}{
+					testEnabled:          true,
+					testBrokersKey:       []string{testKafkaBroker, "localhost:9093"},
 					"topic":              "test-topic",
 					"maxBufferedRecords": 5000,
 					"maxBufferedBytes":   50000000,
@@ -814,7 +822,7 @@ func TestNewKafkaPublisher(t *testing.T) {
 						"insecureSkipVerify": false,
 					},
 					"sasl": map[string]interface{}{
-						"mechanism": "PLAIN",
+						"mechanism": testSASLPlain,
 						"username":  "test-user",
 						"password":  "test-pass",
 					},
@@ -826,9 +834,9 @@ func TestNewKafkaPublisher(t *testing.T) {
 		{
 			name: "With prometheus config in metricsOptions",
 			config: map[string]interface{}{
-				"kafka": map[string]interface{}{
-					"enabled": true,
-					"brokers": []string{"localhost:9092"},
+				KafkaConfigKey: map[string]interface{}{
+					testEnabled:    true,
+					testBrokersKey: []string{testKafkaBroker},
 				},
 				"metric": map[string]interface{}{
 					"metricsOptions": map[string]interface{}{
@@ -845,9 +853,9 @@ func TestNewKafkaPublisher(t *testing.T) {
 		{
 			name: "With only namespace in metricsOptions",
 			config: map[string]interface{}{
-				"kafka": map[string]interface{}{
-					"enabled": true,
-					"brokers": []string{"localhost:9092"},
+				KafkaConfigKey: map[string]interface{}{
+					testEnabled:    true,
+					testBrokersKey: []string{testKafkaBroker},
 				},
 				"metric": map[string]interface{}{
 					"metricsOptions": map[string]interface{}{
@@ -863,9 +871,9 @@ func TestNewKafkaPublisher(t *testing.T) {
 		{
 			name: "With only subsystem in metricsOptions",
 			config: map[string]interface{}{
-				"kafka": map[string]interface{}{
-					"enabled": true,
-					"brokers": []string{"localhost:9092"},
+				KafkaConfigKey: map[string]interface{}{
+					testEnabled:    true,
+					testBrokersKey: []string{testKafkaBroker},
 				},
 				"metric": map[string]interface{}{
 					"metricsOptions": map[string]interface{}{
@@ -921,9 +929,9 @@ func TestNewKafkaPublisher(t *testing.T) {
 
 func TestKafkaPublisher_NotStarted(t *testing.T) {
 	v := viper.New()
-	v.Set("kafka.enabled", true)
-	v.Set("kafka.brokers", []string{"localhost:9092"})
-	v.Set("kafka.topic", "test-topic")
+	v.Set(KafkaConfigKey+".enabled", true)
+	v.Set(KafkaConfigKey+".brokers", []string{testKafkaBroker})
+	v.Set(KafkaConfigKey+".topic", "test-topic")
 
 	logger := zap.NewNop()
 	publisher, err := NewKafkaPublisher(logger, v, nil, nil)
@@ -932,7 +940,7 @@ func TestKafkaPublisher_NotStarted(t *testing.T) {
 	msg := &wrp.Message{
 		Type:        wrp.SimpleEventMessageType,
 		Source:      "test",
-		Destination: "mac:112233445566",
+		Destination: testDeviceMAC,
 	}
 
 	// Should fail when not started
@@ -974,7 +982,7 @@ func TestKafkaPublisher_PublishEventListener_Error(t *testing.T) {
 
 	config := &KafkaConfig{
 		Enabled: true,
-		Brokers: []string{"localhost:9092"},
+		Brokers: []string{testKafkaBroker},
 		InitialDynamicConfig: wrpkafka.DynamicConfig{
 			TopicMap: []wrpkafka.TopicRoute{
 				{Pattern: "*", Topic: "test-topic"},
