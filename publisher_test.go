@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"testing"
@@ -17,6 +18,7 @@ import (
 	wrpv5 "github.com/xmidt-org/wrp-go/v5"
 	"github.com/xmidt-org/wrpkafka"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 // TestKafkaPublisher_Start tests the Start method with various scenarios
@@ -936,4 +938,89 @@ func TestKafkaPublisher_NotStarted(t *testing.T) {
 	// Should fail when not started
 	err = publisher.Publish(context.Background(), msg)
 	assert.ErrorIs(t, err, ErrKafkaNotStarted)
+}
+
+// TestKafkaPublisher_PublishEventListener_Error tests that the event listener logs and records metrics on publish errors
+func TestKafkaPublisher_PublishEventListener_Error(t *testing.T) {
+	// Import bytes and zapcore for logger capture
+	var logBuffer bytes.Buffer
+
+	// Create a logger that writes to a buffer so we can check logs
+	logger := zap.New(
+		zapcore.NewCore(
+			zapcore.NewJSONEncoder(zapcore.EncoderConfig{
+				MessageKey:  "msg",
+				LevelKey:    "level",
+				EncodeLevel: zapcore.LowercaseLevelEncoder,
+			}),
+			zapcore.AddSync(&logBuffer),
+			zapcore.ErrorLevel,
+		),
+	)
+
+	mockPub := new(mockWrpKafkaPublisher)
+
+	// Variable to capture the event listener function
+	var capturedListener func(*wrpkafka.PublishEvent)
+
+	// Mock AddPublishEventListener to capture the listener function
+	mockPub.On("AddPublishEventListener", mock.Anything).
+		Run(func(args mock.Arguments) {
+			capturedListener = args.Get(0).(func(*wrpkafka.PublishEvent))
+		}).
+		Return(func() {}).Once()
+
+	mockPub.On("Start").Return(nil).Once()
+
+	config := &KafkaConfig{
+		Enabled: true,
+		Brokers: []string{"localhost:9092"},
+		InitialDynamicConfig: wrpkafka.DynamicConfig{
+			TopicMap: []wrpkafka.TopicRoute{
+				{Pattern: "*", Topic: "test-topic"},
+			},
+		},
+	}
+
+	om, err := NewTestOutboundMeasures()
+	require.NoError(t, err)
+
+	kp := &kafkaPublisher{
+		config: config,
+		logger: logger,
+		publisherFactory: func(c *KafkaConfig, promReg prometheus.Registerer) (wrpKafkaPublisher, error) {
+			return mockPub, nil
+		},
+		metrics: &om,
+	}
+
+	// Start the publisher (this will register the event listener)
+	err = kp.Start()
+	require.NoError(t, err)
+	require.NotNil(t, capturedListener, "Event listener should have been captured")
+
+	// Clear the log buffer from any startup logs
+	logBuffer.Reset()
+
+	// Create a PublishEvent with an error
+	publishEvent := &wrpkafka.PublishEvent{
+		Topic:              "test-topic",
+		TopicShardStrategy: "hash",
+		Error:              errors.New("kafka broker connection failed"),
+		ErrorType:          "broker_error",
+		Duration:           100 * time.Millisecond,
+	}
+
+	// Invoke the captured listener with the error event
+	capturedListener(publishEvent)
+
+	// Verify that error was logged
+	logOutput := logBuffer.String()
+	assert.Contains(t, logOutput, "Kafka async publish error")
+	assert.Contains(t, logOutput, "kafka broker connection failed")
+	assert.Contains(t, logOutput, "test-topic")
+	assert.Contains(t, logOutput, "broker_error")
+
+	// Verify mock expectations were met
+	mockPub.AssertExpectations(t)
 }
