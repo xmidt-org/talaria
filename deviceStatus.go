@@ -13,15 +13,21 @@ import (
 	"github.com/xmidt-org/wrp-go/v3/wrpmeta"
 )
 
+const (
+	hwModel        = "hw-model"
+	hwManufacturer = "hw-manufacturer"
+	fwName         = "fw-name"
+)
+
 func statusMetadata(d device.Interface) map[string]string {
 	metadata, allFieldsPresent := wrpmeta.NewBuilder().Apply(
 		d.Convey(),
 		wrpmeta.Field{From: "boot-time", To: "/boot-time"},
-		wrpmeta.Field{From: "hw-model", To: "/hw-model"},
-		wrpmeta.Field{From: "hw-manufacturer", To: "/hw-manufacturer"},
+		wrpmeta.Field{From: hwModel, To: "/hw-model"},
+		wrpmeta.Field{From: hwManufacturer, To: "/hw-manufacturer"},
 		wrpmeta.Field{From: "hw-serial-number", To: "/hw-serial-number"},
 		wrpmeta.Field{From: "hw-last-reboot-reason", To: "/hw-last-reboot-reason"},
-		wrpmeta.Field{From: "fw-name", To: "/fw-name"},
+		wrpmeta.Field{From: fwName, To: "/fw-name"},
 		wrpmeta.Field{From: "last-reconnect-reason", To: "/last-reconnect-reason"},
 		wrpmeta.Field{From: "webpa-last-reconnect-reason", To: "/last-reconnect-reason"},
 		wrpmeta.Field{From: "webpa-protocol", To: "/protocol"},

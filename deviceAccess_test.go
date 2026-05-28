@@ -17,6 +17,12 @@ import (
 	"github.com/xmidt-org/wrp-go/v3"
 )
 
+const (
+	testComcast = "comcast"
+	testNbc     = "nbc"
+	testSky     = "sky"
+)
+
 type deviceAccessTestCase struct {
 	Name                    string
 	DeviceID                string
@@ -45,7 +51,7 @@ func testAuthorizeWRP(t *testing.T, testCases []deviceAccessTestCase, strict boo
 				expectedLabels     = getLabelMaps(testCase.ExpectedError, testCase.IsFatal, strict, testCase.BaseLabelPairs)
 
 				wrpMsg = &wrp.Message{
-					PartnerIDs:  []string{"comcast", "nbc", "sky"},
+					PartnerIDs:  []string{testComcast, testNbc, testSky},
 					Destination: testCase.DeviceID,
 				}
 			)
@@ -103,7 +109,7 @@ func TestAuthorizeWRP(t *testing.T) {
 		},
 		{
 			Name:          "Device not found",
-			DeviceID:      "mac:112233445566",
+			DeviceID:      testDeviceMAC,
 			MissingDevice: true,
 			BaseLabelPairs: map[string]string{
 				reasonLabel: deviceNotFound,
@@ -113,7 +119,7 @@ func TestAuthorizeWRP(t *testing.T) {
 		},
 		{
 			Name:     "Device Credential Missing",
-			DeviceID: "mac:112233445566",
+			DeviceID: testDeviceMAC,
 			BaseLabelPairs: map[string]string{
 				reasonLabel: missingDeviceCredential,
 			},
@@ -123,7 +129,7 @@ func TestAuthorizeWRP(t *testing.T) {
 
 		{
 			Name:     "WRP Credential Missing",
-			DeviceID: "mac:112233445566",
+			DeviceID: testDeviceMAC,
 			BaseLabelPairs: map[string]string{
 				reasonLabel: missingWRPCredential,
 			},
@@ -133,7 +139,7 @@ func TestAuthorizeWRP(t *testing.T) {
 
 		{
 			Name:     "Second Check doesn't complete",
-			DeviceID: "mac:112233445566",
+			DeviceID: testDeviceMAC,
 			BaseLabelPairs: map[string]string{
 				reasonLabel: incompleteCheck,
 			},
@@ -142,7 +148,7 @@ func TestAuthorizeWRP(t *testing.T) {
 		},
 		{
 			Name:     "Unauthorized Device Access",
-			DeviceID: "mac:112233445566",
+			DeviceID: testDeviceMAC,
 			BaseLabelPairs: map[string]string{
 				reasonLabel: denied,
 			},
@@ -152,7 +158,7 @@ func TestAuthorizeWRP(t *testing.T) {
 
 		{
 			Name:     "Authorized Device Access",
-			DeviceID: "mac:112233445566",
+			DeviceID: testDeviceMAC,
 			BaseLabelPairs: map[string]string{
 				reasonLabel: authorized,
 			},
@@ -187,7 +193,7 @@ func getLabelMaps(err error, isFatal, strict bool, baseLabelPairs map[string]str
 func getTestDeviceMetadata() *device.Metadata {
 	metadata := new(device.Metadata)
 	claims := map[string]interface{}{
-		device.PartnerIDClaimKey: "sky",
+		device.PartnerIDClaimKey: testSky,
 		device.TrustClaimKey:     100,
 		"nested":                 map[string]interface{}{"happy": true},
 	}
@@ -206,7 +212,7 @@ func getFirstMissingDeviceCredentialChecks(t *testing.T, m *mockBinOp) []*parsed
 
 func getSecondCheckMissingWRPCredentiaChecks(t *testing.T, m *mockBinOp) []*parsedCheck {
 	m.On("evaluate", 100, 100).Return(true, error(nil)).Once()
-	m.AssertNotCalled(t, "evaluate", []string{"comcast", "nbc", "sky"}, "sky")
+	m.AssertNotCalled(t, "evaluate", []string{testComcast, testNbc, testSky}, testSky)
 	m.AssertNotCalled(t, "evaluate", true, true)
 
 	baseChecks := getBaseChecks(m)
@@ -216,9 +222,9 @@ func getSecondCheckMissingWRPCredentiaChecks(t *testing.T, m *mockBinOp) []*pars
 
 func getSecondCheckWithInputValueChecks(t *testing.T, m *mockBinOp) []*parsedCheck {
 	m.On("evaluate", 100, 100).Return(true, error(nil)).Once()
-	m.On("evaluate", []string{"universal"}, "sky").Return(true, error(nil)).Once()
+	m.On("evaluate", []string{"universal"}, testSky).Return(true, error(nil)).Once()
 	m.On("evaluate", true, true).Return(true, error(nil)).Once()
-	m.AssertNotCalled(t, "evaluate", []string{"comcast", "nbc", "sky"}, "sky")
+	m.AssertNotCalled(t, "evaluate", []string{testComcast, testNbc, testSky}, testSky)
 
 	baseChecks := getBaseChecks(m)
 	baseChecks[1].inputValue = []string{"universal"}
@@ -228,12 +234,12 @@ func getSecondCheckWithInputValueChecks(t *testing.T, m *mockBinOp) []*parsedChe
 func getChecks(t *testing.T, m *mockBinOp, secondCheckIncomplete, thirdCheckAuthorized bool) []*parsedCheck {
 	m.On("evaluate", 100, 100).Return(true, error(nil)).Once()
 	if secondCheckIncomplete {
-		m.On("evaluate", []string{"comcast", "nbc", "sky"}, "sky").Return(false, errors.New("Could not complete check")).Once()
+		m.On("evaluate", []string{testComcast, testNbc, testSky}, testSky).Return(false, errors.New("Could not complete check")).Once()
 		m.AssertNotCalled(t, "evaluate", mock.Anything, mock.Anything)
 		return getBaseChecks(m)
 	}
 
-	m.On("evaluate", []string{"comcast", "nbc", "sky"}, "sky").Return(true, error(nil)).Once()
+	m.On("evaluate", []string{testComcast, testNbc, testSky}, testSky).Return(true, error(nil)).Once()
 	m.On("evaluate", true, true).Return(thirdCheckAuthorized, error(nil))
 	return getBaseChecks(m)
 }

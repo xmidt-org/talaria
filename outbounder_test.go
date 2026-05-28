@@ -24,6 +24,12 @@ import (
 	"go.uber.org/zap/zaptest"
 )
 
+const (
+	testOutboundEventIot = "event:iot"
+	testOutboundFTP      = "ftp"
+	testIot              = "iot"
+)
+
 func ExampleOutbounder() {
 	var (
 		finish = new(sync.WaitGroup)
@@ -94,7 +100,7 @@ func ExampleOutbounder() {
 	for _, l := range listeners {
 		l(&device.Event{
 			Type:     device.MessageReceived,
-			Message:  &wrp.Message{Destination: "event:iot"},
+			Message:  &wrp.Message{Destination: testEventIot},
 			Format:   wrp.Msgpack,
 			Contents: []byte("iot event"),
 		})
@@ -156,11 +162,11 @@ func testOutbounderConfiguration(t *testing.T) {
 		configuration = []byte(`{
 			"method": "PATCH",
 			"requestTimeout": "30s",
-			"defaultScheme": "ftp",
-			"allowedSchemes": ["ftp", "nntp"],
-			"defaultEventEndpoints": ["https://default.endpoint.com"],
-			"eventEndpoints": {
-				"iot": ["https://endpoint1.com", "https://endpoint2.com"],
+		"defaultScheme": "ftp",
+		"allowedSchemes": ["ftp", "nntp"],
+		"defaultEventEndpoints": ["https://default.endpoint.com"],
+		"eventEndpoints": {
+			"iot": ["https://endpoint1.com", "https://endpoint2.com"],
 				"something": ["https://endpoint3.com"]
 			},
 			"outboundQueueSize": 281,
@@ -187,14 +193,14 @@ func testOutbounderConfiguration(t *testing.T) {
 	assert.Equal(logger, o.logger())
 	assert.Equal("PATCH", o.method())
 	assert.Equal(30*time.Second, o.requestTimeout())
-	assert.Equal("ftp", o.defaultScheme())
-	assert.Equal(map[string]bool{"nntp": true, "ftp": true}, o.allowedSchemes())
+	assert.Equal(testOutboundFTP, o.defaultScheme())
+	assert.Equal(map[string]bool{"nntp": true, testOutboundFTP: true}, o.allowedSchemes())
 
 	m, err := o.eventMap()
 	assert.NoError(err)
 	assert.Equal(
 		event.MultiMap{
-			"iot":       {"https://endpoint1.com", "https://endpoint2.com"},
+			testIot:     {"https://endpoint1.com", "https://endpoint2.com"},
 			"something": {"https://endpoint3.com"},
 		},
 		m,
@@ -214,7 +220,7 @@ func testOutbounderStartError(t *testing.T) {
 	var (
 		assert        = assert.New(t)
 		badOutbounder = &Outbounder{
-			DefaultScheme: "ftp",
+			DefaultScheme: testOutboundFTP,
 		}
 
 		listener, err = badOutbounder.Start(OutboundMeasures{})

@@ -19,6 +19,8 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+const testMessageKey = "message"
+
 func testWorkerPoolTransactHTTPSuccess(t *testing.T) {
 	var (
 		b       bytes.Buffer
@@ -27,7 +29,7 @@ func testWorkerPoolTransactHTTPSuccess(t *testing.T) {
 		logger  = zap.New(
 			zapcore.NewCore(zapcore.NewJSONEncoder(
 				zapcore.EncoderConfig{
-					MessageKey: "message",
+					MessageKey: testMessageKey,
 				}), zapcore.AddSync(&b), zapcore.ErrorLevel),
 		)
 		target          = "http://localhost/foo"
@@ -156,7 +158,7 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 			tc.wp.logger = zap.New(
 				zapcore.NewCore(zapcore.NewJSONEncoder(
 					zapcore.EncoderConfig{
-						MessageKey: "message",
+						MessageKey: testMessageKey,
 					}), zapcore.AddSync(&b), zapcore.WarnLevel),
 			)
 			dm := new(mockCounter)

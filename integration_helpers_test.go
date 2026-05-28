@@ -1158,8 +1158,8 @@ func setupIntegrationTestWithCapabilities(t *testing.T, talariaConfigFile, themi
 			t.Logf("✓ Themis (default) started at: %s (using %s)", issuerURL, config.defaultThemisConfig)
 
 			// Store as default instance
-			themisInstances["default"] = &ThemisInstance{
-				Name:      "default",
+			themisInstances[DefaultEventType] = &ThemisInstance{
+				Name:      DefaultEventType,
 				IssuerURL: issuerURL,
 				KeysURL:   keysURL,
 			}

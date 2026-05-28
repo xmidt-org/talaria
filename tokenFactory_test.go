@@ -15,6 +15,11 @@ import (
 	"github.com/xmidt-org/bascule/basculehttp"
 )
 
+const (
+	testAbcd        = "abcd"
+	testTokenString = "test"
+)
+
 func TestRawAttributesBearerTokenFactory(t *testing.T) {
 	tests := []struct {
 		description   string
@@ -28,17 +33,17 @@ func TestRawAttributesBearerTokenFactory(t *testing.T) {
 	}{
 		{
 			description: "Success",
-			value:       "abcd",
+			value:       testAbcd,
 			jwtToken: jwt.NewWithClaims(jwt.SigningMethodHS256, &bascule.ClaimsWithLeeway{
 				MapClaims: jwt.MapClaims(
 					map[string]interface{}{
-						jwtPrincipalKey: "test",
+						jwtPrincipalKey: testString,
 					},
 				),
 			}),
 			parseCalled:   true,
 			isValid:       true,
-			expectedToken: bascule.NewToken("jwt", "test", rawAttributes(map[string]interface{}{jwtPrincipalKey: "test"})),
+			expectedToken: bascule.NewToken("jwt", testString, rawAttributes(map[string]interface{}{jwtPrincipalKey: testString})),
 		},
 		{
 			description: "Empty Value",
@@ -47,11 +52,11 @@ func TestRawAttributesBearerTokenFactory(t *testing.T) {
 		},
 		{
 			description: "Parse Failed",
-			value:       "abcd",
+			value:       testAbcd,
 			jwtToken: jwt.NewWithClaims(jwt.SigningMethodHS256, &bascule.ClaimsWithLeeway{
 				MapClaims: jwt.MapClaims(
 					map[string]interface{}{
-						jwtPrincipalKey: "test",
+						jwtPrincipalKey: testString,
 					},
 				),
 			}),
@@ -61,11 +66,11 @@ func TestRawAttributesBearerTokenFactory(t *testing.T) {
 		},
 		{
 			description: "Invalid Token",
-			value:       "abcd",
+			value:       testAbcd,
 			jwtToken: jwt.NewWithClaims(jwt.SigningMethodHS256, &bascule.ClaimsWithLeeway{
 				MapClaims: jwt.MapClaims(
 					map[string]interface{}{
-						jwtPrincipalKey: "test",
+						jwtPrincipalKey: testString,
 					},
 				),
 			}),
@@ -74,10 +79,10 @@ func TestRawAttributesBearerTokenFactory(t *testing.T) {
 		},
 		{
 			description: "Unexpected Claims",
-			value:       "abcd",
+			value:       testAbcd,
 			jwtToken: jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims(
 				map[string]interface{}{
-					jwtPrincipalKey: "test",
+					jwtPrincipalKey: testString,
 				},
 			)),
 			parseCalled: true,
@@ -86,11 +91,11 @@ func TestRawAttributesBearerTokenFactory(t *testing.T) {
 		},
 		{
 			description: "Principal Value not Found",
-			value:       "abcd",
+			value:       testAbcd,
 			jwtToken: jwt.NewWithClaims(jwt.SigningMethodHS256, &bascule.ClaimsWithLeeway{
 				MapClaims: jwt.MapClaims(
 					map[string]interface{}{
-						"test": "test",
+						"test": testString,
 					},
 				),
 			}),
@@ -100,7 +105,7 @@ func TestRawAttributesBearerTokenFactory(t *testing.T) {
 		},
 		{
 			description: "Principal Value not a String",
-			value:       "abcd",
+			value:       testAbcd,
 			jwtToken: jwt.NewWithClaims(jwt.SigningMethodHS256, &bascule.ClaimsWithLeeway{
 				MapClaims: jwt.MapClaims(
 					map[string]interface{}{

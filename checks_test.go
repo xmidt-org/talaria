@@ -9,6 +9,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	testDCP = "dcp"
+	testBad = "bad"
+)
+
 func TestParseDeviceAccessCheck(t *testing.T) {
 	testCases := []struct {
 		config                 deviceAccessCheck
@@ -22,7 +27,7 @@ func TestParseDeviceAccessCheck(t *testing.T) {
 		{
 			name: "Missing Required name",
 			config: deviceAccessCheck{
-				DeviceCredentialPath: "dcp",
+				DeviceCredentialPath: testDCP,
 				WRPCredentialPath:    "wcp",
 				Op:                   IntersectsOp,
 			},
@@ -44,7 +49,7 @@ func TestParseDeviceAccessCheck(t *testing.T) {
 			name: "Nothing to compare device credential to",
 			config: deviceAccessCheck{
 				Name:                 "nonEmpty",
-				DeviceCredentialPath: "dcp",
+				DeviceCredentialPath: testDCP,
 				Op:                   IntersectsOp,
 			},
 			expectedErr: errInputValueOrWRPCredPathRequired,
@@ -55,9 +60,9 @@ func TestParseDeviceAccessCheck(t *testing.T) {
 			name: "Bad operator",
 			config: deviceAccessCheck{
 				Name:                 "nonEmpty",
-				DeviceCredentialPath: "dcp",
+				DeviceCredentialPath: testDCP,
 				InputValue:           3,
-				Op:                   "bad",
+				Op:                   testBad,
 			},
 			expectedErr: errOpNotSupported,
 			fails:       true,
@@ -75,7 +80,7 @@ func TestParseDeviceAccessCheck(t *testing.T) {
 				Inversed:             true,
 			},
 			expectedCheckName:      "trimWhiteSpaces",
-			expectedDeviceCredPath: "dcp",
+			expectedDeviceCredPath: testDCP,
 			expectedWRPCredPath:    "wcp",
 		},
 	}

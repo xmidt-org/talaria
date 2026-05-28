@@ -9,11 +9,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	testURLFoobarCom   = "foobar.com"
+	testURLFTP         = "ftp"
+	testURLHTTPFoobar  = "http://foobar.com"
+	testURLHTTPSFoobar = "https://foobar.com"
+)
+
 func testURLFilterInvalidDefaultScheme(t *testing.T) {
 	assert := assert.New(t)
 	urlFilter, err := NewURLFilter(&Outbounder{
 		DefaultScheme:  "http",
-		AllowedSchemes: []string{"https"},
+		AllowedSchemes: []string{DefaultDefaultScheme},
 	})
 
 	assert.Nil(urlFilter)
@@ -31,17 +38,17 @@ func testURLFilterFilter(t *testing.T) {
 			expectedFiltered string
 			expectsError     bool
 		}{
-			{nil, "foobar.com", "https://foobar.com", false},
+			{nil, testURLFoobarCom, testURLHTTPSFoobar, false},
 			{nil, "foobar.com?test=1&a=2", "https://foobar.com?test=1&a=2", false},
 			{nil, "foobar.com:8080", "https://foobar.com:8080", false},
 			{nil, "xxx://foobar.com", "", true},
 			{nil, "http://foobar.com:1234", "", true},
 
-			{&Outbounder{DefaultScheme: "ftp", AllowedSchemes: []string{"ftp", "https"}}, "foobar.com", "ftp://foobar.com", false},
-			{&Outbounder{DefaultScheme: "ftp", AllowedSchemes: []string{"ftp", "https"}}, "foobar.com?test=1", "ftp://foobar.com?test=1", false},
-			{&Outbounder{DefaultScheme: "ftp", AllowedSchemes: []string{"ftp", "https"}}, "https://foobar.com", "https://foobar.com", false},
-			{&Outbounder{DefaultScheme: "ftp", AllowedSchemes: []string{"ftp", "https"}}, "https://foobar.com?test=1", "https://foobar.com?test=1", false},
-			{&Outbounder{DefaultScheme: "ftp", AllowedSchemes: []string{"ftp", "https"}}, "http://foobar.com", "", true},
+			{&Outbounder{DefaultScheme: testURLFTP, AllowedSchemes: []string{testURLFTP, DefaultDefaultScheme}}, testURLFoobarCom, "ftp://foobar.com", false},
+			{&Outbounder{DefaultScheme: testURLFTP, AllowedSchemes: []string{testURLFTP, DefaultDefaultScheme}}, "foobar.com?test=1", "ftp://foobar.com?test=1", false},
+			{&Outbounder{DefaultScheme: testURLFTP, AllowedSchemes: []string{testURLFTP, DefaultDefaultScheme}}, testURLHTTPSFoobar, testURLHTTPSFoobar, false},
+			{&Outbounder{DefaultScheme: testURLFTP, AllowedSchemes: []string{testURLFTP, DefaultDefaultScheme}}, "https://foobar.com?test=1", "https://foobar.com?test=1", false},
+			{&Outbounder{DefaultScheme: testURLFTP, AllowedSchemes: []string{testURLFTP, DefaultDefaultScheme}}, testURLHTTPFoobar, "", true},
 		}
 	)
 

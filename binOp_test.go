@@ -10,6 +10,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	testBlue   = "blue"
+	testApple  = "apple"
+	testGreen  = "green"
+	testRed    = "red"
+	testOrange = "orange"
+)
+
 type testCase struct {
 	name        string
 	left        interface{}
@@ -39,14 +47,14 @@ func TestIntersects(t *testing.T) {
 	testCases := []testCase{
 		{
 			name:     "Slices",
-			left:     []string{"red", "green", "blue"},
-			right:    []string{"red", "green", "blue"},
+			left:     []string{testRed, testGreen, testBlue},
+			right:    []string{testRed, testGreen, testBlue},
 			expected: true,
 		},
 		{
 			name:     "Arrays",
-			left:     [2]string{"red", "green"},
-			right:    [3]string{"red", "green", "blue"},
+			left:     [2]string{testRed, testGreen},
+			right:    [3]string{testRed, testGreen, testBlue},
 			expected: true,
 		},
 		{
@@ -58,17 +66,17 @@ func TestIntersects(t *testing.T) {
 		{
 			name:  "Mixed types. No intersection",
 			left:  []interface{}{1, "one", 1.0},
-			right: []string{"orange", "apple"},
+			right: []string{testOrange, testApple},
 		},
 		{
 			name:  "Empty slice",
 			left:  []interface{}{},
-			right: []string{"orange", "apple"},
+			right: []string{testOrange, testApple},
 		},
 		{
 			name:        "Unsupported type for first argument",
 			left:        true,
-			right:       []string{"orange", "apple"},
+			right:       []string{testOrange, testApple},
 			expectedErr: errIterableTypeOnly,
 		},
 
@@ -99,7 +107,7 @@ func TestContains(t *testing.T) {
 		{
 			name:  "Not a member",
 			left:  []string{"svalinn", "gungnir"},
-			right: "talaria",
+			right: applicationName,
 		},
 		{
 			name:        "Type error",
