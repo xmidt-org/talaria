@@ -24,6 +24,7 @@ import (
 
 const (
 	testKafkaBroker       = "localhost:9092"
+	testKafkaBrokerTLS    = "localhost:9093"
 	testDeviceMAC         = "mac:112233445566"
 	testEnabled           = "enabled"
 	testSASLPlain         = "PLAIN"
@@ -475,7 +476,7 @@ func TestDefaultPublisherFactory(t *testing.T) {
 						{Pattern: "*", Topic: testTopic},
 					},
 				},
-				Brokers: []string{"localhost:9093"},
+				Brokers: []string{testKafkaBrokerTLS},
 				TLS: KafkaTLSConfig{
 					Enabled:            true,
 					InsecureSkipVerify: true,
@@ -821,7 +822,7 @@ func TestNewKafkaPublisher(t *testing.T) {
 			config: map[string]interface{}{
 				KafkaConfigKey: map[string]interface{}{
 					testEnabled:          true,
-					testBrokersKey:       []string{testKafkaBroker, "localhost:9093"},
+					testBrokersKey:       []string{testKafkaBroker, testKafkaBrokerTLS},
 					topicLabel:           testTopic,
 					"maxBufferedRecords": 5000,
 					"maxBufferedBytes":   50000000,
@@ -1081,7 +1082,7 @@ func TestPublisherFactory_TLS(t *testing.T) {
 			name: "TLS with InsecureSkipVerify",
 			config: &KafkaConfig{
 				Enabled: true,
-				Brokers: []string{"localhost:9093"},
+				Brokers: []string{testKafkaBrokerTLS},
 				InitialDynamicConfig: wrpkafka.DynamicConfig{
 					TopicMap: []wrpkafka.TopicRoute{
 						{Pattern: "*", Topic: testTopic},
@@ -1104,7 +1105,7 @@ func TestPublisherFactory_TLS(t *testing.T) {
 			name: "TLS with InsecureSkipVerify and CA file (CA file loaded but verification skipped)",
 			config: &KafkaConfig{
 				Enabled: true,
-				Brokers: []string{"localhost:9093"},
+				Brokers: []string{testKafkaBrokerTLS},
 				InitialDynamicConfig: wrpkafka.DynamicConfig{
 					TopicMap: []wrpkafka.TopicRoute{
 						{Pattern: "*", Topic: testTopic},
@@ -1129,7 +1130,7 @@ func TestPublisherFactory_TLS(t *testing.T) {
 			name: "TLS with CA file verification (no client cert)",
 			config: &KafkaConfig{
 				Enabled: true,
-				Brokers: []string{"localhost:9093"},
+				Brokers: []string{testKafkaBrokerTLS},
 				InitialDynamicConfig: wrpkafka.DynamicConfig{
 					TopicMap: []wrpkafka.TopicRoute{
 						{Pattern: "*", Topic: testTopic},
@@ -1153,7 +1154,7 @@ func TestPublisherFactory_TLS(t *testing.T) {
 			name: "TLS with system CA pool (no CA file, no client cert)",
 			config: &KafkaConfig{
 				Enabled: true,
-				Brokers: []string{"localhost:9093"},
+				Brokers: []string{testKafkaBrokerTLS},
 				InitialDynamicConfig: wrpkafka.DynamicConfig{
 					TopicMap: []wrpkafka.TopicRoute{
 						{Pattern: "*", Topic: testTopic},
@@ -1177,7 +1178,7 @@ func TestPublisherFactory_TLS(t *testing.T) {
 			name: "TLS with client certificate (mTLS)",
 			config: &KafkaConfig{
 				Enabled: true,
-				Brokers: []string{"localhost:9093"},
+				Brokers: []string{testKafkaBrokerTLS},
 				InitialDynamicConfig: wrpkafka.DynamicConfig{
 					TopicMap: []wrpkafka.TopicRoute{
 						{Pattern: "*", Topic: testTopic},
@@ -1203,7 +1204,7 @@ func TestPublisherFactory_TLS(t *testing.T) {
 			name: "TLS with invalid CA file",
 			config: &KafkaConfig{
 				Enabled: true,
-				Brokers: []string{"localhost:9093"},
+				Brokers: []string{testKafkaBrokerTLS},
 				InitialDynamicConfig: wrpkafka.DynamicConfig{
 					TopicMap: []wrpkafka.TopicRoute{
 						{Pattern: "*", Topic: testTopic},
@@ -1222,7 +1223,7 @@ func TestPublisherFactory_TLS(t *testing.T) {
 			name: "TLS with invalid PEM in CA file",
 			config: &KafkaConfig{
 				Enabled: true,
-				Brokers: []string{"localhost:9093"},
+				Brokers: []string{testKafkaBrokerTLS},
 				InitialDynamicConfig: wrpkafka.DynamicConfig{
 					TopicMap: []wrpkafka.TopicRoute{
 						{Pattern: "*", Topic: testTopic},
@@ -1241,7 +1242,7 @@ func TestPublisherFactory_TLS(t *testing.T) {
 			name: "TLS with invalid client certificate",
 			config: &KafkaConfig{
 				Enabled: true,
-				Brokers: []string{"localhost:9093"},
+				Brokers: []string{testKafkaBrokerTLS},
 				InitialDynamicConfig: wrpkafka.DynamicConfig{
 					TopicMap: []wrpkafka.TopicRoute{
 						{Pattern: "*", Topic: testTopic},
@@ -1262,7 +1263,7 @@ func TestPublisherFactory_TLS(t *testing.T) {
 			name: "TLS with cert but no key",
 			config: &KafkaConfig{
 				Enabled: true,
-				Brokers: []string{"localhost:9093"},
+				Brokers: []string{testKafkaBrokerTLS},
 				InitialDynamicConfig: wrpkafka.DynamicConfig{
 					TopicMap: []wrpkafka.TopicRoute{
 						{Pattern: "*", Topic: testTopic},
