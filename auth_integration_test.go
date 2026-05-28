@@ -23,6 +23,31 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	testPassword           = "pass"
+	testValidCredsDesc     = "Valid credentials should succeed"
+	testInvalidCredsName   = "invalid_credentials"
+	testInvalidCredsDesc   = "Invalid credentials should fail"
+	testNoCredsName        = "no_credentials"
+	testNoCredsDesc        = "No credentials should fail"
+	testInvalidToken       = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.invalid.signature"
+	testValidCredsName     = "valid_credentials"
+	testUser               = "user"
+	testWrongCredential    = "wrong"
+	testFirmwareVersion    = "test-firmware-1.0"
+	testDeviceModel        = "test-model"
+	testDeviceManufacturer = "test-manufacturer"
+	testWRPPayload         = `{
+		"msg_type":3,
+		"content_type":"application/json",
+		"source":"dns:test-sender",
+		"dest":"mac:4ca161000109/config",
+		"transaction_uuid":"test-transaction-uuid",
+		"payload":"eyJjb21tYW5kIjoiR0VUIiwibmFtZXMiOlsiRGV2aWNlLkluZm8uUHJvcGVydHkxIl19",
+		"partner_ids":["testpartner"]
+	}`
+)
+
 // authTestCase defines a single authentication scenario
 type authTestCase struct {
 	name           string
@@ -44,24 +69,24 @@ func TestGetDevices_Auth(t *testing.T) {
 
 	authScenarios := []authTestCase{
 		{
-			name:           "valid_credentials",
-			username:       "user",
-			password:       "pass",
-			description:    "Valid credentials should succeed",
+			name:           testValidCredsName,
+			username:       testUser,
+			password:       testPassword,
+			description:    testValidCredsDesc,
 			expectedStatus: http.StatusOK,
 		},
 		{
-			name:           "invalid_credentials",
-			username:       "wrong",
-			password:       "wrong",
-			description:    "Invalid credentials should fail",
+			name:           testInvalidCredsName,
+			username:       testWrongCredential,
+			password:       testWrongCredential,
+			description:    testInvalidCredsDesc,
 			expectedStatus: http.StatusForbidden,
 		},
 		{
-			name:           "no_credentials",
+			name:           testNoCredsName,
 			username:       "",
 			password:       "",
-			description:    "No credentials should fail",
+			description:    testNoCredsDesc,
 			expectedStatus: http.StatusForbidden,
 		},
 	}
@@ -116,7 +141,7 @@ func TestGetDevices_Auth(t *testing.T) {
 
 	// Test with invalid JWT token
 	t.Run("invalid_jwt_token", func(t *testing.T) {
-		invalidToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.invalid.signature"
+		invalidToken := testInvalidToken
 
 		req, err := fixture.NewRequest("GET", "/api/v2/devices", nil)
 		require.NoError(t, err)
@@ -167,24 +192,24 @@ func TestGetDeviceStat_Auth(t *testing.T) {
 
 	authScenarios := []authTestCase{
 		{
-			name:           "valid_credentials",
-			username:       "user",
-			password:       "pass",
-			description:    "Valid credentials should succeed",
+			name:           testValidCredsName,
+			username:       testUser,
+			password:       testPassword,
+			description:    testValidCredsDesc,
 			expectedStatus: http.StatusOK,
 		},
 		{
-			name:           "invalid_credentials",
-			username:       "wrong",
-			password:       "wrong",
-			description:    "Invalid credentials should fail",
+			name:           testInvalidCredsName,
+			username:       testWrongCredential,
+			password:       testWrongCredential,
+			description:    testInvalidCredsDesc,
 			expectedStatus: http.StatusForbidden,
 		},
 		{
-			name:           "no_credentials",
+			name:           testNoCredsName,
 			username:       "",
 			password:       "",
-			description:    "No credentials should fail",
+			description:    testNoCredsDesc,
 			expectedStatus: http.StatusForbidden,
 		},
 	}
@@ -239,7 +264,7 @@ func TestGetDeviceStat_Auth(t *testing.T) {
 
 	// Test with invalid JWT token
 	t.Run("invalid_jwt_token", func(t *testing.T) {
-		invalidToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.invalid.signature"
+		invalidToken := testInvalidToken
 
 		req, err := fixture.NewRequest("GET", "/api/v2/device/mac:4ca161000109/stat", nil)
 		require.NoError(t, err)
@@ -288,24 +313,24 @@ func TestPostDeviceSend_Auth(t *testing.T) {
 
 	authScenarios := []authTestCase{
 		{
-			name:           "valid_credentials",
-			username:       "user",
-			password:       "pass",
-			description:    "Valid credentials should succeed",
+			name:           testValidCredsName,
+			username:       testUser,
+			password:       testPassword,
+			description:    testValidCredsDesc,
 			expectedStatus: http.StatusOK,
 		},
 		{
-			name:           "invalid_credentials",
-			username:       "wrong",
-			password:       "wrong",
-			description:    "Invalid credentials should fail",
+			name:           testInvalidCredsName,
+			username:       testWrongCredential,
+			password:       testWrongCredential,
+			description:    testInvalidCredsDesc,
 			expectedStatus: http.StatusForbidden,
 		},
 		{
-			name:           "no_credentials",
+			name:           testNoCredsName,
 			username:       "",
 			password:       "",
-			description:    "No credentials should fail",
+			description:    testNoCredsDesc,
 			expectedStatus: http.StatusForbidden,
 		},
 	}
@@ -313,15 +338,7 @@ func TestPostDeviceSend_Auth(t *testing.T) {
 	for _, scenario := range authScenarios {
 		t.Run(scenario.name, func(t *testing.T) {
 			// Use valid WRP (Web Router Protocol) message format
-			payload := `{
-				"msg_type":3,
-				"content_type":"application/json",
-				"source":"dns:test-sender",
-				"dest":"mac:4ca161000109/config",
-				"transaction_uuid":"test-transaction-uuid",
-				"payload":"eyJjb21tYW5kIjoiR0VUIiwibmFtZXMiOlsiRGV2aWNlLkluZm8uUHJvcGVydHkxIl19",
-				"partner_ids":["testpartner"]
-			}`
+			payload := testWRPPayload
 			body, statusCode, err := fixture.POST("/api/v2/device/send", strings.NewReader(payload), "application/json", scenario.username, scenario.password)
 			require.NoError(t, err)
 
@@ -338,15 +355,7 @@ func TestPostDeviceSend_Auth(t *testing.T) {
 		t.Logf("Using API JWT from 'api' Themis instance")
 
 		// Use valid WRP message format
-		payload := `{
-			"msg_type":3,
-			"content_type":"application/json",
-			"source":"dns:test-sender",
-			"dest":"mac:4ca161000109/config",
-			"transaction_uuid":"test-transaction-uuid",
-			"payload":"eyJjb21tYW5kIjoiR0VUIiwibmFtZXMiOlsiRGV2aWNlLkluZm8uUHJvcGVydHkxIl19",
-			"partner_ids":["testpartner"]
-		}`
+		payload := testWRPPayload
 		req, err := fixture.NewRequest("POST", "/api/v2/device/send", strings.NewReader(payload))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
@@ -367,15 +376,7 @@ func TestPostDeviceSend_Auth(t *testing.T) {
 		t.Logf("Using Device JWT from 'device' Themis instance")
 
 		// Use valid WRP message format
-		payload := `{
-			"msg_type":3,
-			"content_type":"application/json",
-			"source":"dns:test-sender",
-			"dest":"mac:4ca161000109/config",
-			"transaction_uuid":"test-transaction-uuid",
-			"payload":"eyJjb21tYW5kIjoiR0VUIiwibmFtZXMiOlsiRGV2aWNlLkluZm8uUHJvcGVydHkxIl19",
-			"partner_ids":["testpartner"]
-		}`
+		payload := testWRPPayload
 		req, err := fixture.NewRequest("POST", "/api/v2/device/send", strings.NewReader(payload))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
@@ -392,17 +393,9 @@ func TestPostDeviceSend_Auth(t *testing.T) {
 
 	// Test with invalid JWT token
 	t.Run("invalid_jwt_token", func(t *testing.T) {
-		invalidToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.invalid.signature"
+		invalidToken := testInvalidToken
 
-		payload := `{
-			"msg_type":3,
-			"content_type":"application/json",
-			"source":"dns:test-sender",
-			"dest":"mac:4ca161000109/config",
-			"transaction_uuid":"test-transaction-uuid",
-			"payload":"eyJjb21tYW5kIjoiR0VUIiwibmFtZXMiOlsiRGV2aWNlLkluZm8uUHJvcGVydHkxIl19",
-			"partner_ids":["testpartner"]
-		}`
+		payload := testWRPPayload
 		req, err := fixture.NewRequest("POST", "/api/v2/device/send", strings.NewReader(payload))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
@@ -416,15 +409,7 @@ func TestPostDeviceSend_Auth(t *testing.T) {
 
 	// Test with malformed Bearer token
 	t.Run("malformed_bearer_token", func(t *testing.T) {
-		payload := `{
-			"msg_type":3,
-			"content_type":"application/json",
-			"source":"dns:test-sender",
-			"dest":"mac:4ca161000109/config",
-			"transaction_uuid":"test-transaction-uuid",
-			"payload":"eyJjb21tYW5kIjoiR0VUIiwibmFtZXMiOlsiRGV2aWNlLkluZm8uUHJvcGVydHkxIl19",
-			"partner_ids":["testpartner"]
-		}`
+		payload := testWRPPayload
 		req, err := fixture.NewRequest("POST", "/api/v2/device/send", strings.NewReader(payload))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
@@ -438,15 +423,7 @@ func TestPostDeviceSend_Auth(t *testing.T) {
 
 	// Test with empty Bearer token
 	t.Run("empty_bearer_token", func(t *testing.T) {
-		payload := `{
-			"msg_type":3,
-			"content_type":"application/json",
-			"source":"dns:test-sender",
-			"dest":"mac:4ca161000109/config",
-			"transaction_uuid":"test-transaction-uuid",
-			"payload":"eyJjb21tYW5kIjoiR0VUIiwibmFtZXMiOlsiRGV2aWNlLkluZm8uUHJvcGVydHkxIl19",
-			"partner_ids":["testpartner"]
-		}`
+		payload := testWRPPayload
 		req, err := fixture.NewRequest("POST", "/api/v2/device/send", strings.NewReader(payload))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
@@ -504,9 +481,9 @@ func TestDeviceConnect_Auth(t *testing.T) {
 
 			// Add convey header with device metadata
 			conveyData := map[string]interface{}{
-				"fw-name":                  "test-firmware-1.0",
-				"hw-model":                 "test-model",
-				"hw-manufacturer":          "test-manufacturer",
+				fwName:                     testFirmwareVersion,
+				hwModel:                    testDeviceModel,
+				hwManufacturer:             testDeviceManufacturer,
 				"hw-serial-number":         "TEST123456",
 				"hw-last-reboot-reason":    "power-cycle",
 				"webpa-protocol":           "websocket",
@@ -670,9 +647,9 @@ func TestTrustedVsUntrustedJWT(t *testing.T) {
 			headers.Set("X-Webpa-Device-Name", "mac:aabbccddeeff")
 
 			conveyData := map[string]interface{}{
-				"fw-name":         "test-firmware-1.0",
-				"hw-model":        "test-model",
-				"hw-manufacturer": "test-manufacturer",
+				fwName:         testFirmwareVersion,
+				hwModel:        testDeviceModel,
+				hwManufacturer: testDeviceManufacturer,
 			}
 			conveyJSON, _ := json.Marshal(conveyData)
 			headers.Set("X-Webpa-Convey", base64.StdEncoding.EncodeToString(conveyJSON))
@@ -854,9 +831,9 @@ func TestExpiredJWT(t *testing.T) {
 			headers.Set("X-Webpa-Device-Name", "mac:aabbccddeeff")
 
 			conveyData := map[string]interface{}{
-				"fw-name":         "test-firmware-1.0",
-				"hw-model":        "test-model",
-				"hw-manufacturer": "test-manufacturer",
+				fwName:         testFirmwareVersion,
+				hwModel:        testDeviceModel,
+				hwManufacturer: testDeviceManufacturer,
 			}
 			conveyJSON, _ := json.Marshal(conveyData)
 			headers.Set("X-Webpa-Convey", base64.StdEncoding.EncodeToString(conveyJSON))

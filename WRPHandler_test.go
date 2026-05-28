@@ -24,6 +24,16 @@ import (
 	"github.com/xmidt-org/wrp-go/v3/wrphttp"
 )
 
+const (
+	testHeader1        = "Header-1"
+	testHeader2        = "Header-2"
+	testMetadataBar    = "bar"
+	testMAC            = "mac:123412341234"
+	testMetadataFoo    = "foo"
+	testWRPSource      = "test.com"
+	testWRPContentType = "text/plain"
+)
+
 func testWRPHandlerNilRouter(t *testing.T) {
 	assert := assert.New(t)
 	assert.Panics(func() {
@@ -75,19 +85,19 @@ func testMessageHandlerServeHTTPEncodeError(t *testing.T) {
 
 		requestMessage = &wrp.Message{
 			Type:            wrp.SimpleRequestResponseMessageType,
-			Source:          "test.com",
-			Destination:     "mac:123412341234",
+			Source:          testWRPSource,
+			Destination:     testMAC,
 			TransactionUUID: transactionKey,
-			ContentType:     "text/plain",
+			ContentType:     testWRPContentType,
 			Payload:         []byte("eyJjb21tYW5kIjoiR0VUIiwibmFtZXMiOlsiU29tZXRoaW5nIl19"),
-			Headers:         []string{"Header-1", "Header-2"},
-			Metadata:        map[string]string{"foo": "bar"},
+			Headers:         []string{testHeader1, testHeader2},
+			Metadata:        map[string]string{testMetadataFoo: testMetadataBar},
 		}
 
 		responseMessage = &wrp.Message{
 			Type:            wrp.SimpleRequestResponseMessageType,
-			Destination:     "test.com",
-			Source:          "mac:123412341234",
+			Destination:     testWRPSource,
+			Source:          testMAC,
 			TransactionUUID: transactionKey,
 		}
 
@@ -140,8 +150,8 @@ func testMessageHandlerServeHTTPRouteError(t *testing.T, routeError error, expec
 
 		message = &wrp.Message{
 			Type:        wrp.SimpleEventMessageType,
-			Source:      "test.com",
-			Destination: "mac:123412341234",
+			Source:      testWRPSource,
+			Destination: testMAC,
 		}
 
 		requestContents []byte
@@ -187,12 +197,12 @@ func testMessageHandlerServeHTTPEvent(t *testing.T, requestFormat wrp.Format) {
 		require = require.New(t)
 
 		event = &wrp.Message{
-			Source:      "test.com",
-			Destination: "mac:123412341234",
-			ContentType: "text/plain",
+			Source:      testWRPSource,
+			Destination: testMAC,
+			ContentType: testWRPContentType,
 			Payload:     []byte("eyJjb21tYW5kIjoiR0VUIiwibmFtZXMiOlsiU29tZXRoaW5nIl19"),
-			Headers:     []string{"Header-1", "Header-2"},
-			Metadata:    map[string]string{"foo": "bar"},
+			Headers:     []string{testHeader1, testHeader2},
+			Metadata:    map[string]string{testMetadataFoo: testMetadataBar},
 		}
 
 		requestContents []byte
@@ -240,19 +250,19 @@ func testMessageHandlerServeHTTPRequestResponse(t *testing.T, responseFormat, re
 
 		requestMessage = &wrp.Message{
 			Type:            wrp.SimpleRequestResponseMessageType,
-			Source:          "test.com",
-			Destination:     "mac:123412341234",
+			Source:          testWRPSource,
+			Destination:     testMAC,
 			TransactionUUID: transactionKey,
-			ContentType:     "text/plain",
+			ContentType:     testWRPContentType,
 			Payload:         []byte("eyJjb21tYW5kIjoiR0VUIiwibmFtZXMiOlsiU29tZXRoaW5nIl19"),
-			Headers:         []string{"Header-1", "Header-2"},
-			Metadata:        map[string]string{"foo": "bar"},
+			Headers:         []string{testHeader1, testHeader2},
+			Metadata:        map[string]string{testMetadataFoo: testMetadataBar},
 		}
 
 		responseMessage = &wrp.Message{
 			Type:            wrp.SimpleRequestResponseMessageType,
-			Destination:     "test.com",
-			Source:          "mac:123412341234",
+			Destination:     testWRPSource,
+			Source:          testMAC,
 			TransactionUUID: transactionKey,
 		}
 

@@ -23,6 +23,24 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+const (
+	testHWDeviceID      = "/hw-deviceid"
+	testBadScheme       = "bad"
+	testEventIot        = "event:iot"
+	testEndpoint1       = "http://endpoint1.com"
+	testEndpoint2       = "http://endpoint2.com"
+	testPatchMethod     = "PATCH"
+	testNowhereCom      = "nowhere.com"
+	testEventMessageKey = "message"
+	testDNSFoobar       = "dns:foobar.com"
+	testEventFoobarCom  = "foobar.com"
+	testEventHTTPFoobar = "http://foobar.com"
+	testHTTPSFoobar     = "https://foobar.com"
+	testEventSource     = "test-source"
+	testEventValue      = "value"
+	testEventIotKey     = "iot"
+)
+
 func genTestMetadata() *device.Metadata {
 	m := new(device.Metadata)
 
@@ -46,8 +64,8 @@ func testEventDispatcherOnDeviceEventConnectEvent(t *testing.T) {
 	om, err := NewTestOutboundMeasures()
 	require.NoError(err)
 	dispatcher, outbounds, err := NewEventDispatcher(om, &Outbounder{
-		Method:         "POST",
-		EventEndpoints: map[string]any{"default": []string{"https://example.com"}},
+		Method:         DefaultMethod,
+		EventEndpoints: map[string]any{DefaultEventType: []string{"https://example.com"}},
 	}, nil, nil)
 	require.NotNil(dispatcher)
 	require.NotNil(outbounds)
@@ -79,7 +97,7 @@ func testEventDispatcherOnDeviceEventConnectEvent(t *testing.T) {
 		Metadata: map[string]string{
 			"/trust":                       strconv.Itoa(d.Metadata().TrustClaim()),
 			"/account-id":                  d.Metadata().AccountIDClaim(),
-			"/hw-deviceid":                 string(d.ID()),
+			testHWDeviceID:                 string(d.ID()),
 			"/intermediate-context":        d.IntermediateContext(),
 			device.WRPTimestampMetadataKey: mTime.Format(time.RFC3339Nano),
 			"/compliance":                  convey.MissingFields.String(),
@@ -100,8 +118,8 @@ func testEventDispatcherOnDeviceEventDisconnectEvent(t *testing.T) {
 	om, err := NewTestOutboundMeasures()
 	require.NoError(err)
 	dispatcher, outbounds, err := NewEventDispatcher(om, &Outbounder{
-		Method:         "POST",
-		EventEndpoints: map[string]any{"default": []string{"https://example.com"}},
+		Method:         DefaultMethod,
+		EventEndpoints: map[string]any{DefaultEventType: []string{"https://example.com"}},
 	}, nil, nil)
 	require.NotNil(dispatcher)
 	require.NotNil(outbounds)
@@ -136,7 +154,7 @@ func testEventDispatcherOnDeviceEventDisconnectEvent(t *testing.T) {
 		Metadata: map[string]string{
 			"/trust":                       strconv.Itoa(d.Metadata().TrustClaim()),
 			"/account-id":                  d.Metadata().AccountIDClaim(),
-			"/hw-deviceid":                 string(d.ID()),
+			testHWDeviceID:                 string(d.ID()),
 			"/intermediate-context":        d.IntermediateContext(),
 			device.WRPTimestampMetadataKey: mTime.Format(time.RFC3339Nano),
 			"/compliance":                  convey.MissingFields.String(),
@@ -176,7 +194,7 @@ func testEventDispatcherOnDeviceEventBadURLFilter(t *testing.T) {
 
 	om, err := NewTestOutboundMeasures()
 	require.NoError(err)
-	dispatcher, outbounds, err := NewEventDispatcher(om, &Outbounder{DefaultScheme: "bad"}, nil, nil)
+	dispatcher, outbounds, err := NewEventDispatcher(om, &Outbounder{DefaultScheme: testBadScheme}, nil, nil)
 	assert.Nil(dispatcher)
 	assert.Nil(outbounds)
 	assert.Error(err)
@@ -191,63 +209,63 @@ func testEventDispatcherOnDeviceEventDispatchEvent(t *testing.T) {
 		}{
 			{
 				outbounder:        nil,
-				destination:       "event:iot",
+				destination:       testEventIot,
 				expectedEndpoints: map[string]bool{},
 			},
 			{
-				outbounder:        &Outbounder{Method: "BADMETHOD&%*(!@(&%(", EventEndpoints: map[string]interface{}{"iot": []string{"http://endpoint1.com"}}},
-				destination:       "event:iot",
+				outbounder:        &Outbounder{Method: "BADMETHOD&%*(!@(&%(", EventEndpoints: map[string]interface{}{testEventIotKey: []string{testEndpoint1}}},
+				destination:       testEventIot,
 				expectedEndpoints: map[string]bool{},
 			},
 			{
-				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"another": []string{"http://endpoint1.com"}}},
-				destination:       "event:iot",
+				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"another": []string{testEndpoint1}}},
+				destination:       testEventIot,
 				expectedEndpoints: map[string]bool{},
 			},
 			{
-				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"another": []string{"http://endpoint1.com"}}},
-				destination:       "event:iot",
+				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"another": []string{testEndpoint1}}},
+				destination:       testEventIot,
 				expectedEndpoints: map[string]bool{},
 			},
 			{
-				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com"}}},
-				destination:       "event:iot",
-				expectedEndpoints: map[string]bool{"http://endpoint1.com": true},
+				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{DefaultEventType: []string{testEndpoint1}}},
+				destination:       testEventIot,
+				expectedEndpoints: map[string]bool{testEndpoint1: true},
 			},
 			{
-				outbounder:        &Outbounder{Method: "PATCH", EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com"}}},
-				destination:       "event:iot",
-				expectedEndpoints: map[string]bool{"http://endpoint1.com": true},
+				outbounder:        &Outbounder{Method: testPatchMethod, EventEndpoints: map[string]interface{}{DefaultEventType: []string{testEndpoint1}}},
+				destination:       testEventIot,
+				expectedEndpoints: map[string]bool{testEndpoint1: true},
 			},
 			{
-				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com", "http://endpoint2.com"}}},
-				destination:       "event:iot",
-				expectedEndpoints: map[string]bool{"http://endpoint1.com": true, "http://endpoint2.com": true},
+				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{DefaultEventType: []string{testEndpoint1, testEndpoint2}}},
+				destination:       testEventIot,
+				expectedEndpoints: map[string]bool{testEndpoint1: true, testEndpoint2: true},
 			},
 			{
-				outbounder:        &Outbounder{Method: "PATCH", EventEndpoints: map[string]interface{}{"default": []string{"http://endpoint1.com", "http://endpoint2.com"}}},
-				destination:       "event:iot",
-				expectedEndpoints: map[string]bool{"http://endpoint1.com": true, "http://endpoint2.com": true},
+				outbounder:        &Outbounder{Method: testPatchMethod, EventEndpoints: map[string]interface{}{DefaultEventType: []string{testEndpoint1, testEndpoint2}}},
+				destination:       testEventIot,
+				expectedEndpoints: map[string]bool{testEndpoint1: true, testEndpoint2: true},
 			},
 			{
-				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"iot": []string{"http://endpoint1.com"}}},
-				destination:       "event:iot",
-				expectedEndpoints: map[string]bool{"http://endpoint1.com": true},
+				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{testEventIotKey: []string{testEndpoint1}}},
+				destination:       testEventIot,
+				expectedEndpoints: map[string]bool{testEndpoint1: true},
 			},
 			{
-				outbounder:        &Outbounder{Method: "PATCH", EventEndpoints: map[string]interface{}{"iot": []string{"http://endpoint1.com"}}},
-				destination:       "event:iot",
-				expectedEndpoints: map[string]bool{"http://endpoint1.com": true},
+				outbounder:        &Outbounder{Method: testPatchMethod, EventEndpoints: map[string]interface{}{testEventIotKey: []string{testEndpoint1}}},
+				destination:       testEventIot,
+				expectedEndpoints: map[string]bool{testEndpoint1: true},
 			},
 			{
-				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{"iot": []string{"http://endpoint1.com", "http://endpoint2.com"}}},
-				destination:       "event:iot",
-				expectedEndpoints: map[string]bool{"http://endpoint1.com": true, "http://endpoint2.com": true},
+				outbounder:        &Outbounder{EventEndpoints: map[string]interface{}{testEventIotKey: []string{testEndpoint1, testEndpoint2}}},
+				destination:       testEventIot,
+				expectedEndpoints: map[string]bool{testEndpoint1: true, testEndpoint2: true},
 			},
 			{
-				outbounder:        &Outbounder{Method: "PATCH", EventEndpoints: map[string]interface{}{"iot": []string{"http://endpoint1.com", "http://endpoint2.com"}}},
-				destination:       "event:iot",
-				expectedEndpoints: map[string]bool{"http://endpoint1.com": true, "http://endpoint2.com": true},
+				outbounder:        &Outbounder{Method: testPatchMethod, EventEndpoints: map[string]interface{}{testEventIotKey: []string{testEndpoint1, testEndpoint2}}},
+				destination:       testEventIot,
+				expectedEndpoints: map[string]bool{testEndpoint1: true, testEndpoint2: true},
 			},
 		}
 	)
@@ -318,11 +336,11 @@ func testEventDispatcherOnDeviceEventFullQueue(t *testing.T) {
 
 		outbounder = &Outbounder{
 			RequestTimeout: 100 * time.Millisecond,
-			EventEndpoints: map[string]interface{}{"default": []string{"nowhere.com"}},
+			EventEndpoints: map[string]interface{}{DefaultEventType: []string{testNowhereCom}},
 			Logger: zap.New(
 				zapcore.NewCore(zapcore.NewJSONEncoder(
 					zapcore.EncoderConfig{
-						MessageKey: "message",
+						MessageKey: testEventMessageKey,
 					}), zapcore.AddSync(&b), zapcore.ErrorLevel),
 			),
 		}
@@ -399,12 +417,12 @@ func testEventDispatcherEventTypes(t *testing.T) {
 				deviceMetadata = genTestMetadata()
 				b              bytes.Buffer
 				o              = Outbounder{
-					Method:         "PATCH",
-					EventEndpoints: map[string]interface{}{"default": []string{"nowhere.com"}},
+					Method:         testPatchMethod,
+					EventEndpoints: map[string]interface{}{DefaultEventType: []string{testNowhereCom}},
 					Logger: zap.New(
 						zapcore.NewCore(zapcore.NewJSONEncoder(
 							zapcore.EncoderConfig{
-								MessageKey: "message",
+								MessageKey: testEventMessageKey,
 							}), zapcore.AddSync(&b), zapcore.ErrorLevel),
 					),
 				}
@@ -453,12 +471,12 @@ func testEventDispatcherOnDeviceEventFilterError(t *testing.T) {
 		expectedError = errors.New("expected")
 		b             bytes.Buffer
 		o             = Outbounder{
-			Method:         "PATCH",
-			EventEndpoints: map[string]interface{}{"default": []string{"nowhere.com"}},
+			Method:         testPatchMethod,
+			EventEndpoints: map[string]interface{}{DefaultEventType: []string{testNowhereCom}},
 			Logger: zap.New(
 				zapcore.NewCore(zapcore.NewJSONEncoder(
 					zapcore.EncoderConfig{
-						MessageKey: "message",
+						MessageKey: testEventMessageKey,
 					}), zapcore.AddSync(&b), zapcore.ErrorLevel),
 			),
 		}
@@ -497,45 +515,45 @@ func testEventDispatcherOnDeviceEventDispatchTo(t *testing.T) {
 		}{
 			{
 				outbounder:            nil,
-				destination:           "dns:foobar.com",
-				expectedUnfilteredURL: "foobar.com",
-				expectedEndpoint:      "http://foobar.com",
+				destination:           testDNSFoobar,
+				expectedUnfilteredURL: testEventFoobarCom,
+				expectedEndpoint:      testEventHTTPFoobar,
 				expectsEnvelope:       true,
 			},
 			{
-				outbounder:            &Outbounder{Method: "PATCH"},
-				destination:           "dns:foobar.com",
-				expectedUnfilteredURL: "foobar.com",
-				expectedEndpoint:      "http://foobar.com",
+				outbounder:            &Outbounder{Method: testPatchMethod},
+				destination:           testDNSFoobar,
+				expectedUnfilteredURL: testEventFoobarCom,
+				expectedEndpoint:      testEventHTTPFoobar,
 				expectsEnvelope:       true,
 			},
 			// TODO sync with john on how we want to handle authorization in eventDispatcher.newRequest(...)
 			{
-				outbounder:            &Outbounder{Method: "PATCH", AuthKey: "foobar"},
-				destination:           "dns:foobar.com",
-				expectedUnfilteredURL: "foobar.com",
-				expectedEndpoint:      "http://foobar.com",
+				outbounder:            &Outbounder{Method: testPatchMethod, AuthKey: "foobar"},
+				destination:           testDNSFoobar,
+				expectedUnfilteredURL: testEventFoobarCom,
+				expectedEndpoint:      testEventHTTPFoobar,
 				expectsEnvelope:       true,
 			},
 			{
 				outbounder:            &Outbounder{Method: "BADMETHOD$(*@#)*%"},
-				destination:           "dns:foobar.com",
-				expectedUnfilteredURL: "foobar.com",
-				expectedEndpoint:      "http://foobar.com",
+				destination:           testDNSFoobar,
+				expectedUnfilteredURL: testEventFoobarCom,
+				expectedEndpoint:      testEventHTTPFoobar,
 				expectsEnvelope:       false,
 			},
 			{
 				outbounder:            nil,
 				destination:           "dns:https://foobar.com",
-				expectedUnfilteredURL: "https://foobar.com",
-				expectedEndpoint:      "https://foobar.com",
+				expectedUnfilteredURL: testHTTPSFoobar,
+				expectedEndpoint:      testHTTPSFoobar,
 				expectsEnvelope:       true,
 			},
 			{
 				outbounder:            &Outbounder{Method: "BADMETHOD$(*@#)*%"},
 				destination:           "dns:https://foobar.com",
-				expectedUnfilteredURL: "https://foobar.com",
-				expectedEndpoint:      "https://foobar.com",
+				expectedUnfilteredURL: testHTTPSFoobar,
+				expectedEndpoint:      testHTTPSFoobar,
 				expectsEnvelope:       false,
 			},
 		}
@@ -601,7 +619,7 @@ func testEventDispatcherOnDeviceEventNilEventError(t *testing.T) {
 	logger := zap.New(
 		zapcore.NewCore(zapcore.NewJSONEncoder(
 			zapcore.EncoderConfig{
-				MessageKey: "message",
+				MessageKey: testEventMessageKey,
 			}), zapcore.AddSync(&b), zapcore.ErrorLevel),
 	)
 	o.Logger = logger
@@ -621,7 +639,7 @@ func testEventDispatcherOnDeviceEventNilEventError(t *testing.T) {
 func testEventDispatcherOnDeviceEventEventMapError(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	o := &Outbounder{EventEndpoints: map[string]interface{}{"bad": -17.6}}
+	o := &Outbounder{EventEndpoints: map[string]interface{}{testBadScheme: -17.6}}
 	om, err := NewTestOutboundMeasures()
 	require.NoError(err)
 	dp, _, err := NewEventDispatcher(om, o, nil, nil)
@@ -630,7 +648,7 @@ func testEventDispatcherOnDeviceEventEventMapError(t *testing.T) {
 }
 
 func testEventDispatcherMetrics(t *testing.T) {
-	url := "nowhere.com"
+	url := testNowhereCom
 	tests := []struct {
 		description                  string
 		event                        device.Event
@@ -714,12 +732,12 @@ func testEventDispatcherMetrics(t *testing.T) {
 				d       = new(device.MockDevice)
 				b       = bytes.Buffer{}
 				o       = Outbounder{
-					Method:         "PATCH",
-					EventEndpoints: map[string]interface{}{"default": []string{url}},
+					Method:         testPatchMethod,
+					EventEndpoints: map[string]interface{}{DefaultEventType: []string{url}},
 					Logger: zap.New(
 						zapcore.NewCore(zapcore.NewJSONEncoder(
 							zapcore.EncoderConfig{
-								MessageKey: "message",
+								MessageKey: testEventMessageKey,
 							}), zapcore.AddSync(&b), zapcore.ErrorLevel),
 					),
 				}
@@ -827,7 +845,7 @@ func testEventDispatcherKafkaIntegration(t *testing.T) {
 			description: "MessageReceived event:// publishes to Kafka when enabled",
 			event: device.Event{
 				Type:    device.MessageReceived,
-				Message: &wrp.Message{Destination: "event:iot"},
+				Message: &wrp.Message{Destination: testEventIot},
 			},
 			kafkaEnabled:          true,
 			expectKafkaPublish:    true,
@@ -837,7 +855,7 @@ func testEventDispatcherKafkaIntegration(t *testing.T) {
 			description: "MessageReceived event:// skips Kafka when disabled",
 			event: device.Event{
 				Type:    device.MessageReceived,
-				Message: &wrp.Message{Destination: "event:iot"},
+				Message: &wrp.Message{Destination: testEventIot},
 			},
 			kafkaEnabled:       false,
 			expectKafkaPublish: false,
@@ -846,7 +864,7 @@ func testEventDispatcherKafkaIntegration(t *testing.T) {
 			description: "MessageReceived dns:// does not publish to Kafka",
 			event: device.Event{
 				Type:    device.MessageReceived,
-				Message: &wrp.Message{Destination: "dns:foobar.com"},
+				Message: &wrp.Message{Destination: testDNSFoobar},
 			},
 			kafkaEnabled:       true,
 			expectKafkaPublish: false, // DNS scheme doesn't publish to Kafka (only event:// scheme does)
@@ -874,8 +892,8 @@ func testEventDispatcherKafkaIntegration(t *testing.T) {
 				urlFilter             *mockURLFilter
 				expectIsEnabledCalled = true
 				o                     = &Outbounder{
-					Method:         "POST",
-					EventEndpoints: map[string]interface{}{"default": []string{"http://nowhere.com"}},
+					Method:         DefaultMethod,
+					EventEndpoints: map[string]interface{}{DefaultEventType: []string{"http://nowhere.com"}},
 				}
 				kafkaDroppedCounter   = new(mockCounter)
 				kafkaOutboundCounter  = new(mockCounter)
@@ -888,7 +906,7 @@ func testEventDispatcherKafkaIntegration(t *testing.T) {
 					locator, _ := wrp.ParseLocator(msg.Destination)
 					if locator.Scheme == wrp.SchemeDNS {
 						urlFilter = new(mockURLFilter)
-						urlFilter.On("Filter", mock.Anything).Return("http://foobar.com", nil).Maybe()
+						urlFilter.On("Filter", mock.Anything).Return(testEventHTTPFoobar, nil).Maybe()
 						// For DNS scheme, IsEnabled() is never checked (only for event:// scheme)
 						expectIsEnabledCalled = false
 					}
@@ -1069,8 +1087,8 @@ func testEventDispatcherSendToKafka(t *testing.T) {
 			// Create test message
 			msg := &wrp.Message{
 				Type:        wrp.SimpleEventMessageType,
-				Source:      "test-source",
-				Destination: "mac:112233445566",
+				Source:      testEventSource,
+				Destination: testDeviceMAC,
 			}
 
 			// Execute
@@ -1098,25 +1116,25 @@ func testEventDispatcherHwDeviceIDEnrichment(t *testing.T) {
 		{
 			description:          "Adds hw-deviceid when metadata is nil",
 			initialMetadata:      nil,
-			expectedHwDeviceID:   "mac:112233445566",
+			expectedHwDeviceID:   testDeviceMAC,
 			shouldEnrichMetadata: true,
 		},
 		{
 			description:          "Adds hw-deviceid when metadata exists but field missing",
-			initialMetadata:      map[string]string{"other-field": "value"},
-			expectedHwDeviceID:   "mac:112233445566",
+			initialMetadata:      map[string]string{"other-field": testEventValue},
+			expectedHwDeviceID:   testDeviceMAC,
 			shouldEnrichMetadata: true,
 		},
 		{
 			description:          "Preserves existing hw-deviceid",
-			initialMetadata:      map[string]string{"/hw-deviceid": "mac:existing-device"},
+			initialMetadata:      map[string]string{testHWDeviceID: "mac:existing-device"},
 			expectedHwDeviceID:   "mac:existing-device",
 			shouldEnrichMetadata: false,
 		},
 		{
 			description:          "Adds hw-deviceid when metadata exists but field is empty",
-			initialMetadata:      map[string]string{"/hw-deviceid": ""},
-			expectedHwDeviceID:   "mac:112233445566",
+			initialMetadata:      map[string]string{testHWDeviceID: ""},
+			expectedHwDeviceID:   testDeviceMAC,
 			shouldEnrichMetadata: true,
 		},
 	}
@@ -1133,7 +1151,7 @@ func testEventDispatcherHwDeviceIDEnrichment(t *testing.T) {
 			)
 
 			// Setup device mock
-			d.On("ID").Return(device.ID("mac:112233445566"))
+			d.On("ID").Return(device.ID(testDeviceMAC))
 			d.On("Metadata").Return(genTestMetadata())
 			// Setup Kafka publisher to capture the message
 			mockPub.On("IsEnabled").Return(true)
@@ -1152,8 +1170,8 @@ func testEventDispatcherHwDeviceIDEnrichment(t *testing.T) {
 			kafkaOutboundCounter.On("Add", 1.0).Return().Once()
 
 			o := &Outbounder{
-				Method:         "POST",
-				EventEndpoints: map[string]interface{}{"default": []string{"http://nowhere.com"}},
+				Method:         DefaultMethod,
+				EventEndpoints: map[string]interface{}{DefaultEventType: []string{"http://nowhere.com"}},
 			}
 
 			// Create dispatcher
@@ -1186,13 +1204,13 @@ func testEventDispatcherHwDeviceIDEnrichment(t *testing.T) {
 
 			// Verify hw-deviceid in metadata
 			assert.NotNil(publishedMsg.Metadata, "Metadata should not be nil")
-			assert.Contains(publishedMsg.Metadata, "/hw-deviceid", "Metadata should contain /hw-deviceid")
-			assert.Equal(tc.expectedHwDeviceID, publishedMsg.Metadata["/hw-deviceid"], "hw-deviceid value mismatch")
+			assert.Contains(publishedMsg.Metadata, testHWDeviceID, "Metadata should contain /hw-deviceid")
+			assert.Equal(tc.expectedHwDeviceID, publishedMsg.Metadata[testHWDeviceID], "hw-deviceid value mismatch")
 
 			// If we had initial metadata with other fields, verify they're preserved
 			if tc.initialMetadata != nil {
 				for key, value := range tc.initialMetadata {
-					if key != "/hw-deviceid" {
+					if key != testHWDeviceID {
 						assert.Equal(value, publishedMsg.Metadata[key], "Existing metadata field %s should be preserved", key)
 					}
 				}
