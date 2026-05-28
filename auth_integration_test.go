@@ -24,13 +24,18 @@ import (
 )
 
 const (
-	testPassword           = "pass"
-	testValidCredsDesc     = "Valid credentials should succeed"
-	testInvalidCredsName   = "invalid_credentials"
-	testInvalidCredsDesc   = "Invalid credentials should fail"
-	testNoCredsName        = "no_credentials"
-	testNoCredsDesc        = "No credentials should fail"
-	testInvalidToken       = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.invalid.signature"
+	testPassword = "pass"
+	//nolint:gosec // G101: False positive - this is a test description, not a credential
+	testValidCredsDesc = "Valid credentials should succeed"
+	//nolint:gosec // G101: False positive - this is a test name, not a credential
+	testInvalidCredsName = "invalid_credentials"
+	//nolint:gosec // G101: False positive - this is a test description, not a credential
+	testInvalidCredsDesc = "Invalid credentials should fail"
+	testNoCredsName      = "no_credentials"
+	testNoCredsDesc      = "No credentials should fail"
+	//nolint:gosec // G101: False positive - this is a test JWT token, not a credential
+	testInvalidToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.invalid.signature"
+	//nolint:gosec // G101: False positive - this is a test name, not a credential
 	testValidCredsName     = "valid_credentials"
 	testUser               = "user"
 	testWrongCredential    = "wrong"
@@ -844,6 +849,9 @@ func TestExpiredJWT(t *testing.T) {
 		// Test immediately - should succeed
 		dialer := websocket.Dialer{}
 		conn1, resp1, err1 := dialer.Dial(wsURL, prepareHeaders(token))
+		if resp1 != nil && resp1.Body != nil {
+			defer resp1.Body.Close()
+		}
 		if conn1 != nil {
 			defer conn1.Close()
 		}
@@ -861,6 +869,9 @@ func TestExpiredJWT(t *testing.T) {
 
 		// Test again - should fail
 		conn2, resp2, err2 := dialer.Dial(wsURL, prepareHeaders(token))
+		if resp2 != nil && resp2.Body != nil {
+			defer resp2.Body.Close()
+		}
 		if conn2 != nil {
 			conn2.Close()
 		}

@@ -413,6 +413,7 @@ func setupTalaria(t *testing.T, kafkaBroker string, themisURLs map[string]string
 	//   // GET /api/v2/devices with untrustedJWT → 401 Unauthorized
 
 	// write the test config file
+	//nolint:gosec // G703: False positive - testConfigFile is constructed from t.TempDir(), not user input
 	if err := os.WriteFile(testConfigFile, []byte(configContent), 0600); err != nil {
 		t.Fatalf("Failed to write test config: %v", err)
 	}
@@ -734,13 +735,14 @@ func setupXmidtAgent(t *testing.T, themisURL string, debug bool) {
 	configStr = strings.Replace(configStr, "http://localhost:6501/issue", themisURLForContainer, 1)
 
 	// Also update Talaria WebSocket URL if present in config
-	configStr = strings.Replace(configStr, "ws://localhost:6200", "ws://host.docker.internal:6200", -1)
-	configStr = strings.Replace(configStr, "ws://127.0.0.1:6200", "ws://host.docker.internal:6200", -1)
+	configStr = strings.ReplaceAll(configStr, "ws://localhost:6200", "ws://host.docker.internal:6200")
+	configStr = strings.ReplaceAll(configStr, "ws://127.0.0.1:6200", "ws://host.docker.internal:6200")
 
 	t.Logf("✓ Updated xmidt-agent config to use Themis at: %s", themisURLForContainer)
 
 	// Write test-specific config
 	testConfigFile := filepath.Join(testTempDir, "xmidt-agent.yaml")
+	//nolint:gosec // G703: False positive - testConfigFile is constructed from t.TempDir(), not user input
 	if err := os.WriteFile(testConfigFile, []byte(configStr), 0600); err != nil {
 		t.Fatalf("Failed to write test config: %v", err)
 	}
