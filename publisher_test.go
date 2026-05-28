@@ -495,7 +495,7 @@ func TestDefaultPublisherFactory(t *testing.T) {
 				SASL: KafkaSASLConfig{
 					Mechanism: testSASLPlain,
 					Username:  testPublisherUser,
-					Password:  testPassword,
+					Password:  testPublisherPassword,
 				},
 			},
 			expectError: false,
@@ -513,7 +513,7 @@ func TestDefaultPublisherFactory(t *testing.T) {
 				SASL: KafkaSASLConfig{
 					Mechanism: "SCRAM-SHA-256",
 					Username:  testPublisherUser,
-					Password:  testPassword,
+					Password:  testPublisherPassword,
 				},
 			},
 			expectError: false,
@@ -531,7 +531,7 @@ func TestDefaultPublisherFactory(t *testing.T) {
 				SASL: KafkaSASLConfig{
 					Mechanism: "SCRAM-SHA-512",
 					Username:  testPublisherUser,
-					Password:  testPassword,
+					Password:  testPublisherPassword,
 				},
 			},
 			expectError: false,
@@ -549,7 +549,7 @@ func TestDefaultPublisherFactory(t *testing.T) {
 				SASL: KafkaSASLConfig{
 					Mechanism: "INVALID",
 					Username:  testPublisherUser,
-					Password:  testPassword,
+					Password:  testPublisherPassword,
 				},
 			},
 			expectError:   true,
