@@ -162,11 +162,11 @@ func testOutbounderConfiguration(t *testing.T) {
 		configuration = []byte(`{
 			"method": "PATCH",
 			"requestTimeout": "30s",
-			"defaultScheme": testOutboundFTP,
-			"allowedSchemes": [testOutboundFTP, "nntp"],
-			"defaultEventEndpoints": ["https://default.endpoint.com"],
-			"eventEndpoints": {
-				testIot: ["https://endpoint1.com", "https://endpoint2.com"],
+		"defaultScheme": "ftp",
+		"allowedSchemes": ["ftp", "nntp"],
+		"defaultEventEndpoints": ["https://default.endpoint.com"],
+		"eventEndpoints": {
+			"iot": ["https://endpoint1.com", "https://endpoint2.com"],
 				"something": ["https://endpoint3.com"]
 			},
 			"outboundQueueSize": 281,
