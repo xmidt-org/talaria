@@ -216,8 +216,8 @@ func publisherFactory(config *KafkaConfig, promReg prometheus.Registerer) (wrpKa
 		}
 
 		// Configure CA certificate for server verification
-		// Only load custom CA if specified; otherwise use system CA pool
-		if !config.TLS.InsecureSkipVerify && config.TLS.CAFile != "" {
+		// Load custom CA if specified; otherwise system CA pool is used
+		if config.TLS.CAFile != "" {
 			caCertPool := x509.NewCertPool()
 			caCertPEM, err := os.ReadFile(config.TLS.CAFile)
 			if err != nil {
