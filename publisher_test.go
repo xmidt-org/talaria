@@ -1061,6 +1061,15 @@ func TestPublisherFactory_TLS(t *testing.T) {
 			"openssl x509 -req -days 365 -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out client.crt")
 	}
 
+	// Create a temp file with invalid PEM data for testing
+	invalidCAFile, err := os.CreateTemp("", "invalid-ca-*.crt")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.Remove(invalidCAFile.Name()) })
+	_, err = invalidCAFile.WriteString("This is not valid PEM data\n")
+	require.NoError(t, err)
+	invalidCAFile.Close()
+	invalidCAPath := invalidCAFile.Name()
+
 	tests := []struct {
 		name          string
 		config        *KafkaConfig
@@ -1088,6 +1097,31 @@ func TestPublisherFactory_TLS(t *testing.T) {
 				require.NotNil(t, pub.TLS)
 				assert.True(t, pub.TLS.InsecureSkipVerify)
 				assert.Nil(t, pub.TLS.RootCAs, "RootCAs should not be set when InsecureSkipVerify is true")
+				assert.Empty(t, pub.TLS.Certificates, "Client certificates should not be set")
+			},
+		},
+		{
+			name: "TLS with InsecureSkipVerify and CA file (CA file loaded but verification skipped)",
+			config: &KafkaConfig{
+				Enabled: true,
+				Brokers: []string{"localhost:9093"},
+				InitialDynamicConfig: wrpkafka.DynamicConfig{
+					TopicMap: []wrpkafka.TopicRoute{
+						{Pattern: "*", Topic: testTopic},
+					},
+				},
+				TLS: KafkaTLSConfig{
+					Enabled:            true,
+					InsecureSkipVerify: true,
+					CAFile:             caCertPath,
+				},
+			},
+			expectError: false,
+			validateTLS: func(t *testing.T, pub *wrpkafka.Publisher) {
+				require.NotNil(t, pub.TLS)
+				assert.True(t, pub.TLS.InsecureSkipVerify)
+				// CA file should still be loaded even when InsecureSkipVerify is true
+				assert.NotNil(t, pub.TLS.RootCAs, "RootCAs should be set when CA file is provided")
 				assert.Empty(t, pub.TLS.Certificates, "Client certificates should not be set")
 			},
 		},
@@ -1183,6 +1217,25 @@ func TestPublisherFactory_TLS(t *testing.T) {
 			},
 			expectError:   true,
 			errorContains: "failed to read CA certificate file",
+		},
+		{
+			name: "TLS with invalid PEM in CA file",
+			config: &KafkaConfig{
+				Enabled: true,
+				Brokers: []string{"localhost:9093"},
+				InitialDynamicConfig: wrpkafka.DynamicConfig{
+					TopicMap: []wrpkafka.TopicRoute{
+						{Pattern: "*", Topic: testTopic},
+					},
+				},
+				TLS: KafkaTLSConfig{
+					Enabled:            true,
+					InsecureSkipVerify: false,
+					CAFile:             invalidCAPath,
+				},
+			},
+			expectError:   true,
+			errorContains: "failed to append CA certificate to pool",
 		},
 		{
 			name: "TLS with invalid client certificate",
