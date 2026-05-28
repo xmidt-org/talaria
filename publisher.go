@@ -214,8 +214,11 @@ func publisherFactory(config *KafkaConfig, promReg prometheus.Registerer) (wrpKa
 			//nolint:gosec
 			InsecureSkipVerify: config.TLS.InsecureSkipVerify,
 		}
-		caCertPool := x509.NewCertPool()
-		if !config.TLS.InsecureSkipVerify {
+
+		// Configure CA certificate for server verification
+		// Only load custom CA if specified; otherwise use system CA pool
+		if !config.TLS.InsecureSkipVerify && config.TLS.CAFile != "" {
+			caCertPool := x509.NewCertPool()
 			caCertPEM, err := os.ReadFile(config.TLS.CAFile)
 			if err != nil {
 				return nil, fmt.Errorf("failed to read CA certificate file: %w", err)
@@ -225,6 +228,8 @@ func publisherFactory(config *KafkaConfig, promReg prometheus.Registerer) (wrpKa
 			}
 			publisher.TLS.RootCAs = caCertPool
 		}
+
+		// Configure client certificate for mutual TLS (optional)
 		if config.TLS.CertFile != "" && config.TLS.KeyFile != "" {
 			cert, err := tls.LoadX509KeyPair(config.TLS.CertFile, config.TLS.KeyFile)
 			if err != nil {

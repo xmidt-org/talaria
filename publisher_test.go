@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"os"
 	"testing"
 	"time"
 
@@ -1040,4 +1041,218 @@ func TestKafkaPublisher_PublishEventListener_Error(t *testing.T) {
 
 	// Verify mock expectations were met
 	mockPub.AssertExpectations(t)
+}
+
+// TestPublisherFactory_TLS tests various TLS configuration scenarios
+func TestPublisherFactory_TLS(t *testing.T) {
+	// Use the pre-generated test certificates from test_certs directory
+	// These are created by the build process or manually with openssl
+	testCertsDir := "test_certs"
+	caCertPath := testCertsDir + "/ca.crt"
+	clientCertPath := testCertsDir + "/client.crt"
+	clientKeyPath := testCertsDir + "/client.key"
+
+	// Skip tests if certificates don't exist
+	if _, err := os.Stat(caCertPath); os.IsNotExist(err) {
+		t.Skip("Test certificates not found. Run: cd test_certs && openssl genrsa -out ca.key 2048 && " +
+			"openssl req -new -x509 -days 365 -key ca.key -out ca.crt -subj '/C=US/ST=Test/L=Test/O=Test/CN=Test CA' && " +
+			"openssl genrsa -out client.key 2048 && " +
+			"openssl req -new -key client.key -out client.csr -subj '/C=US/ST=Test/L=Test/O=Test/CN=Test Client' && " +
+			"openssl x509 -req -days 365 -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out client.crt")
+	}
+
+	tests := []struct {
+		name          string
+		config        *KafkaConfig
+		expectError   bool
+		errorContains string
+		validateTLS   func(*testing.T, *wrpkafka.Publisher)
+	}{
+		{
+			name: "TLS with InsecureSkipVerify",
+			config: &KafkaConfig{
+				Enabled: true,
+				Brokers: []string{"localhost:9093"},
+				InitialDynamicConfig: wrpkafka.DynamicConfig{
+					TopicMap: []wrpkafka.TopicRoute{
+						{Pattern: "*", Topic: testTopic},
+					},
+				},
+				TLS: KafkaTLSConfig{
+					Enabled:            true,
+					InsecureSkipVerify: true,
+				},
+			},
+			expectError: false,
+			validateTLS: func(t *testing.T, pub *wrpkafka.Publisher) {
+				require.NotNil(t, pub.TLS)
+				assert.True(t, pub.TLS.InsecureSkipVerify)
+				assert.Nil(t, pub.TLS.RootCAs, "RootCAs should not be set when InsecureSkipVerify is true")
+				assert.Empty(t, pub.TLS.Certificates, "Client certificates should not be set")
+			},
+		},
+		{
+			name: "TLS with CA file verification (no client cert)",
+			config: &KafkaConfig{
+				Enabled: true,
+				Brokers: []string{"localhost:9093"},
+				InitialDynamicConfig: wrpkafka.DynamicConfig{
+					TopicMap: []wrpkafka.TopicRoute{
+						{Pattern: "*", Topic: testTopic},
+					},
+				},
+				TLS: KafkaTLSConfig{
+					Enabled:            true,
+					InsecureSkipVerify: false,
+					CAFile:             caCertPath,
+				},
+			},
+			expectError: false,
+			validateTLS: func(t *testing.T, pub *wrpkafka.Publisher) {
+				require.NotNil(t, pub.TLS)
+				assert.False(t, pub.TLS.InsecureSkipVerify)
+				assert.NotNil(t, pub.TLS.RootCAs, "RootCAs should be set when CA file is provided")
+				assert.Empty(t, pub.TLS.Certificates, "Client certificates should not be set")
+			},
+		},
+		{
+			name: "TLS with system CA pool (no CA file, no client cert)",
+			config: &KafkaConfig{
+				Enabled: true,
+				Brokers: []string{"localhost:9093"},
+				InitialDynamicConfig: wrpkafka.DynamicConfig{
+					TopicMap: []wrpkafka.TopicRoute{
+						{Pattern: "*", Topic: testTopic},
+					},
+				},
+				TLS: KafkaTLSConfig{
+					Enabled:            true,
+					InsecureSkipVerify: false,
+					// No CAFile - should use system CA pool
+				},
+			},
+			expectError: false,
+			validateTLS: func(t *testing.T, pub *wrpkafka.Publisher) {
+				require.NotNil(t, pub.TLS)
+				assert.False(t, pub.TLS.InsecureSkipVerify)
+				assert.Nil(t, pub.TLS.RootCAs, "RootCAs should be nil to use system CA pool")
+				assert.Empty(t, pub.TLS.Certificates, "Client certificates should not be set")
+			},
+		},
+		{
+			name: "TLS with client certificate (mTLS)",
+			config: &KafkaConfig{
+				Enabled: true,
+				Brokers: []string{"localhost:9093"},
+				InitialDynamicConfig: wrpkafka.DynamicConfig{
+					TopicMap: []wrpkafka.TopicRoute{
+						{Pattern: "*", Topic: testTopic},
+					},
+				},
+				TLS: KafkaTLSConfig{
+					Enabled:            true,
+					InsecureSkipVerify: false,
+					CAFile:             caCertPath,
+					CertFile:           clientCertPath,
+					KeyFile:            clientKeyPath,
+				},
+			},
+			expectError: false,
+			validateTLS: func(t *testing.T, pub *wrpkafka.Publisher) {
+				require.NotNil(t, pub.TLS)
+				assert.False(t, pub.TLS.InsecureSkipVerify)
+				assert.NotNil(t, pub.TLS.RootCAs, "RootCAs should be set")
+				assert.Len(t, pub.TLS.Certificates, 1, "Client certificate should be set")
+			},
+		},
+		{
+			name: "TLS with invalid CA file",
+			config: &KafkaConfig{
+				Enabled: true,
+				Brokers: []string{"localhost:9093"},
+				InitialDynamicConfig: wrpkafka.DynamicConfig{
+					TopicMap: []wrpkafka.TopicRoute{
+						{Pattern: "*", Topic: testTopic},
+					},
+				},
+				TLS: KafkaTLSConfig{
+					Enabled:            true,
+					InsecureSkipVerify: false,
+					CAFile:             "/nonexistent/ca.crt",
+				},
+			},
+			expectError:   true,
+			errorContains: "failed to read CA certificate file",
+		},
+		{
+			name: "TLS with invalid client certificate",
+			config: &KafkaConfig{
+				Enabled: true,
+				Brokers: []string{"localhost:9093"},
+				InitialDynamicConfig: wrpkafka.DynamicConfig{
+					TopicMap: []wrpkafka.TopicRoute{
+						{Pattern: "*", Topic: testTopic},
+					},
+				},
+				TLS: KafkaTLSConfig{
+					Enabled:            true,
+					InsecureSkipVerify: false,
+					CAFile:             caCertPath,
+					CertFile:           "/nonexistent/client.crt",
+					KeyFile:            clientKeyPath,
+				},
+			},
+			expectError:   true,
+			errorContains: "failed to load client certificate/key",
+		},
+		{
+			name: "TLS with cert but no key",
+			config: &KafkaConfig{
+				Enabled: true,
+				Brokers: []string{"localhost:9093"},
+				InitialDynamicConfig: wrpkafka.DynamicConfig{
+					TopicMap: []wrpkafka.TopicRoute{
+						{Pattern: "*", Topic: testTopic},
+					},
+				},
+				TLS: KafkaTLSConfig{
+					Enabled:            true,
+					InsecureSkipVerify: false,
+					CAFile:             caCertPath,
+					CertFile:           clientCertPath,
+					// No KeyFile - should skip client cert loading
+				},
+			},
+			expectError: false,
+			validateTLS: func(t *testing.T, pub *wrpkafka.Publisher) {
+				require.NotNil(t, pub.TLS)
+				assert.NotNil(t, pub.TLS.RootCAs)
+				assert.Empty(t, pub.TLS.Certificates, "Client certificates should not be set when key is missing")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			publisher, err := publisherFactory(tt.config, nil)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+				assert.Nil(t, publisher)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, publisher)
+
+				wrpPub, ok := publisher.(*wrpkafka.Publisher)
+				require.True(t, ok)
+
+				if tt.validateTLS != nil {
+					tt.validateTLS(t, wrpPub)
+				}
+			}
+		})
+	}
 }

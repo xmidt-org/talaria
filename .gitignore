@@ -75,6 +75,9 @@ deploy/k8s/talaria/rendered.*
 talaria
 .ignore
 
+# test certificates (generated for unit tests)
+test_certs/
+
 # keep talaria directory
 !deploy/helm/talaria
 
