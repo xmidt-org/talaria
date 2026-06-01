@@ -422,8 +422,8 @@ github.com/xmidt-org/eventor v1.0.49 h1:QUZb2iw/i9xSWYab8zKt+F1lnNMMkPL7C8jA3tys
 github.com/xmidt-org/eventor v1.0.49/go.mod h1:hDYVga+QLP8ZfwIBtmDvXRtYbY2dPa6i0PNQrqtwYUg=
 github.com/xmidt-org/httpaux v0.4.3 h1:hrA8tAgMFoZkBZrysSmmait9CP7P3hMAYQjnpFJNqk8=
 github.com/xmidt-org/httpaux v0.4.3/go.mod h1:Fb6nJXQFYa52T2GqclJL0Dbb+frEIank2amS+DerJf4=
-github.com/xmidt-org/sallust v0.2.6 h1:lgwZnRd6QG06jBrijixiSZXHztnTdii8/WQUKAiNhVs=
-github.com/xmidt-org/sallust v0.2.6/go.mod h1:d7ciT2lNGujNLgCKq4t8g/X43D3x+1jizWVYcQz/2V0=
+github.com/xmidt-org/sallust v0.2.8 h1:SUvBdFL0PDrpW20T8VE6d4I8DKVtshhmJwlKoLx3ZJQ=
+github.com/xmidt-org/sallust v0.2.8/go.mod h1:IA73vXpu7XkmEWtG3qsxKLW7u6xTR5ZTRUTffP6uVXU=
 github.com/xmidt-org/touchstone v0.1.8 h1:jpA7j2pPtuP6hFr/LcT25cvfYkztWOp3Tj1ZCvqIvMw=
 github.com/xmidt-org/touchstone v0.1.8/go.mod h1:3nKZJlgWCDDThy/djXF2/wiwmRyCcDBSWBrSuUSy3ME=
 github.com/xmidt-org/webpa-common/v2 v2.8.2 h1:DIFtlRlHsnfbF5/1PgSk36xuaCp6gC0ReE92Sl6Z2cA=
@@ -532,8 +532,8 @@ golang.org/x/sys v0.0.0-20220503163025-988cb79eb6c6/go.mod h1:oPkhp1MJrh7nUepCBc
 golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.6.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
-golang.org/x/sys v0.44.0 h1:ildZl3J4uzeKP07r2F++Op7E9B29JRUy+a27EibtBTQ=
-golang.org/x/sys v0.44.0/go.mod h1:4GL1E5IUh+htKOUEOaiffhrAeqysfVGipDYzABqnCmw=
+golang.org/x/sys v0.45.0 h1:dO4czNzziLiiXplLQgBCEpCvXQ3dnkn0SdaZSYdQ+FY=
+golang.org/x/sys v0.45.0/go.mod h1:4GL1E5IUh+htKOUEOaiffhrAeqysfVGipDYzABqnCmw=
 golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1/go.mod h1:bj7SfCRtBDWHUb9snDiAeCFNEtKQo2Wmx5Cou7ajbmo=
 golang.org/x/term v0.43.0 h1:S4RLU2sB31O/NCl+zFN9Aru9A/Cq2aqKpTZJ6B+DwT4=
 golang.org/x/term v0.43.0/go.mod h1:lrhlHNdQJHO+1qVYiHfFKVuVioJIheAc3fBSMFYEIsk=
