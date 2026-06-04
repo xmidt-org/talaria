@@ -30,20 +30,20 @@ func DeviceMetadataMiddleware(getLogger func(ctx context.Context) *zap.Logger) a
 			metadata := new(device.Metadata)
 			metadata.SetSessionID(ksuid.New().String())
 
-			if auth, ok := bascule.FromContext(ctx); ok {
-				if tokenAttributes, ok := auth.Token.Attributes().(RawAttributes); ok {
+			if token, ok := bascule.Get(ctx); ok {
+				if tokenAttributes, ok := token.(RawAttributes); ok {
 					metadata.SetClaims(tokenAttributes.GetRawAttributes())
-				} else {
+				} else if accessor, ok := token.(bascule.AttributesAccessor); ok {
 					claimsMap := make(map[string]interface{})
-					if partnerIDClaim, ok := auth.Token.Attributes().Get(device.PartnerIDClaimKey); ok {
+					if partnerIDClaim, ok := accessor.Get(device.PartnerIDClaimKey); ok {
 						claimsMap[device.PartnerIDClaimKey] = partnerIDClaim
 					}
 
-					if trustClaim, ok := auth.Token.Attributes().Get(device.TrustClaimKey); ok {
+					if trustClaim, ok := accessor.Get(device.TrustClaimKey); ok {
 						claimsMap[device.TrustClaimKey] = trustClaim
 					}
 
-					if accountIDClaim, ok := auth.Token.Attributes().Get(device.AccountIDClaimKey); ok {
+					if accountIDClaim, ok := accessor.Get(device.AccountIDClaimKey); ok {
 						claimsMap[device.AccountIDClaimKey] = accountIDClaim
 					}
 

@@ -8,7 +8,7 @@ import "github.com/xmidt-org/bascule"
 // with a token's attributes. It adds functionality on top of bascule Attributes by including
 // a Getter for all of a token's attributes, returning a map of the attributes
 type RawAttributes interface {
-	bascule.Attributes
+	bascule.AttributesAccessor
 	GetRawAttributes() map[string]interface{}
 }
 
