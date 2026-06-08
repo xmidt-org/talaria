@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/golang-jwt/jwt"
 	"github.com/stretchr/testify/assert"
@@ -37,6 +38,7 @@ func TestRawAttributesBearerTokenParser(t *testing.T) {
 		resolvedKeyID     string
 		resolverKey       []byte
 		resolverErr       error
+		leeway            Leeway
 		expectedErr       error
 		expectedPrincipal string
 		expectedSub       string
@@ -80,6 +82,47 @@ func TestRawAttributesBearerTokenParser(t *testing.T) {
 			resolverKey:   []byte("secret"),
 			expectedErr:   bascule.ErrBadCredentials,
 		},
+		{
+			description:       "Expired Token With Leeway",
+			defaultKeyID:      "default-key",
+			resolvedKeyID:     "kid-5",
+			resolverKey:       []byte("secret"),
+			leeway:            Leeway{EXP: -20},
+			expectedPrincipal: "principal-5",
+			expectedSub:       "principal-5",
+		},
+		{
+			description:   "Not Before Token",
+			defaultKeyID:  "default-key",
+			resolvedKeyID: "kid-6",
+			resolverKey:   []byte("secret"),
+			expectedErr:   bascule.ErrBadCredentials,
+		},
+		{
+			description:       "Not Before Token With Leeway",
+			defaultKeyID:      "default-key",
+			resolvedKeyID:     "kid-7",
+			resolverKey:       []byte("secret"),
+			leeway:            Leeway{NBF: -20},
+			expectedPrincipal: "principal-7",
+			expectedSub:       "principal-7",
+		},
+		{
+			description:   "Issued At In Future",
+			defaultKeyID:  "default-key",
+			resolvedKeyID: "kid-8",
+			resolverKey:   []byte("secret"),
+			expectedErr:   bascule.ErrBadCredentials,
+		},
+		{
+			description:       "Issued At In Future With Leeway",
+			defaultKeyID:      "default-key",
+			resolvedKeyID:     "kid-9",
+			resolverKey:       []byte("secret"),
+			leeway:            Leeway{IAT: -20},
+			expectedPrincipal: "principal-9",
+			expectedSub:       "principal-9",
+		},
 	}
 
 	for _, tc := range tests {
@@ -94,6 +137,7 @@ func TestRawAttributesBearerTokenParser(t *testing.T) {
 			}
 
 			value := tc.value
+			now := jwt.TimeFunc().Unix()
 			switch tc.description {
 			case "Success":
 				value = mustSignToken(t, jwt.MapClaims{jwtPrincipalKey: tc.expectedSub}, tc.resolvedKeyID, tc.resolverKey)
@@ -103,11 +147,22 @@ func TestRawAttributesBearerTokenParser(t *testing.T) {
 				value = mustSignToken(t, jwt.MapClaims{"foo": "bar"}, tc.resolvedKeyID, tc.resolverKey)
 			case "Expired Token":
 				value = mustSignToken(t, jwt.MapClaims{jwtPrincipalKey: "principal-4", "exp": float64(1)}, tc.resolvedKeyID, tc.resolverKey)
+			case "Expired Token With Leeway":
+				value = mustSignToken(t, jwt.MapClaims{jwtPrincipalKey: "principal-5", "exp": float64(now - 10)}, tc.resolvedKeyID, tc.resolverKey)
+			case "Not Before Token":
+				value = mustSignToken(t, jwt.MapClaims{jwtPrincipalKey: "principal-6", "nbf": float64(now + 10)}, tc.resolvedKeyID, tc.resolverKey)
+			case "Not Before Token With Leeway":
+				value = mustSignToken(t, jwt.MapClaims{jwtPrincipalKey: "principal-7", "nbf": float64(now + 10)}, tc.resolvedKeyID, tc.resolverKey)
+			case "Issued At In Future":
+				value = mustSignToken(t, jwt.MapClaims{jwtPrincipalKey: "principal-8", "iat": float64(now + 10)}, tc.resolvedKeyID, tc.resolverKey)
+			case "Issued At In Future With Leeway":
+				value = mustSignToken(t, jwt.MapClaims{jwtPrincipalKey: "principal-9", "iat": float64(now + 10)}, tc.resolvedKeyID, tc.resolverKey)
 			}
 
 			parser := RawAttributesBearerTokenParser{
 				DefaultKeyID: tc.defaultKeyID,
 				Resolver:     resolver,
+				Leeway:       tc.leeway,
 			}
 
 			token, err := parser.Parse(context.Background(), value)
@@ -130,6 +185,64 @@ func TestRawAttributesBearerTokenParser(t *testing.T) {
 			}
 
 			resolver.AssertExpectations(t)
+		})
+	}
+}
+
+func TestValidateTimeClaimsWithLeeway(t *testing.T) {
+	originalTimeFunc := jwt.TimeFunc
+	jwt.TimeFunc = func() time.Time { return time.Unix(1000, 0) }
+	t.Cleanup(func() { jwt.TimeFunc = originalTimeFunc })
+
+	tests := []struct {
+		description string
+		claims      jwt.MapClaims
+		leeway      Leeway
+		expectErr   bool
+	}{
+		{
+			description: "Expired Without Leeway",
+			claims:      jwt.MapClaims{"exp": float64(999)},
+			expectErr:   true,
+		},
+		{
+			description: "Expired With Leeway",
+			claims:      jwt.MapClaims{"exp": float64(999)},
+			leeway:      Leeway{EXP: -5},
+			expectErr:   false,
+		},
+		{
+			description: "Not Before Without Leeway",
+			claims:      jwt.MapClaims{"exp": float64(2000), "nbf": float64(1005)},
+			expectErr:   true,
+		},
+		{
+			description: "Not Before With Leeway",
+			claims:      jwt.MapClaims{"exp": float64(2000), "nbf": float64(1005)},
+			leeway:      Leeway{NBF: -10},
+			expectErr:   false,
+		},
+		{
+			description: "Issued At In Future Without Leeway",
+			claims:      jwt.MapClaims{"exp": float64(2000), "iat": float64(1005)},
+			expectErr:   true,
+		},
+		{
+			description: "Issued At In Future With Leeway",
+			claims:      jwt.MapClaims{"exp": float64(2000), "iat": float64(1005)},
+			leeway:      Leeway{IAT: -10},
+			expectErr:   false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			err := validateTimeClaimsWithLeeway(tc.claims, tc.leeway)
+			if tc.expectErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
 		})
 	}
 }
