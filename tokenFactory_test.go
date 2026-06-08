@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"testing"
 	"time"
@@ -12,7 +13,21 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/xmidt-org/bascule"
+	"github.com/xmidt-org/bascule/basculehttp"
 )
+
+type stubTokenType struct {
+	principal string
+	typeName  string
+}
+
+func (stt stubTokenType) Principal() string {
+	return stt.principal
+}
+
+func (stt stubTokenType) TokenType() string {
+	return stt.typeName
+}
 
 func mustSignToken(t *testing.T, claims jwt.MapClaims, kid string, secret []byte) string {
 	t.Helper()
@@ -305,4 +320,156 @@ func TestDefaultKeyFunc(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNonEmptyPrincipalValidator(t *testing.T) {
+	tests := []struct {
+		description string
+		token       bascule.Token
+		expectErr   bool
+	}{
+		{
+			description: "Empty Principal",
+			token:       &rawAttributesJWTToken{principal: "", claims: NewRawAttributes(map[string]interface{}{})},
+			expectErr:   true,
+		},
+		{
+			description: "Non Empty Principal",
+			token:       &rawAttributesJWTToken{principal: "principal", claims: NewRawAttributes(map[string]interface{}{})},
+			expectErr:   false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			err := nonEmptyPrincipalValidator(tc.token)
+			if tc.expectErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidJWTTokenTypeValidator(t *testing.T) {
+	tests := []struct {
+		description string
+		token       bascule.Token
+		expectErr   bool
+	}{
+		{
+			description: "Missing Token Type Interface",
+			token:       bascule.StubToken("principal"),
+			expectErr:   true,
+		},
+		{
+			description: "Unexpected Token Type",
+			token:       stubTokenType{principal: "principal", typeName: "basic"},
+			expectErr:   true,
+		},
+		{
+			description: "Valid JWT Token Type",
+			token:       &rawAttributesJWTToken{principal: "principal", claims: NewRawAttributes(map[string]interface{}{})},
+			expectErr:   false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			err := validJWTTokenTypeValidator(tc.token)
+			if tc.expectErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestBasicAllowedTokenParser(t *testing.T) {
+	tests := []struct {
+		description string
+		allowed     map[string]string
+		raw         string
+		expectErr   error
+		expectUser  string
+	}{
+		{
+			description: "Invalid Base64",
+			allowed:     map[string]string{"user": "pass"},
+			raw:         "%%%",
+			expectErr:   bascule.ErrInvalidCredentials,
+		},
+		{
+			description: "Unknown User",
+			allowed:     map[string]string{"known": "pass"},
+			raw:         basculehttp.BasicAuth("unknown", "pass"),
+			expectErr:   bascule.ErrBadCredentials,
+		},
+		{
+			description: "Wrong Password",
+			allowed:     map[string]string{"user": "correct"},
+			raw:         basculehttp.BasicAuth("user", "wrong"),
+			expectErr:   bascule.ErrBadCredentials,
+		},
+		{
+			description: "Valid Credentials",
+			allowed:     map[string]string{"user": "pass"},
+			raw:         basculehttp.BasicAuth("user", "pass"),
+			expectUser:  "user",
+		},
+		{
+			description: "Missing Colon In Decoded Value",
+			allowed:     map[string]string{"user": "pass"},
+			raw:         base64.StdEncoding.EncodeToString([]byte("userpass")),
+			expectErr:   bascule.ErrInvalidCredentials,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			parser := basicAllowedTokenParser{allowed: tc.allowed}
+			token, err := parser.Parse(context.Background(), tc.raw)
+
+			if tc.expectErr != nil {
+				assert.Nil(t, token)
+				assert.ErrorIs(t, err, tc.expectErr)
+				return
+			}
+
+			if assert.NoError(t, err) && assert.NotNil(t, token) {
+				var basicToken basculehttp.BasicToken
+				if assert.True(t, bascule.TokenAs(token, &basicToken)) {
+					assert.Equal(t, tc.expectUser, basicToken.UserName())
+				}
+			}
+		})
+	}
+}
+
+func TestRawAttributesJWTTokenGet(t *testing.T) {
+	t.Run("Nil Receiver", func(t *testing.T) {
+		var token *rawAttributesJWTToken
+		value, found := token.Get("sub")
+		assert.Nil(t, value)
+		assert.False(t, found)
+	})
+
+	t.Run("Nil Claims", func(t *testing.T) {
+		token := &rawAttributesJWTToken{principal: "principal"}
+		value, found := token.Get("sub")
+		assert.Nil(t, value)
+		assert.False(t, found)
+	})
+
+	t.Run("Found Value", func(t *testing.T) {
+		token := &rawAttributesJWTToken{
+			principal: "principal",
+			claims:    NewRawAttributes(map[string]interface{}{"sub": "principal"}),
+		}
+		value, found := token.Get("sub")
+		assert.True(t, found)
+		assert.Equal(t, "principal", value)
+	})
 }
