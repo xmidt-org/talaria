@@ -15,16 +15,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/viper"
 	"github.com/xmidt-org/bascule"
+	"github.com/xmidt-org/bascule/basculehttp"
 	"github.com/xmidt-org/clortho/clorthometrics"
 	"github.com/xmidt-org/clortho/clorthozap"
 	"github.com/xmidt-org/sallust"
 	"github.com/xmidt-org/touchstone"
 	"go.uber.org/zap"
 
-	// nolint:staticcheck
-	"github.com/xmidt-org/bascule/basculechecks"
-	// nolint:staticcheck
-	"github.com/xmidt-org/bascule/basculehttp"
 	"github.com/xmidt-org/clortho"
 
 	// nolint:staticcheck
@@ -92,7 +89,32 @@ type JWTValidator struct {
 
 	// Leeway is used to set the amount of time buffer should be given to JWT
 	// time values, such as nbf
-	Leeway bascule.Leeway
+	Leeway Leeway
+}
+
+func authStatusCoder(request *http.Request, err error) int {
+	if request != nil {
+		if vars := mux.Vars(request); vars != nil && vars["version"] == v2 {
+			if errors.Is(err, bascule.ErrInvalidCredentials) {
+				return http.StatusBadRequest
+			}
+
+			return http.StatusForbidden
+		}
+	}
+
+	switch {
+	case errors.Is(err, bascule.ErrMissingCredentials):
+		return http.StatusUnauthorized
+	case errors.Is(err, bascule.ErrBadCredentials):
+		return http.StatusUnauthorized
+	case errors.Is(err, bascule.ErrInvalidCredentials):
+		return http.StatusBadRequest
+	case errors.Is(err, bascule.ErrUnauthorized):
+		return http.StatusForbidden
+	default:
+		return http.StatusForbidden
+	}
 }
 
 func getInboundTimeout(v *viper.Viper) time.Duration {
@@ -130,36 +152,7 @@ func NewPrimaryHandler(logger *zap.Logger, manager device.Manager, v *viper.Vipe
 
 		jwtAuthEnforcer   = NoOpConstructor
 		basicAuthEnforcer = NoOpConstructor
-
-		deviceAuthRules  = bascule.Validators{} //auth rules for device registration endpoints
-		serviceAuthRules = bascule.Validators{} //auth rules for everything else
-
 	)
-
-	authCounter, err := tf.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: basculehttp.AuthValidationOutcome,
-			Help: "Counter for success and failure reason results through bascule",
-		}, basculehttp.ServerLabel, basculehttp.OutcomeLabel)
-	if err != nil {
-		return nil, err
-	}
-
-	listener, err := basculehttp.NewMetricListener(
-		&basculehttp.AuthValidationMeasures{ValidationOutcome: authCounter},
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	jwtAuthConstructorOptions := []basculehttp.COption{
-		basculehttp.WithCLogger(getLogger),
-		basculehttp.WithCErrorResponseFunc(listener.OnErrorResponse),
-	}
-	basicAuthConstructorOptions := []basculehttp.COption{
-		basculehttp.WithCLogger(getLogger),
-		basculehttp.WithCErrorResponseFunc(listener.OnErrorResponse),
-	}
 
 	if v.IsSet(JWTValidatorConfigKey) {
 		var jwtVal JWTValidator
@@ -204,29 +197,68 @@ func NewPrimaryHandler(logger *zap.Logger, manager device.Manager, v *viper.Vipe
 		resolver.AddListener(cml)
 		resolver.AddListener(czl)
 
-		jwtAuthConstructorOptions = append(jwtAuthConstructorOptions, basculehttp.WithTokenFactory("Bearer", basculehttp.BearerTokenFactory{
-			DefaultKeyID: DefaultKeyID,
-			Resolver:     resolver,
-			Parser:       bascule.DefaultJWTParser,
-			Leeway:       jwtVal.Leeway,
-		}))
+		authParser, err := basculehttp.NewAuthorizationParser(
+			basculehttp.WithScheme(basculehttp.SchemeBearer, &RawAttributesBearerTokenParser{
+				DefaultKeyID: DefaultKeyID,
+				Resolver:     resolver,
+				Leeway:       jwtVal.Leeway,
+			}),
+		)
+		if err != nil {
+			return nil, errors.New("failed to create JWT authorization parser")
+		}
 
-		deviceAuthRules = append(deviceAuthRules,
-			bascule.Validators{
-				basculechecks.NonEmptyPrincipal(),
-				basculechecks.NonEmptyType(),
-				basculechecks.ValidType([]string{"jwt"}),
-			})
+		jwtValidators := bascule.Validators[*http.Request]{
+			basculehttp.AsValidator(nonEmptyPrincipalValidator),
+			basculehttp.AsValidator(validJWTTokenTypeValidator),
+		}
+
+		authenticator, err := basculehttp.NewAuthenticator(
+			bascule.WithTokenParsers(authParser),
+			bascule.WithValidators[*http.Request](jwtValidators...),
+		)
+		if err != nil {
+			return nil, errors.New("failed to create JWT authenticator")
+		}
+
+		jwtMiddleware, err := basculehttp.NewMiddleware(
+			basculehttp.WithAuthenticator(authenticator),
+			basculehttp.WithErrorStatusCoder(authStatusCoder),
+		)
+		if err != nil {
+			return nil, errors.New("failed to create JWT auth middleware")
+		}
+
+		jwtAuthEnforcer = jwtMiddleware.Then
 	}
 
 	if v.IsSet(ServiceBasicAuthConfigKey) {
 		userPassMap := buildUserPassMap(logger, v.GetStringSlice(ServiceBasicAuthConfigKey))
 
 		if len(userPassMap) > 0 {
-			basicAuthConstructorOptions = append(basicAuthConstructorOptions,
-				basculehttp.WithTokenFactory("Basic", basculehttp.BasicTokenFactory(userPassMap)))
+			authParser, err := basculehttp.NewAuthorizationParser(
+				basculehttp.WithScheme(basculehttp.SchemeBasic, basicAllowedTokenParser{allowed: userPassMap}),
+			)
+			if err != nil {
+				return nil, errors.New("failed to create basic authorization parser")
+			}
 
-			serviceAuthRules = append(serviceAuthRules, basculechecks.AllowAll())
+			authenticator, err := basculehttp.NewAuthenticator(
+				bascule.WithTokenParsers(authParser),
+			)
+			if err != nil {
+				return nil, errors.New("failed to create basic authenticator")
+			}
+
+			basicMiddleware, err := basculehttp.NewMiddleware(
+				basculehttp.WithAuthenticator(authenticator),
+				basculehttp.WithErrorStatusCoder(authStatusCoder),
+			)
+			if err != nil {
+				return nil, errors.New("failed to create basic auth middleware")
+			}
+
+			basicAuthEnforcer = basicMiddleware.Then
 		}
 	}
 
@@ -261,54 +293,8 @@ func NewPrimaryHandler(logger *zap.Logger, manager device.Manager, v *viper.Vipe
 		wrpRouterHandler = withDeviceAccessCheck(logger, wrpRouterHandler, deviceAccessCheck)
 	}
 
-	jwtAuthConstructor := basculehttp.NewConstructor(jwtAuthConstructorOptions...)
-	basicAuthConstructor := basculehttp.NewConstructor(basicAuthConstructorOptions...)
-	jwtAuthConstructorLegacy := basculehttp.NewConstructor(append([]basculehttp.COption{
-		basculehttp.WithCErrorHTTPResponseFunc(basculehttp.LegacyOnErrorHTTPResponse),
-	}, jwtAuthConstructorOptions...)...)
-	basicAuthConstructorLegacy := basculehttp.NewConstructor(append([]basculehttp.COption{
-		basculehttp.WithCErrorHTTPResponseFunc(basculehttp.LegacyOnErrorHTTPResponse),
-	}, basicAuthConstructorOptions...)...)
-
-	jwtAuthEnforcer = basculehttp.NewEnforcer(
-		basculehttp.WithELogger(getLogger),
-		basculehttp.WithRules("Bearer", deviceAuthRules),
-		basculehttp.WithEErrorResponseFunc(listener.OnErrorResponse),
-	)
-	basicAuthEnforcer = basculehttp.NewEnforcer(
-		basculehttp.WithELogger(getLogger),
-		basculehttp.WithRules("Basic", serviceAuthRules),
-		basculehttp.WithEErrorResponseFunc(listener.OnErrorResponse),
-	)
-	jwtAuthChain := alice.New(setLogger(logger), jwtAuthConstructor, jwtAuthEnforcer, basculehttp.NewListenerDecorator(listener))
-	basicAuthChain := alice.New(setLogger(logger), basicAuthConstructor, basicAuthEnforcer, basculehttp.NewListenerDecorator(listener))
-	jwtAuthChainV2 := alice.New(setLogger(logger), jwtAuthConstructorLegacy, jwtAuthEnforcer, basculehttp.NewListenerDecorator(listener))
-	basicAuthChainV2 := alice.New(setLogger(logger), basicAuthConstructorLegacy, basicAuthEnforcer, basculehttp.NewListenerDecorator(listener))
-
-	versionCompatibleJWTAuth := alice.New(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(r http.ResponseWriter, req *http.Request) {
-			vars := mux.Vars(req)
-			if vars != nil {
-				if vars["version"] == v2 {
-					jwtAuthChainV2.Then(next).ServeHTTP(r, req)
-					return
-				}
-			}
-			jwtAuthChain.Then(next).ServeHTTP(r, req)
-		})
-	})
-	versionCompatibleBasicAuth := alice.New(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(r http.ResponseWriter, req *http.Request) {
-			vars := mux.Vars(req)
-			if vars != nil {
-				if vars["version"] == v2 {
-					basicAuthChainV2.Then(next).ServeHTTP(r, req)
-					return
-				}
-			}
-			basicAuthChain.Then(next).ServeHTTP(r, req)
-		})
-	})
+	versionCompatibleJWTAuth := alice.New(setLogger(logger), jwtAuthEnforcer)
+	versionCompatibleBasicAuth := alice.New(setLogger(logger), basicAuthEnforcer)
 
 	apiHandler.Handle("/device/send",
 		alice.New(
