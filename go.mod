@@ -20,8 +20,8 @@ require (
 	github.com/testcontainers/testcontainers-go v0.42.0
 	github.com/testcontainers/testcontainers-go/modules/kafka v0.42.0
 	github.com/thedevsaddam/gojsonq/v2 v2.5.2
-	github.com/xmidt-org/bascule v1.1.1
 	github.com/twmb/franz-go v1.21.3
+	github.com/xmidt-org/bascule v1.1.1
 	github.com/xmidt-org/candlelight v0.2.12
 	github.com/xmidt-org/clortho v0.1.13
 	github.com/xmidt-org/httpaux v0.4.3
@@ -30,7 +30,7 @@ require (
 	github.com/xmidt-org/webpa-common/v2 v2.8.2
 	github.com/xmidt-org/wrp-go/v3 v3.7.0
 	github.com/xmidt-org/wrp-go/v5 v5.4.2
-	github.com/xmidt-org/wrpkafka v0.1.20
+	github.com/xmidt-org/wrpkafka v0.1.21
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.69.0
 	go.uber.org/zap v1.28.0
 )
