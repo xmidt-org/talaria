@@ -11,9 +11,14 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/xmidt-org/bascule"
+	"github.com/xmidt-org/sallust"
+	"github.com/xmidt-org/touchstone"
+	"github.com/xmidt-org/webpa-common/v2/device"
 	"go.uber.org/zap"
 )
 
@@ -132,4 +137,171 @@ func TestBuildUserPassMap(t *testing.T) {
 	assert.False(t, hasMissingColonUser)
 	_, hasEmptyUser := decoded[""]
 	assert.False(t, hasEmptyUser)
+}
+
+// newTestTouchstoneFactory builds a touchstone.Factory with an isolated prometheus registry
+// suitable for use inside unit tests.
+func newTestTouchstoneFactory(t *testing.T) *touchstone.Factory {
+	t.Helper()
+	cfg := touchstone.Config{DefaultNamespace: "test", DefaultSubsystem: "primary"}
+	_, pr, err := touchstone.New(cfg)
+	require.NoError(t, err)
+	return touchstone.NewFactory(cfg, sallust.Default(), pr)
+}
+
+// newTestDeviceManager builds a real but unconfigured device.Manager for unit test fixtures.
+func newTestDeviceManager() device.Manager {
+	return device.NewManager(&device.Options{})
+}
+
+func TestBuildDeviceAccessCheck(t *testing.T) {
+	logger := zap.NewNop()
+	counter := prometheus.NewCounterVec(
+		prometheus.CounterOpts{Name: "test_wrp_counter", Help: "test"},
+		[]string{reasonLabel, outcomeLabel},
+	)
+
+	validCheck := deviceAccessCheck{
+		Name:                 "partner-check",
+		DeviceCredentialPath: "partner-id",
+		WRPCredentialPath:    "partner-id",
+		Op:                   "contains",
+	}
+
+	tests := []struct {
+		description string
+		config      *deviceAccessCheckConfig
+		expectErr   bool
+	}{
+		{
+			description: "No Checks",
+			config:      &deviceAccessCheckConfig{Type: "enforce"},
+			expectErr:   true,
+		},
+		{
+			description: "Invalid Type",
+			config: &deviceAccessCheckConfig{
+				Type:   "unknown",
+				Checks: []deviceAccessCheck{validCheck},
+			},
+			expectErr: true,
+		},
+		{
+			description: "Invalid Check - Missing Name",
+			config: &deviceAccessCheckConfig{
+				Type: "enforce",
+				Checks: []deviceAccessCheck{
+					{DeviceCredentialPath: "path", WRPCredentialPath: "path", Op: "contains"},
+				},
+			},
+			expectErr: true,
+		},
+		{
+			description: "Valid Enforce Type",
+			config: &deviceAccessCheckConfig{
+				Type:   "enforce",
+				Checks: []deviceAccessCheck{validCheck},
+			},
+		},
+		{
+			description: "Valid Monitor Type",
+			config: &deviceAccessCheckConfig{
+				Type:   "monitor",
+				Checks: []deviceAccessCheck{validCheck},
+			},
+		},
+		{
+			description: "Default Sep Applied",
+			config: &deviceAccessCheckConfig{
+				Type:   "monitor",
+				Sep:    "",
+				Checks: []deviceAccessCheck{validCheck},
+			},
+		},
+		{
+			description: "Custom Sep Applied",
+			config: &deviceAccessCheckConfig{
+				Type:   "monitor",
+				Sep:    "/",
+				Checks: []deviceAccessCheck{validCheck},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			result, err := buildDeviceAccessCheck(tc.config, logger, counter, newTestDeviceManager())
+			if tc.expectErr {
+				assert.Error(t, err)
+				assert.Nil(t, result)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, result)
+			}
+		})
+	}
+}
+
+func TestNewPrimaryHandler(t *testing.T) {
+	newViper := func() *viper.Viper { return viper.New() }
+
+	tests := []struct {
+		description string
+		setup       func(*viper.Viper)
+		expectErr   bool
+	}{
+		{
+			description: "Minimal Config",
+			setup:       func(v *viper.Viper) {},
+		},
+		{
+			description: "With Basic Auth",
+			setup: func(v *viper.Viper) {
+				v.Set(ServiceBasicAuthConfigKey, []string{
+					base64.StdEncoding.EncodeToString([]byte("user:pass")),
+				})
+			},
+		},
+		{
+			description: "With Basic Auth But Empty Entries",
+			setup: func(v *viper.Viper) {
+				v.Set(ServiceBasicAuthConfigKey, []string{"%%%"})
+			},
+		},
+		{
+			description: "Fail Open False",
+			setup: func(v *viper.Viper) {
+				v.Set(FailOpenConfigKey, false)
+			},
+		},
+		{
+			description: "DeviceAccessCheck Bad Config",
+			setup: func(v *viper.Viper) {
+				v.Set(DeviceAccessCheckConfigKey+".type", "enforce")
+				// no checks → buildDeviceAccessCheck returns error
+			},
+			expectErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			v := newViper()
+			tc.setup(v)
+
+			tf := newTestTouchstoneFactory(t)
+			logger := zap.NewNop()
+			manager := newTestDeviceManager()
+			router := mux.NewRouter()
+
+			handler, err := NewPrimaryHandler(logger, manager, v, nil, nil, NoOpConstructor, tf, router)
+			if tc.expectErr {
+				assert.Error(t, err)
+				assert.Nil(t, handler)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, handler)
+			}
+		})
+	}
 }
