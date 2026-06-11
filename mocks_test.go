@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"unicode/utf8"
 
-	"github.com/golang-jwt/jwt"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/mock"
 	"github.com/xmidt-org/clortho"
@@ -79,16 +78,6 @@ type mockDeviceAccess struct {
 func (m *mockDeviceAccess) authorizeWRP(ctx context.Context, message *wrp.Message) error {
 	arguments := m.Called(ctx, message)
 	return arguments.Error(0)
-}
-
-type mockJWTParser struct {
-	mock.Mock
-}
-
-func (parser *mockJWTParser) ParseJWT(token string, claims jwt.Claims, parseFunc jwt.Keyfunc) (*jwt.Token, error) {
-	arguments := parser.Called(token, claims, parseFunc)
-	jwtToken, _ := arguments.Get(0).(*jwt.Token)
-	return jwtToken, arguments.Error(1)
 }
 
 // mockHistogram provides the mock implementation of the metrics.Histogram object
