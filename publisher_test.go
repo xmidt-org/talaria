@@ -90,7 +90,8 @@ func TestKafkaPublisher_Start(t *testing.T) {
 				},
 				MaxBufferedRecords: 1000,
 				MaxBufferedBytes:   1000000,
-				MaxRetries:         3,
+				MaxRequestRetries:  3,
+				MaxRecordRetries:   5,
 				RequestTimeout:     30 * time.Second,
 			}
 
@@ -462,7 +463,7 @@ func TestDefaultPublisherFactory(t *testing.T) {
 				Brokers:            []string{testKafkaBroker},
 				MaxBufferedRecords: 1000,
 				MaxBufferedBytes:   1000000,
-				MaxRetries:         3,
+				MaxRequestRetries:  3,
 				RequestTimeout:     30 * time.Second,
 			},
 			expectError: false,
@@ -622,10 +623,10 @@ func TestDefaultPublisherFactory(t *testing.T) {
 				assert.Equal(t, tt.config.Brokers, wrpPub.Brokers)
 				assert.Equal(t, tt.config.MaxBufferedRecords, wrpPub.MaxBufferedRecords)
 				assert.Equal(t, tt.config.MaxBufferedBytes, wrpPub.MaxBufferedBytes)
-				assert.Equal(t, tt.config.MaxRetries, wrpPub.MaxRetries)
+				assert.Equal(t, tt.config.MaxRequestRetries, wrpPub.MaxRequestRetries)
+				assert.Equal(t, tt.config.MaxRecordRetries, wrpPub.MaxRecordRetries)
 				assert.Equal(t, tt.config.RequestTimeout, wrpPub.RequestTimeout)
 
-				// Verify prometheus namespace and subsystem
 				assert.Equal(t, tt.config.PrometheusNamespace, wrpPub.Prometheus.Namespace,
 					"PrometheusNamespace should be passed to wrpkafka.Publisher")
 				assert.Equal(t, tt.config.PrometheusSubsystem, wrpPub.Prometheus.Subsystem,
@@ -826,7 +827,8 @@ func TestNewKafkaPublisher(t *testing.T) {
 					topicLabel:           testTopic,
 					"maxBufferedRecords": 5000,
 					"maxBufferedBytes":   50000000,
-					"maxRetries":         5,
+					"maxRequestRetries":  5,
+					"maxRecordRetries":   10,
 					"requestTimeout":     "45s",
 					"tls": map[string]interface{}{
 						"enabled":            true,

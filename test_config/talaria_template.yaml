@@ -661,9 +661,9 @@ kafka:
   # (Optional) defaults to 100MB (104857600 bytes)
   maxBufferedBytes: 104857600
 
-  # maxRetries is the maximum number of retries for failed produce requests
+  # maxRequestRetries is the maximum number of retries for failed produce requests
   # (Optional) defaults to 3
-  maxRetries: 3
+  maxRequestRetries: 3
 
   # requestTimeout is the timeout for produce requests
   # (Optional) defaults to 30s

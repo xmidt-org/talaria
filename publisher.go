@@ -76,8 +76,10 @@ type KafkaConfig struct {
 	MaxBufferedRecords int `json:"maxBufferedRecords" yaml:"maxBufferedRecords"`
 	// MaxBufferedBytes is the maximum number of bytes to buffer
 	MaxBufferedBytes int `json:"maxBufferedBytes" yaml:"maxBufferedBytes"`
-	// MaxRetries is the maximum number of retries for failed produce requests
-	MaxRetries int `json:"maxRetries" yaml:"maxRetries"`
+	// MaxRequestRetries is the maximum number of retries for failed produce requests
+	MaxRequestRetries int `json:"maxRequestRetries" yaml:"maxRequestRetries"`
+	// MaxRecordRetries is the maximum number of retries for failed records
+	MaxRecordRetries int `json:"maxRecordRetries" yaml:"maxRecordRetries"`
 	// RequestTimeout is the timeout for produce requests
 	RequestTimeout time.Duration `json:"requestTimeout" yaml:"requestTimeout"`
 	// InitialDynamicConfig is the initial dynamic configuration for wrpkafka
@@ -171,7 +173,8 @@ func NewKafkaPublisher(logger *zap.Logger, v *viper.Viper, om *OutboundMeasures,
 		zap.Bool("allowAutoTopicCreation", config.AllowAutoTopicCreation),
 		zap.Int("maxBufferedRecords", config.MaxBufferedRecords),
 		zap.Int("maxBufferedBytes", config.MaxBufferedBytes),
-		zap.Int("maxRetries", config.MaxRetries),
+		zap.Int("maxRequestRetries", config.MaxRequestRetries),
+		zap.Int("maxRecordRetries", config.MaxRecordRetries),
 		zap.Duration("requestTimeout", config.RequestTimeout),
 		zap.Any("dynamicConfig", config.InitialDynamicConfig),
 	)
@@ -193,7 +196,8 @@ func publisherFactory(config *KafkaConfig, promReg prometheus.Registerer) (wrpKa
 		Brokers:                config.Brokers,
 		MaxBufferedRecords:     config.MaxBufferedRecords,
 		MaxBufferedBytes:       config.MaxBufferedBytes,
-		MaxRetries:             config.MaxRetries,
+		MaxRequestRetries:      config.MaxRequestRetries,
+		MaxRecordRetries:       config.MaxRecordRetries,
 		RequestTimeout:         config.RequestTimeout,
 		InitialDynamicConfig:   config.InitialDynamicConfig,
 		AllowAutoTopicCreation: config.AllowAutoTopicCreation,
