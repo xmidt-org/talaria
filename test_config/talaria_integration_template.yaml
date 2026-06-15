@@ -94,7 +94,7 @@ kafka:
     - KAFKA_BROKER
   maxBufferedRecords: 10000
   maxBufferedBytes: 104857600
-  maxRetries: 3
+  maxRequestRetries: 3
   requestTimeout: "30s"
   tls:
     enabled: false
