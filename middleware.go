@@ -47,6 +47,10 @@ func DeviceMetadataMiddleware(getLogger func(ctx context.Context) *zap.Logger) a
 						claimsMap[device.AccountIDClaimKey] = accountIDClaim
 					}
 
+					if deviceIDClaim, ok := accessor.Get(device.DeviceIDClaimKey); ok {
+						claimsMap[device.DeviceIDClaimKey] = deviceIDClaim
+					}
+
 					metadata.SetClaims(claimsMap)
 
 				}
