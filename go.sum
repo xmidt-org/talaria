@@ -426,8 +426,8 @@ github.com/xmidt-org/sallust v0.2.8 h1:SUvBdFL0PDrpW20T8VE6d4I8DKVtshhmJwlKoLx3Z
 github.com/xmidt-org/sallust v0.2.8/go.mod h1:IA73vXpu7XkmEWtG3qsxKLW7u6xTR5ZTRUTffP6uVXU=
 github.com/xmidt-org/touchstone v0.1.8 h1:jpA7j2pPtuP6hFr/LcT25cvfYkztWOp3Tj1ZCvqIvMw=
 github.com/xmidt-org/touchstone v0.1.8/go.mod h1:3nKZJlgWCDDThy/djXF2/wiwmRyCcDBSWBrSuUSy3ME=
-github.com/xmidt-org/webpa-common/v2 v2.8.2 h1:DIFtlRlHsnfbF5/1PgSk36xuaCp6gC0ReE92Sl6Z2cA=
-github.com/xmidt-org/webpa-common/v2 v2.8.2/go.mod h1:LwhIv/MJF9ToSduI37gpkSumOPdB+5i16bXOX/435dA=
+github.com/xmidt-org/webpa-common/v2 v2.9.0 h1:wcc9H1FYj1lGmL+mjhsAoXLa5/XQv2tL36r2/1RvoXE=
+github.com/xmidt-org/webpa-common/v2 v2.9.0/go.mod h1:m+5wFq7S+N4oFh4Vm2JfGOxCf5+O9nXR8DIS9yZSxng=
 github.com/xmidt-org/wrp-go/v3 v3.7.0 h1:m9ghdq79Zzb0WjomUJ02rzFpI0RK8KTjArYpNIwx1fc=
 github.com/xmidt-org/wrp-go/v3 v3.7.0/go.mod h1:eyMj+q/7LQ4SU6Z3s6VOwuTVSh6/DJBb2soBGBFSung=
 github.com/xmidt-org/wrp-go/v5 v5.4.2 h1:SyL4tphp6+eWCdcYMVrQgx7CZyZCBI0+DB2d6WqeD5M=
