@@ -88,11 +88,12 @@ func TestKafkaPublisher_Start(t *testing.T) {
 						{Pattern: "*", Topic: testTopic},
 					},
 				},
-				MaxBufferedRecords: 1000,
-				MaxBufferedBytes:   1000000,
-				MaxRequestRetries:  3,
-				MaxRecordRetries:   5,
-				RequestTimeout:     30 * time.Second,
+				MaxBufferedRecords:    1000,
+				MaxBufferedBytes:      1000000,
+				MaxRequestRetries:     3,
+				MaxRecordRetries:      5,
+				RequestTimeout:        30 * time.Second,
+				RecordDeliveryTimeout: 60 * time.Second,
 			}
 
 			kp := &kafkaPublisher{
@@ -460,11 +461,12 @@ func TestDefaultPublisherFactory(t *testing.T) {
 						{Pattern: "*", Topic: testTopic},
 					},
 				},
-				Brokers:            []string{testKafkaBroker},
-				MaxBufferedRecords: 1000,
-				MaxBufferedBytes:   1000000,
-				MaxRequestRetries:  3,
-				RequestTimeout:     30 * time.Second,
+				Brokers:               []string{testKafkaBroker},
+				MaxBufferedRecords:    1000,
+				MaxBufferedBytes:      1000000,
+				MaxRequestRetries:     3,
+				RequestTimeout:        30 * time.Second,
+				RecordDeliveryTimeout: 60 * time.Second,
 			},
 			expectError: false,
 		},
@@ -626,6 +628,7 @@ func TestDefaultPublisherFactory(t *testing.T) {
 				assert.Equal(t, tt.config.MaxRequestRetries, wrpPub.MaxRequestRetries)
 				assert.Equal(t, tt.config.MaxRecordRetries, wrpPub.MaxRecordRetries)
 				assert.Equal(t, tt.config.RequestTimeout, wrpPub.RequestTimeout)
+				assert.Equal(t, tt.config.RecordDeliveryTimeout, wrpPub.RecordDeliveryTimeout)
 
 				assert.Equal(t, tt.config.PrometheusNamespace, wrpPub.Prometheus.Namespace,
 					"PrometheusNamespace should be passed to wrpkafka.Publisher")
@@ -822,14 +825,15 @@ func TestNewKafkaPublisher(t *testing.T) {
 			name: "Valid config with all options",
 			config: map[string]interface{}{
 				KafkaConfigKey: map[string]interface{}{
-					testEnabled:          true,
-					testBrokersKey:       []string{testKafkaBroker, testKafkaBrokerTLS},
-					topicLabel:           testTopic,
-					"maxBufferedRecords": 5000,
-					"maxBufferedBytes":   50000000,
-					"maxRequestRetries":  5,
-					"maxRecordRetries":   10,
-					"requestTimeout":     "45s",
+					testEnabled:             true,
+					testBrokersKey:          []string{testKafkaBroker, testKafkaBrokerTLS},
+					topicLabel:              testTopic,
+					"maxBufferedRecords":    5000,
+					"maxBufferedBytes":      50000000,
+					"maxRequestRetries":     5,
+					"maxRecordRetries":      10,
+					"requestTimeout":        "45s",
+					"recordDeliveryTimeout": "90s",
 					"tls": map[string]interface{}{
 						"enabled":            true,
 						"insecureSkipVerify": false,

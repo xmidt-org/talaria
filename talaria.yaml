@@ -670,6 +670,10 @@ kafka:
   # (Optional) defaults to 30s
   requestTimeout: "30s"
 
+  # recordDeliveryTimeout is the timeout for record delivery
+  # (Optional) defaults to 0 (no timeout)
+  recordDeliveryTimeout: "0s"
+
   # tls configures TLS for Kafka connections
   # (Optional) defaults to disabled
   tls:
