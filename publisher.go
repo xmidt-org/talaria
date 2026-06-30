@@ -82,6 +82,8 @@ type KafkaConfig struct {
 	MaxRecordRetries int `json:"maxRecordRetries" yaml:"maxRecordRetries"`
 	// RequestTimeout is the timeout for produce requests
 	RequestTimeout time.Duration `json:"requestTimeout" yaml:"requestTimeout"`
+	// RecordDeliveryTimeout is the timeout for record delivery
+	RecordDeliveryTimeout time.Duration `json:"recordDeliveryTimeout" yaml:"recordDeliveryTimeout"`
 	// InitialDynamicConfig is the initial dynamic configuration for wrpkafka
 	InitialDynamicConfig wrpkafka.DynamicConfig `json:"initialDynamicConfig" yaml:"initialDynamicConfig"`
 	// PrometheusNamespace is the prometheus namespace (read from metric.metricsOptions.namespace)
@@ -176,6 +178,7 @@ func NewKafkaPublisher(logger *zap.Logger, v *viper.Viper, om *OutboundMeasures,
 		zap.Int("maxRequestRetries", config.MaxRequestRetries),
 		zap.Int("maxRecordRetries", config.MaxRecordRetries),
 		zap.Duration("requestTimeout", config.RequestTimeout),
+		zap.Duration("recordDeliveryTimeout", config.RecordDeliveryTimeout),
 		zap.Any("dynamicConfig", config.InitialDynamicConfig),
 	)
 
@@ -199,6 +202,7 @@ func publisherFactory(config *KafkaConfig, promReg prometheus.Registerer) (wrpKa
 		MaxRequestRetries:      config.MaxRequestRetries,
 		MaxRecordRetries:       config.MaxRecordRetries,
 		RequestTimeout:         config.RequestTimeout,
+		RecordDeliveryTimeout:  config.RecordDeliveryTimeout,
 		InitialDynamicConfig:   config.InitialDynamicConfig,
 		AllowAutoTopicCreation: config.AllowAutoTopicCreation,
 		Prometheus: wrpkafka.PrometheusConfig{
