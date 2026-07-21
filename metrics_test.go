@@ -23,3 +23,17 @@ func NewTestOutboundMeasures() (OutboundMeasures, error) {
 	tf := touchstone.NewFactory(cfg, sallust.Default(), pr)
 	return NewOutboundMeasures(tf)
 }
+
+func NewTestInboundMeasures() (InboundMeasures, error) {
+	cfg := touchstone.Config{
+		DefaultNamespace: "n",
+		DefaultSubsystem: "s",
+	}
+	_, pr, err := touchstone.New(cfg)
+	if err != nil {
+		return InboundMeasures{}, err
+	}
+
+	tf := touchstone.NewFactory(cfg, sallust.Default(), pr)
+	return NewInboundMeasures(tf)
+}

@@ -4,11 +4,14 @@ package main
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"strconv"
 
 	"go.uber.org/zap"
 
 	gokithttp "github.com/go-kit/kit/transport/http"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/xmidt-org/webpa-common/v2/adapter"
 	"github.com/xmidt-org/webpa-common/v2/device"
@@ -32,7 +35,7 @@ func withDeviceAccessCheck(errorLogger *zap.Logger, wrpRouterHandler wrphttp.Han
 	}
 }
 
-func wrpRouterHandler(logger *zap.Logger, router device.Router, ctxlogger func(ctx context.Context) *zap.Logger) wrphttp.HandlerFunc {
+func wrpRouterHandler(logger *zap.Logger, router device.Router, ctxlogger func(ctx context.Context) *zap.Logger, m InboundMeasures) wrphttp.HandlerFunc {
 	if logger == nil {
 		log := adapter.DefaultLogger()
 		logger = log.Logger
@@ -68,6 +71,7 @@ func wrpRouterHandler(logger *zap.Logger, router device.Router, ctxlogger func(c
 
 		if err != nil {
 			code := http.StatusGatewayTimeout
+			errorMsg := normalizeDeviceError(err)
 			// nolint:errorlint
 			switch err {
 			case device.ErrorInvalidDeviceName:
@@ -83,6 +87,12 @@ func wrpRouterHandler(logger *zap.Logger, router device.Router, ctxlogger func(c
 			}
 
 			errorLogger.Error("Could not process device request", zap.Error(err), zap.Int("code", code))
+			if m.APIRequestErrors != nil {
+				m.APIRequestErrors.With(prometheus.Labels{
+					codeLabel:  strconv.Itoa(code),
+					errorLabel: errorMsg,
+				}).Inc()
+			}
 			w.Header().Set("X-Xmidt-Message-Error", err.Error())
 			xhttp.WriteErrorf(
 				w,
@@ -150,5 +160,34 @@ func talariaWRPErrorEncoder(errorLogger *zap.Logger) gokithttp.ErrorEncoder {
 			errorLogger.Error("Possibly false internal server error", zap.Error(err))
 		}
 		w.WriteHeader(code)
+	}
+}
+
+func normalizeDeviceError(err error) string {
+	switch {
+	case errors.Is(err, device.ErrorInvalidDeviceName):
+		return device.ErrorInvalidDeviceName.Error()
+	case errors.Is(err, device.ErrorDeviceNotFound):
+		return device.ErrorDeviceNotFound.Error()
+	case errors.Is(err, device.ErrorNonUniqueID):
+		return device.ErrorNonUniqueID.Error()
+	case errors.Is(err, device.ErrorInvalidTransactionKey):
+		return device.ErrorInvalidTransactionKey.Error()
+	case errors.Is(err, device.ErrorTransactionAlreadyRegistered):
+		return device.ErrorTransactionAlreadyRegistered.Error()
+	case errors.Is(err, device.ErrorTransactionCanceled):
+		return device.ErrorTransactionCanceled.Error()
+	case errors.Is(err, device.ErrorDeviceBusy):
+		return device.ErrorDeviceBusy.Error()
+	case errors.Is(err, device.ErrorDeviceClosed):
+		return device.ErrorDeviceClosed.Error()
+	case errors.Is(err, device.ErrorTransactionsClosed):
+		return device.ErrorTransactionsClosed.Error()
+	case errors.Is(err, context.Canceled):
+		return "context canceled"
+	case errors.Is(err, context.DeadlineExceeded):
+		return "context deadline exceeded"
+	default:
+		return "unknown"
 	}
 }
