@@ -348,6 +348,7 @@ func testWRPRouterHandlerErrorCounter(t *testing.T, routeError error, expectedCo
 		codeLabel:  strconv.Itoa(expectedCode),
 		errorLabel: normalizeDeviceError(routeError),
 	}).Return(counter).Once()
+	counter.On("Inc").Return().Once()
 
 	router.On(
 		"Route",
