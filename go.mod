@@ -21,7 +21,7 @@ require (
 	github.com/testcontainers/testcontainers-go/modules/kafka v0.43.0
 	github.com/thedevsaddam/gojsonq/v2 v2.5.2
 	github.com/twmb/franz-go v1.21.5
-	github.com/xmidt-org/bascule v1.1.5
+	github.com/xmidt-org/bascule v1.1.6
 	github.com/xmidt-org/candlelight v0.2.14
 	github.com/xmidt-org/clortho v0.1.14
 	github.com/xmidt-org/httpaux v0.4.3

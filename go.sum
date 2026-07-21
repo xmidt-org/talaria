@@ -410,8 +410,8 @@ github.com/twmb/franz-go/plugin/kprom v1.4.0 h1:gRdB03h/BoBTIgr3obudwio6q3FbrFvb
 github.com/twmb/franz-go/plugin/kprom v1.4.0/go.mod h1:0j4hawUp3/R8tdn+uV0movy1HIaRbqsPPdMaeWNq0pc=
 github.com/ugorji/go/codec v1.2.14 h1:yOQvXCBc3Ij46LRkRoh4Yd5qK6LVOgi0bYOXfb7ifjw=
 github.com/ugorji/go/codec v1.2.14/go.mod h1:UNopzCgEMSXjBc6AOMqYvWC1ktqTAfzJZUZgYf6w6lg=
-github.com/xmidt-org/bascule v1.1.5 h1:mku+mVlr+CzAOPshyIlkNB09wxWmP1USv7LuRUgQDmg=
-github.com/xmidt-org/bascule v1.1.5/go.mod h1:2XQunOpZ5mnIWPKzEkZWKSnr9rI181n39p2vtEjk0aE=
+github.com/xmidt-org/bascule v1.1.6 h1:2Mv4FbtXrGI5RvZQd5PaDFmaWpZQLfnFYiqLPxk2lJg=
+github.com/xmidt-org/bascule v1.1.6/go.mod h1:sMF5tV3nBvkTbHdazp5weqWNw2FKkjS7UmppI8KrwiQ=
 github.com/xmidt-org/candlelight v0.2.14 h1:jasgchalqR9/SMnARJgwd9e7M17+HnRibDazQvKg5t4=
 github.com/xmidt-org/candlelight v0.2.14/go.mod h1:X1WdfThaRDnoJWHyTB7e2gAEhZBOy/1fTEENDlCDUdU=
 github.com/xmidt-org/chronon v0.1.13 h1:e6bW7sPIfZqVf9npbTvlAYPteqjSRIh/mR0BEb9lgQo=
