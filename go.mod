@@ -30,7 +30,7 @@ require (
 	github.com/xmidt-org/webpa-common/v2 v2.9.0
 	github.com/xmidt-org/wrp-go/v3 v3.7.0
 	github.com/xmidt-org/wrp-go/v5 v5.4.3
-	github.com/xmidt-org/wrpkafka v0.1.23
+	github.com/xmidt-org/wrpkafka v0.1.24
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.69.0
 	go.uber.org/zap v1.28.0
 )
@@ -129,7 +129,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.16 // indirect
 	github.com/tklauser/numcpus v0.11.0 // indirect
 	github.com/twmb/franz-go/pkg/kmsg v1.13.1 // indirect
-	github.com/twmb/franz-go/plugin/kprom v1.4.0 // indirect
+	github.com/twmb/franz-go/plugin/kprom v1.5.0 // indirect
 	github.com/ugorji/go/codec v1.2.14 // indirect
 	github.com/xmidt-org/chronon v0.1.13 // indirect
 	github.com/xmidt-org/eventor v1.0.49 // indirect
