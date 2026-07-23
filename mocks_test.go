@@ -139,7 +139,9 @@ func (m *mockCounter) Add(delta float64) {
 	m.Called(delta)
 }
 
-func (m *mockCounter) Inc() {}
+func (m *mockCounter) Inc() {
+	m.Called()
+}
 
 func (m *mockCounter) With(labelPairs prometheus.Labels) prometheus.Counter {
 	for k, v := range labelPairs {

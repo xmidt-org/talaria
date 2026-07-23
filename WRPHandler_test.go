@@ -4,14 +4,17 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -37,7 +40,7 @@ const (
 func testWRPHandlerNilRouter(t *testing.T) {
 	assert := assert.New(t)
 	assert.Panics(func() {
-		wrpRouterHandler(nil, nil, nil)
+		wrpRouterHandler(nil, nil, nil, InboundMeasures{})
 	})
 }
 
@@ -112,7 +115,7 @@ func testMessageHandlerServeHTTPEncodeError(t *testing.T) {
 
 		router  = new(mockRouter)
 		d       = new(device.MockDevice)
-		handler = wrphttp.NewHTTPHandler(wrpRouterHandler(nil, router, nil), wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())))
+		handler = wrphttp.NewHTTPHandler(wrpRouterHandler(nil, router, nil, InboundMeasures{}), wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())))
 
 		actualResponseBody     map[string]interface{}
 		expectedDeviceResponse = &device.Response{
@@ -165,7 +168,7 @@ func testMessageHandlerServeHTTPRouteError(t *testing.T, routeError error, expec
 		actualResponseBody map[string]interface{}
 
 		router  = new(mockRouter)
-		handler = wrphttp.NewHTTPHandler(wrpRouterHandler(nil, router, nil), wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())))
+		handler = wrphttp.NewHTTPHandler(wrpRouterHandler(nil, router, nil, InboundMeasures{}), wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())))
 	)
 
 	router.On(
@@ -215,7 +218,7 @@ func testMessageHandlerServeHTTPEvent(t *testing.T, requestFormat wrp.Format) {
 		request  = httptest.NewRequest("POST", "/foo", bytes.NewReader(requestContents))
 
 		router  = new(mockRouter)
-		handler = wrphttp.NewHTTPHandler(wrpRouterHandler(zaptest.NewLogger(t), router, nil), wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())))
+		handler = wrphttp.NewHTTPHandler(wrpRouterHandler(zaptest.NewLogger(t), router, nil, InboundMeasures{}), wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())))
 
 		actualDeviceRequest *device.Request
 	)
@@ -279,7 +282,7 @@ func testMessageHandlerServeHTTPRequestResponse(t *testing.T, responseFormat, re
 
 		router  = new(mockRouter)
 		d       = new(device.MockDevice)
-		handler = wrphttp.NewHTTPHandler(wrpRouterHandler(zaptest.NewLogger(t), router, nil), wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())))
+		handler = wrphttp.NewHTTPHandler(wrpRouterHandler(zaptest.NewLogger(t), router, nil, InboundMeasures{}), wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())))
 
 		actualDeviceRequest    *device.Request
 		expectedDeviceResponse = &device.Response{
@@ -314,6 +317,99 @@ func testMessageHandlerServeHTTPRequestResponse(t *testing.T, responseFormat, re
 	d.AssertExpectations(t)
 }
 
+func testWRPRouterHandlerErrorCounter(t *testing.T, routeError error, expectedCode int) {
+	t.Helper()
+	var (
+		assert  = assert.New(t)
+		require = require.New(t)
+
+		message = &wrp.Message{
+			Type:        wrp.SimpleEventMessageType,
+			Source:      testWRPSource,
+			Destination: testMAC,
+		}
+		requestContents []byte
+	)
+
+	require.NoError(wrp.NewEncoderBytes(&requestContents, wrp.Msgpack).Encode(message))
+
+	var (
+		response = httptest.NewRecorder()
+		request  = httptest.NewRequest("POST", "/foo", bytes.NewReader(requestContents))
+		router   = new(mockRouter)
+		counter  = new(mockCounter)
+		handler  = wrphttp.NewHTTPHandler(
+			wrpRouterHandler(nil, router, nil, InboundMeasures{APIRequestErrors: counter}),
+			wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())),
+		)
+	)
+
+	counter.On("With", prometheus.Labels{
+		codeLabel:  strconv.Itoa(expectedCode),
+		errorLabel: normalizeDeviceError(routeError),
+	}).Return(counter).Once()
+	counter.On("Inc").Return().Once()
+
+	router.On(
+		"Route",
+		mock.MatchedBy(func(candidate *device.Request) bool {
+			return candidate.Message != nil &&
+				len(candidate.Contents) > 0 &&
+				candidate.Format == wrp.Msgpack
+		}),
+	).Once().Return(nil, routeError)
+
+	request.SetBasicAuth("test", "test")
+	handler.ServeHTTP(response, request)
+	assert.Equal(expectedCode, response.Code)
+
+	router.AssertExpectations(t)
+	counter.AssertExpectations(t)
+}
+
+func testWRPRouterHandlerNoCounterOnSuccess(t *testing.T) {
+	t.Helper()
+	var (
+		require = require.New(t)
+		assert  = assert.New(t)
+
+		event = &wrp.Message{
+			Type:        wrp.SimpleEventMessageType,
+			Source:      testWRPSource,
+			Destination: testMAC,
+		}
+		requestContents []byte
+	)
+
+	require.NoError(wrp.NewEncoderBytes(&requestContents, wrp.Msgpack).Encode(event))
+
+	var (
+		response = httptest.NewRecorder()
+		request  = httptest.NewRequest("POST", "/foo", bytes.NewReader(requestContents))
+		router   = new(mockRouter)
+		counter  = new(mockCounter)
+		handler  = wrphttp.NewHTTPHandler(
+			wrpRouterHandler(nil, router, nil, InboundMeasures{APIRequestErrors: counter}),
+			wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())),
+		)
+	)
+
+	router.On(
+		"Route",
+		mock.MatchedBy(func(candidate *device.Request) bool {
+			return candidate.Message != nil
+		}),
+	).Once().Return(nil, nil)
+
+	request.SetBasicAuth("test", "test")
+	request.Header.Set("Content-Type", wrp.Msgpack.ContentType())
+	handler.ServeHTTP(response, request)
+	assert.Equal(http.StatusOK, response.Code)
+
+	assert.Empty(counter.Calls)
+	router.AssertExpectations(t)
+}
+
 func TestMessageHandler(t *testing.T) {
 	t.Run("NilRouter", testWRPHandlerNilRouter)
 
@@ -327,6 +423,46 @@ func TestMessageHandler(t *testing.T) {
 			testMessageHandlerServeHTTPRouteError(t, device.ErrorInvalidTransactionKey, http.StatusBadRequest)
 			testMessageHandlerServeHTTPRouteError(t, device.ErrorTransactionAlreadyRegistered, http.StatusBadRequest)
 			testMessageHandlerServeHTTPRouteError(t, errors.New("random error"), http.StatusGatewayTimeout)
+		})
+
+		t.Run("ErrorCounter", func(t *testing.T) {
+			t.Run("InvalidDeviceName", func(t *testing.T) {
+				testWRPRouterHandlerErrorCounter(t, device.ErrorInvalidDeviceName, http.StatusBadRequest)
+			})
+			t.Run("DeviceNotFound", func(t *testing.T) {
+				testWRPRouterHandlerErrorCounter(t, device.ErrorDeviceNotFound, http.StatusNotFound)
+			})
+			t.Run("NonUniqueID", func(t *testing.T) {
+				testWRPRouterHandlerErrorCounter(t, device.ErrorNonUniqueID, http.StatusBadRequest)
+			})
+			t.Run("InvalidTransactionKey", func(t *testing.T) {
+				testWRPRouterHandlerErrorCounter(t, device.ErrorInvalidTransactionKey, http.StatusBadRequest)
+			})
+			t.Run("TransactionAlreadyRegistered", func(t *testing.T) {
+				testWRPRouterHandlerErrorCounter(t, device.ErrorTransactionAlreadyRegistered, http.StatusBadRequest)
+			})
+			t.Run("TransactionCanceled", func(t *testing.T) {
+				testWRPRouterHandlerErrorCounter(t, device.ErrorTransactionCanceled, http.StatusGatewayTimeout)
+			})
+			t.Run("DeviceBusy", func(t *testing.T) {
+				testWRPRouterHandlerErrorCounter(t, device.ErrorDeviceBusy, http.StatusGatewayTimeout)
+			})
+			t.Run("DeviceClosed", func(t *testing.T) {
+				testWRPRouterHandlerErrorCounter(t, device.ErrorDeviceClosed, http.StatusGatewayTimeout)
+			})
+			t.Run("TransactionsClosed", func(t *testing.T) {
+				testWRPRouterHandlerErrorCounter(t, device.ErrorTransactionsClosed, http.StatusGatewayTimeout)
+			})
+			t.Run("ContextCanceled", func(t *testing.T) {
+				testWRPRouterHandlerErrorCounter(t, context.Canceled, http.StatusGatewayTimeout)
+			})
+			t.Run("ContextDeadlineExceeded", func(t *testing.T) {
+				testWRPRouterHandlerErrorCounter(t, context.DeadlineExceeded, http.StatusGatewayTimeout)
+			})
+			t.Run("UnknownError", func(t *testing.T) {
+				testWRPRouterHandlerErrorCounter(t, errors.New("random error"), http.StatusGatewayTimeout)
+			})
+			t.Run("NoCounterOnSuccess", testWRPRouterHandlerNoCounterOnSuccess)
 		})
 
 		t.Run("Event", func(t *testing.T) {
@@ -343,6 +479,43 @@ func TestMessageHandler(t *testing.T) {
 			}
 		})
 	})
+}
+
+func TestNormalizeDeviceError(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		expected string
+	}{
+		// Known device sentinel errors — returned directly
+		{"InvalidDeviceName", device.ErrorInvalidDeviceName, device.ErrorInvalidDeviceName.Error()},
+		{"DeviceNotFound", device.ErrorDeviceNotFound, device.ErrorDeviceNotFound.Error()},
+		{"NonUniqueID", device.ErrorNonUniqueID, device.ErrorNonUniqueID.Error()},
+		{"InvalidTransactionKey", device.ErrorInvalidTransactionKey, device.ErrorInvalidTransactionKey.Error()},
+		{"TransactionAlreadyRegistered", device.ErrorTransactionAlreadyRegistered, device.ErrorTransactionAlreadyRegistered.Error()},
+		{"TransactionCanceled", device.ErrorTransactionCanceled, device.ErrorTransactionCanceled.Error()},
+		{"DeviceBusy", device.ErrorDeviceBusy, device.ErrorDeviceBusy.Error()},
+		{"DeviceClosed", device.ErrorDeviceClosed, device.ErrorDeviceClosed.Error()},
+		{"TransactionsClosed", device.ErrorTransactionsClosed, device.ErrorTransactionsClosed.Error()},
+		// Known device sentinel errors — wrapped (errors.Is must unwrap them)
+		{"WrappedDeviceNotFound", fmt.Errorf("routing: %w", device.ErrorDeviceNotFound), device.ErrorDeviceNotFound.Error()},
+		{"WrappedDeviceClosed", fmt.Errorf("send: %w", device.ErrorDeviceClosed), device.ErrorDeviceClosed.Error()},
+		{"WrappedTransactionCanceled", fmt.Errorf("tx: %w", device.ErrorTransactionCanceled), device.ErrorTransactionCanceled.Error()},
+		// Context errors
+		{"ContextCanceled", context.Canceled, "context canceled"},
+		{"WrappedContextCanceled", fmt.Errorf("op: %w", context.Canceled), "context canceled"},
+		{"ContextDeadlineExceeded", context.DeadlineExceeded, "context deadline exceeded"},
+		{"WrappedContextDeadlineExceeded", fmt.Errorf("op: %w", context.DeadlineExceeded), "context deadline exceeded"},
+		// Unknown errors always map to "unknown"
+		{"UnknownBareError", errors.New("something unexpected"), "unknown"},
+		{"UnknownWrappedError", fmt.Errorf("wrapper: %w", errors.New("inner")), "unknown"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, normalizeDeviceError(tc.err))
+		})
+	}
 }
 
 func TestMessageHandlerWithDeviceAccessCheck(t *testing.T) {

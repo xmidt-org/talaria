@@ -42,6 +42,9 @@ const (
 	// publisher outcome
 	PublishOutcomeCounter = "publish_outcome_total"
 
+	// api request errors (talaria-specific)
+	APIRequestErrorsCounter = "api_request_errors_total"
+
 	GateStatus   = "gate_status"
 	DrainStatus  = "drain_status"
 	DrainCounter = "drain_count"
@@ -64,6 +67,9 @@ const (
 	topicLabel              = "topic"
 	topicShardStrategyLabel = "topic_shard_strategy"
 	errorTypeLabel          = "error_type"
+
+	// API error label
+	errorLabel = "error"
 )
 
 // label values
@@ -409,6 +415,21 @@ func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs erro
 	errs = errors.Join(errs, err)
 
 	return om, errors.Join(errs, err)
+}
+
+type InboundMeasures struct {
+	APIRequestErrors CounterVec
+}
+
+func NewInboundMeasures(tf *touchstone.Factory) (im InboundMeasures, err error) {
+	im.APIRequestErrors, err = tf.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: APIRequestErrorsCounter,
+			Help: "Count of API request errors by HTTP status code and error message",
+		},
+		[]string{codeLabel, errorLabel}...,
+	)
+	return
 }
 
 func InstrumentOutboundSize(obs HistogramVec, next http.RoundTripper) promhttp.RoundTripperFunc {

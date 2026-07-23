@@ -262,7 +262,12 @@ func NewPrimaryHandler(logger *zap.Logger, manager device.Manager, v *viper.Vipe
 		}
 	}
 
-	wrpRouterHandler := wrpRouterHandler(logger, manager, getLogger)
+	im, err := NewInboundMeasures(tf)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create inbound measures: %w", err)
+	}
+
+	wrpRouterHandler := wrpRouterHandler(logger, manager, getLogger, im)
 
 	if v.IsSet(DeviceAccessCheckConfigKey) {
 		config := new(deviceAccessCheckConfig)
