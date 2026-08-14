@@ -27,7 +27,7 @@ require (
 	github.com/xmidt-org/httpaux v0.4.3
 	github.com/xmidt-org/sallust v0.2.8
 	github.com/xmidt-org/touchstone v0.1.8
-	github.com/xmidt-org/webpa-common/v2 v2.10.4
+	github.com/xmidt-org/webpa-common/v2 v2.10.5
 	github.com/xmidt-org/wrp-go/v3 v3.7.0
 	github.com/xmidt-org/wrp-go/v5 v5.4.4
 	github.com/xmidt-org/wrpkafka v0.1.24
@@ -136,7 +136,7 @@ require (
 	github.com/xmidt-org/eventor v1.0.49 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.69.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.70.0 // indirect
 	go.opentelemetry.io/otel v1.45.0 // indirect
 	go.opentelemetry.io/otel/exporters/jaeger v1.17.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.45.0 // indirect
