@@ -23,7 +23,7 @@ require (
 	github.com/twmb/franz-go v1.21.6
 	github.com/xmidt-org/bascule v1.1.7
 	github.com/xmidt-org/candlelight v0.2.16
-	github.com/xmidt-org/clortho v0.1.15
+	github.com/xmidt-org/clortho v0.1.16
 	github.com/xmidt-org/httpaux v0.4.3
 	github.com/xmidt-org/sallust v0.2.8
 	github.com/xmidt-org/touchstone v0.1.8
