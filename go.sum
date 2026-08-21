@@ -399,8 +399,8 @@ github.com/xmidt-org/webpa-common/v2 v2.10.5 h1:7jsBh+Unm+qzcnPaHFM4YQ69Visx75B5
 github.com/xmidt-org/webpa-common/v2 v2.10.5/go.mod h1:HnySSJNnq7ci2k3L/c7crnQ9o7Crnzjz34XTPvlBpZY=
 github.com/xmidt-org/wrp-go/v3 v3.7.0 h1:m9ghdq79Zzb0WjomUJ02rzFpI0RK8KTjArYpNIwx1fc=
 github.com/xmidt-org/wrp-go/v3 v3.7.0/go.mod h1:eyMj+q/7LQ4SU6Z3s6VOwuTVSh6/DJBb2soBGBFSung=
-github.com/xmidt-org/wrp-go/v5 v5.4.4 h1:JIwaTTX5PruC9dqj1bggqv2e9ZAzKoC8o7sYXW7ANJE=
-github.com/xmidt-org/wrp-go/v5 v5.4.4/go.mod h1:mxxrYn97WzBEg9lEPDwDvlXQ15fUFKvjvllk/0bybbY=
+github.com/xmidt-org/wrp-go/v5 v5.4.5 h1:KARq7pHL/eGWNU361d/OWwfngRCFiVmFFvzlrrD0RPU=
+github.com/xmidt-org/wrp-go/v5 v5.4.5/go.mod h1:iwThh1FGPlsPfgFu7NX4TjR6PhomJPv6dots8yc8/WI=
 github.com/xmidt-org/wrpkafka v0.1.26 h1:UO+SHF8T1M1IDbHOkecEzXUdib9XNlVstTXwd2984mg=
 github.com/xmidt-org/wrpkafka v0.1.26/go.mod h1:06BOFw/qfj8+/8+f5kvpo81WnXWIRC0U3IRkTzWhGDs=
 github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo0=
