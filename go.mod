@@ -24,7 +24,7 @@ require (
 	github.com/xmidt-org/bascule v1.1.8
 	github.com/xmidt-org/candlelight v0.2.17
 	github.com/xmidt-org/clortho v0.1.16
-	github.com/xmidt-org/httpaux v0.4.4
+	github.com/xmidt-org/httpaux v0.4.5
 	github.com/xmidt-org/sallust v0.2.9
 	github.com/xmidt-org/touchstone v0.1.8
 	github.com/xmidt-org/webpa-common/v2 v2.10.6
