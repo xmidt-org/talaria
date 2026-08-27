@@ -383,10 +383,10 @@ github.com/xmidt-org/bascule v1.1.9 h1:Ycu7uKFxs+tRPqgmY8YymwzrsjkCIh9VwRon80cuD
 github.com/xmidt-org/bascule v1.1.9/go.mod h1:dNZ19O/K/lgTHN9R7Z42YzfOaAJKV8ZMWflr7UehumU=
 github.com/xmidt-org/candlelight v0.2.18 h1:izN9JoHLRhhVdC/hZWqCt2POGX8kw0ZsHW/chdkSTCY=
 github.com/xmidt-org/candlelight v0.2.18/go.mod h1:UmY0Hp4BwKfOz+OglcUcPla60XwYA/Ab5jyxQ8Usj14=
-github.com/xmidt-org/chronon v0.1.14 h1:QH+VYvtBM7BYAvOhCymdWu6ZQ7gSxMqsW94JOkFpzEo=
-github.com/xmidt-org/chronon v0.1.14/go.mod h1:puYF7LYX/DOjgUw7Q31AqVaPkrwN+4uac9UkZ7ViNKY=
-github.com/xmidt-org/clortho v0.1.17 h1:SgG0OVcoMs5KUACgbogJJt4gYoyyLus8n9VrAklSOAc=
-github.com/xmidt-org/clortho v0.1.17/go.mod h1:CDetCRDLUHWCA0EtimbAz3nOd5CklpSrkpRv+ukfO4Y=
+github.com/xmidt-org/chronon v0.1.15 h1:S+NbNO1WeFy+39T8bTrrX+7p9fKwzenejAvJaqbkOIo=
+github.com/xmidt-org/chronon v0.1.15/go.mod h1:EvhpdKGQtWk1Q4lKy8ymDa0oVoqa931Be7sc7Uf0Jek=
+github.com/xmidt-org/clortho v0.1.18 h1:lgRS1vb+zOyN8i+bfZLeIe1AcOM3+JzBXSIgiAWdNDc=
+github.com/xmidt-org/clortho v0.1.18/go.mod h1:O92ScNczuCF4mK5697GPJn0nTFJR1VWADTTQgIq6+jQ=
 github.com/xmidt-org/eventor v1.0.50 h1:ULd/oEGxjclejPnHW4idYnUJ3zEbOAj6fpZ1XADvf+0=
 github.com/xmidt-org/eventor v1.0.50/go.mod h1:Gh3TsQRRBx8zmMmY6oLIX0mV8UGZk/Mw6BDJdMcY0rY=
 github.com/xmidt-org/httpaux v0.4.5 h1:+/YVnfWlUn7FJJbNguYgBPxzih32lPGEt30sSSPN2F0=
