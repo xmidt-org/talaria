@@ -1,6 +1,6 @@
 module github.com/xmidt-org/talaria
 
-go 1.26.5
+go 1.27.0
 
 require (
 	github.com/fatih/structs v1.1.0
@@ -21,7 +21,7 @@ require (
 	github.com/testcontainers/testcontainers-go/modules/kafka v0.44.0
 	github.com/thedevsaddam/gojsonq/v2 v2.5.2
 	github.com/twmb/franz-go v1.21.6
-	github.com/xmidt-org/bascule v1.1.9
+	github.com/xmidt-org/bascule v1.2.0
 	github.com/xmidt-org/candlelight v0.2.19
 	github.com/xmidt-org/clortho v0.1.18
 	github.com/xmidt-org/httpaux v0.4.5
