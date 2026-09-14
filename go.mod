@@ -22,7 +22,7 @@ require (
 	github.com/thedevsaddam/gojsonq/v2 v2.5.2
 	github.com/twmb/franz-go v1.21.6
 	github.com/xmidt-org/bascule v1.3.1
-	github.com/xmidt-org/candlelight v0.2.19
+	github.com/xmidt-org/candlelight v0.2.20
 	github.com/xmidt-org/clortho v0.1.18
 	github.com/xmidt-org/httpaux v0.4.5
 	github.com/xmidt-org/sallust v0.2.10
