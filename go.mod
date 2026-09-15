@@ -21,7 +21,7 @@ require (
 	github.com/testcontainers/testcontainers-go/modules/kafka v0.44.0
 	github.com/thedevsaddam/gojsonq/v2 v2.5.2
 	github.com/twmb/franz-go v1.21.6
-	github.com/xmidt-org/bascule v1.3.1
+	github.com/xmidt-org/bascule v1.3.3
 	github.com/xmidt-org/candlelight v0.2.20
 	github.com/xmidt-org/clortho v0.1.18
 	github.com/xmidt-org/httpaux v0.4.5
@@ -150,7 +150,7 @@ require (
 	go.uber.org/fx v1.24.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/crypto v0.55.0 // indirect
+	golang.org/x/crypto v0.56.0 // indirect
 	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa // indirect
 	golang.org/x/mod v0.38.0 // indirect
 	golang.org/x/net v0.58.0 // indirect
