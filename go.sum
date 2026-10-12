@@ -395,8 +395,8 @@ github.com/xmidt-org/sallust v0.2.10 h1:q5RR3zZ22+FHIGGLNTlARdSqGKYVIQeWL320NybH
 github.com/xmidt-org/sallust v0.2.10/go.mod h1:SWs5tDl0oyi1bBgvVU8ucxaR1qjPO66ecyLW8/cAzUk=
 github.com/xmidt-org/touchstone v0.1.8 h1:jpA7j2pPtuP6hFr/LcT25cvfYkztWOp3Tj1ZCvqIvMw=
 github.com/xmidt-org/touchstone v0.1.8/go.mod h1:3nKZJlgWCDDThy/djXF2/wiwmRyCcDBSWBrSuUSy3ME=
-github.com/xmidt-org/webpa-common/v2 v2.10.14 h1:Z47A85Vr3CkgGZnmvlakscUU1CxhNrF9s6GPmzBVQas=
-github.com/xmidt-org/webpa-common/v2 v2.10.14/go.mod h1:xRDMY8r5n8wkTZCWnbPR0UswWwrIBsQNVqvdHFJXNC4=
+github.com/xmidt-org/webpa-common/v2 v2.10.16 h1:S54d/qx/ES+0NCUkg+/f8XajdQhjRIxjMPcU99QTj94=
+github.com/xmidt-org/webpa-common/v2 v2.10.16/go.mod h1:uiUe1QTv9IA0J4tqBQ48V0rvoIQFy/VFCefGuuqkA3k=
 github.com/xmidt-org/wrp-go/v3 v3.7.0 h1:m9ghdq79Zzb0WjomUJ02rzFpI0RK8KTjArYpNIwx1fc=
 github.com/xmidt-org/wrp-go/v3 v3.7.0/go.mod h1:eyMj+q/7LQ4SU6Z3s6VOwuTVSh6/DJBb2soBGBFSung=
 github.com/xmidt-org/wrp-go/v5 v5.4.6 h1:7v2jrC+42617ooTfCHzsYDLVXj5oM7njVqtGbNbTijM=
@@ -409,8 +409,8 @@ go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ
 go.opentelemetry.io/auto/sdk v1.2.1/go.mod h1:KRTj+aOaElaLi+wW1kO/DZRXwkF4C5xPbEe3ZiIhN7Y=
 go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.72.0 h1:OB2Uj/zVI03+FrzEvEcw8PwFLlGzzCjcxbsCWuCcG3I=
 go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.72.0/go.mod h1:ABTMg6leEdcok2hoBV/aQ6nyW93tRC5iCMuEuFYVqKs=
-go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.71.0 h1:3g7B90UzBltIDKq1/5mrTGxTnOFDV0ICOhLoxiZ8jlg=
-go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.71.0/go.mod h1:Ef8SuTh59BT7+ofpDxN9z+yOlc4t2GjLmKDgYNJL/NU=
+go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.72.0 h1:LxwW/9ctSCv+QkE/cLR7M91ZIkXNMqJtEMi1vCw9U8s=
+go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.72.0/go.mod h1:tOsftB4SslBwwErVEPaenU2RpThXWPIU8DoJHEC4dyw=
 go.opentelemetry.io/otel v1.47.0 h1:j7ALJ/zgkS7Z6aeJW09p8VC9804bC+PpeTfCD4XPnOM=
 go.opentelemetry.io/otel v1.47.0/go.mod h1:8wS9O2qfXrYrzp6hIF/HOYJJf/wIhFPhR2xLuP+iXQU=
 go.opentelemetry.io/otel/exporters/jaeger v1.17.0 h1:D7UpUy2Xc2wsi1Ras6V40q806WM07rqoCWzXu7Sqy+4=
