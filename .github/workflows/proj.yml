@@ -19,5 +19,5 @@ permissions:
 jobs:
   proj:
     # yamllint disable-line
-    uses: xmidt-org/shared-go/.github/workflows/proj.yml@094d5d5299b39987ce2b475dcf27aaea8ea8420c # v4.13.12
+    uses: xmidt-org/shared-go/.github/workflows/proj.yml@9c8cc31032886a26d460e0f453392720501c7cab # v4.13.14
     secrets: inherit
