@@ -1,6 +1,6 @@
 module github.com/xmidt-org/talaria
 
-go 1.27.1
+go 1.27.3
 
 require (
 	github.com/fatih/structs v1.1.0
