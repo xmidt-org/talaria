@@ -24,11 +24,9 @@ import (
 
 	"github.com/xmidt-org/clortho"
 
-	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/device"
-	// nolint:staticcheck
+	//nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/service"
-	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/service/accessor"
 	"github.com/xmidt-org/webpa-common/v2/service/servicehttp"
 	"github.com/xmidt-org/webpa-common/v2/xhttp"
@@ -156,7 +154,7 @@ func NewPrimaryHandler(logger *zap.Logger, manager device.Manager, v *viper.Vipe
 
 	if v.IsSet(JWTValidatorConfigKey) {
 		var jwtVal JWTValidator
-		v.UnmarshalKey(JWTValidatorConfigKey, &jwtVal)
+		_ = v.UnmarshalKey(JWTValidatorConfigKey, &jwtVal)
 
 		kr := clortho.NewKeyRing()
 
@@ -176,7 +174,7 @@ func NewPrimaryHandler(logger *zap.Logger, manager device.Manager, v *viper.Vipe
 		}
 
 		var zConfig sallust.Config
-		v.UnmarshalKey("zap", &zConfig)
+		_ = v.UnmarshalKey("zap", &zConfig)
 		zlogger := zap.Must(zConfig.Build())
 		// Instantiate a metric listener for the resolver
 		cml, err := clorthometrics.NewListener(clorthometrics.WithFactory(tf))
@@ -409,7 +407,6 @@ func buildDeviceAccessCheck(config *deviceAccessCheckConfig, logger *zap.Logger,
 		return nil, errors.New("failed verifying DeviceAccessCheck type")
 	}
 
-	// nolint:prealloc
 	var parsedChecks []*parsedCheck
 	for _, check := range config.Checks {
 		parsedCheck, err := parseDeviceAccessCheck(check)

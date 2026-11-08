@@ -100,7 +100,7 @@ func testAckDispatcherOnDeviceEventQOSEventFailure(t *testing.T) {
 			// Ensure mock panics are not trigger
 			require.NotPanics(func() { dp.OnDeviceEvent(tc.event) })
 			// Errors should have been logged
-			assert.Greater(b.Len(), 0)
+			assert.Positive(b.Len())
 		})
 	}
 }
@@ -132,8 +132,8 @@ func testAckDispatcherOnDeviceEventQOSDeviceFailure(t *testing.T) {
 					RequestDeliveryResponse: &expectedRequestDeliveryResponse,
 					Headers:                 []string{testAckHeader1, testAckHeader2},
 					Metadata:                map[string]string{testMetadataName: testMetadataValue},
-					Spans:                   [][]string{{"1", "2"}, {"3"}},
-					IncludeSpans:            &expectedIncludeSpans,
+					Spans:                   [][]string{{"1", "2"}, {"3"}}, //nolint:staticcheck // deprecated field still under test
+					IncludeSpans:            &expectedIncludeSpans,         //nolint:staticcheck // deprecated field still under test
 					Path:                    testPath,
 					Payload:                 []byte{1, 2, 3, 4, 0xff, 0xce},
 					ServiceName:             testServiceName,
@@ -160,8 +160,8 @@ func testAckDispatcherOnDeviceEventQOSDeviceFailure(t *testing.T) {
 					RequestDeliveryResponse: &expectedRequestDeliveryResponse,
 					Headers:                 []string{testAckHeader1, testAckHeader2},
 					Metadata:                map[string]string{testMetadataName: testMetadataValue},
-					Spans:                   [][]string{{"1", "2"}, {"3"}},
-					IncludeSpans:            &expectedIncludeSpans,
+					Spans:                   [][]string{{"1", "2"}, {"3"}}, //nolint:staticcheck // deprecated field still under test
+					IncludeSpans:            &expectedIncludeSpans,         //nolint:staticcheck // deprecated field still under test
 					Path:                    testPath,
 					Payload:                 []byte{1, 2, 3, 4, 0xff, 0xce},
 					ServiceName:             testServiceName,
@@ -238,7 +238,7 @@ func testAckDispatcherOnDeviceEventQOSDeviceFailure(t *testing.T) {
 			// Ensure mock panics are not trigger
 			require.NotPanics(func() { dp.OnDeviceEvent(tc.event) })
 			// Errors should have been logged
-			assert.Greater(b.Len(), 0)
+			assert.Positive(b.Len())
 			// Some tests have nil devices
 			if d != nil {
 				// Ensure mock calls were made
@@ -294,8 +294,8 @@ func testAckDispatcherOnDeviceEventQOSSuccess(t *testing.T) {
 					RequestDeliveryResponse: &expectedRequestDeliveryResponse,
 					Headers:                 []string{testAckHeader1, testAckHeader2},
 					Metadata:                map[string]string{testMetadataName: testMetadataValue},
-					Spans:                   [][]string{{"1", "2"}, {"3"}},
-					IncludeSpans:            &expectedIncludeSpans,
+					Spans:                   [][]string{{"1", "2"}, {"3"}}, //nolint:staticcheck // deprecated field still under test
+					IncludeSpans:            &expectedIncludeSpans,         //nolint:staticcheck // deprecated field still under test
 					Path:                    testPath,
 					Payload:                 []byte{1, 2, 3, 4, 0xff, 0xce},
 					ServiceName:             testServiceName,
@@ -323,8 +323,8 @@ func testAckDispatcherOnDeviceEventQOSSuccess(t *testing.T) {
 					RequestDeliveryResponse: &expectedRequestDeliveryResponse,
 					Headers:                 []string{testAckHeader1, testAckHeader2},
 					Metadata:                map[string]string{testMetadataName: testMetadataValue},
-					Spans:                   [][]string{{"1", "2"}, {"3"}},
-					IncludeSpans:            &expectedIncludeSpans,
+					Spans:                   [][]string{{"1", "2"}, {"3"}}, //nolint:staticcheck // deprecated field still under test
+					IncludeSpans:            &expectedIncludeSpans,         //nolint:staticcheck // deprecated field still under test
 					Path:                    testPath,
 					Payload:                 []byte{1, 2, 3, 4, 0xff, 0xce},
 					ServiceName:             testServiceName,
@@ -352,8 +352,8 @@ func testAckDispatcherOnDeviceEventQOSSuccess(t *testing.T) {
 					RequestDeliveryResponse: &expectedRequestDeliveryResponse,
 					Headers:                 []string{testAckHeader1, testAckHeader2},
 					Metadata:                map[string]string{testMetadataName: testMetadataValue},
-					Spans:                   [][]string{{"1", "2"}, {"3"}},
-					IncludeSpans:            &expectedIncludeSpans,
+					Spans:                   [][]string{{"1", "2"}, {"3"}}, //nolint:staticcheck // deprecated field still under test
+					IncludeSpans:            &expectedIncludeSpans,         //nolint:staticcheck // deprecated field still under test
 					Path:                    testPath,
 					Payload:                 []byte{1, 2, 3, 4, 0xff, 0xce},
 					ServiceName:             testServiceName,
@@ -409,8 +409,8 @@ func testAckDispatcherOnDeviceEventQOSSuccess(t *testing.T) {
 					RequestDeliveryResponse: &expectedRequestDeliveryResponse,
 					Headers:                 []string{testAckHeader1, testAckHeader2},
 					Metadata:                map[string]string{testMetadataName: testMetadataValue},
-					Spans:                   [][]string{{"1", "2"}, {"3"}},
-					IncludeSpans:            &expectedIncludeSpans,
+					Spans:                   [][]string{{"1", "2"}, {"3"}}, //nolint:staticcheck // deprecated field still under test
+					IncludeSpans:            &expectedIncludeSpans,         //nolint:staticcheck // deprecated field still under test
 					Path:                    testPath,
 					Payload:                 []byte{1, 2, 3, 4, 0xff, 0xce},
 					ServiceName:             testServiceName,
@@ -437,8 +437,8 @@ func testAckDispatcherOnDeviceEventQOSSuccess(t *testing.T) {
 					RequestDeliveryResponse: &expectedRequestDeliveryResponse,
 					Headers:                 []string{testAckHeader1, testAckHeader2},
 					Metadata:                map[string]string{testMetadataName: testMetadataValue},
-					Spans:                   [][]string{{"1", "2"}, {"3"}},
-					IncludeSpans:            &expectedIncludeSpans,
+					Spans:                   [][]string{{"1", "2"}, {"3"}}, //nolint:staticcheck // deprecated field still under test
+					IncludeSpans:            &expectedIncludeSpans,         //nolint:staticcheck // deprecated field still under test
 					Path:                    testPath,
 					Payload:                 []byte{1, 2, 3, 4, 0xff, 0xce},
 					ServiceName:             testServiceName,

@@ -110,12 +110,12 @@ func TestKafkaPublisher_Start(t *testing.T) {
 			err := kp.Start()
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				if tt.errorContains != "" {
 					assert.Contains(t, err.Error(), tt.errorContains)
 				}
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.True(t, kp.started)
 				assert.NotNil(t, kp.publisher)
 			}
@@ -200,7 +200,7 @@ func TestKafkaPublisher_Stop(t *testing.T) {
 			ctx := context.Background()
 			err := kp.Stop(ctx)
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			if tt.started {
 				assert.False(t, kp.started)
 			}
@@ -315,12 +315,12 @@ func TestKafkaPublisher_Publish(t *testing.T) {
 			err = kp.Publish(ctx, tt.message)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				if tt.errorContains != "" {
 					assert.Contains(t, err.Error(), tt.errorContains)
 				}
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			// Only assert expectations if we expected calls to the mock
@@ -610,13 +610,13 @@ func TestDefaultPublisherFactory(t *testing.T) {
 			publisher, err := publisherFactory(tt.config, nil)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				if tt.errorContains != "" {
 					assert.Contains(t, err.Error(), tt.errorContains)
 				}
 				assert.Nil(t, publisher)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, publisher)
 
 				// Verify it's a real wrpkafka.Publisher
@@ -644,7 +644,7 @@ func TestDefaultPublisherFactory(t *testing.T) {
 					"WithClientLabel should be passed to wrpkafka.Publisher")
 				// Verify topic map is empty if not provided
 				if len(tt.config.InitialDynamicConfig.TopicMap) == 0 {
-					require.Len(t, wrpPub.InitialDynamicConfig.TopicMap, 0)
+					require.Empty(t, wrpPub.InitialDynamicConfig.TopicMap)
 				}
 
 				// Verify TLS config
@@ -702,7 +702,7 @@ func TestKafkaPublisher_Lifecycle(t *testing.T) {
 
 	// Publish multiple messages
 	ctx := context.Background()
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		msg := &wrp.Message{
 			Type:        wrp.SimpleEventMessageType,
 			Source:      testString,
@@ -1069,7 +1069,7 @@ func TestPublisherFactory_TLS(t *testing.T) {
 	}
 
 	// Create a temp file with invalid PEM data for testing
-	invalidCAFile, err := os.CreateTemp("", "invalid-ca-*.crt")
+	invalidCAFile, err := os.CreateTemp(t.TempDir(), "invalid-ca-*.crt")
 	require.NoError(t, err)
 	t.Cleanup(func() { os.Remove(invalidCAFile.Name()) })
 	_, err = invalidCAFile.WriteString("This is not valid PEM data\n")
@@ -1297,13 +1297,13 @@ func TestPublisherFactory_TLS(t *testing.T) {
 			publisher, err := publisherFactory(tt.config, nil)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				if tt.errorContains != "" {
 					assert.Contains(t, err.Error(), tt.errorContains)
 				}
 				assert.Nil(t, publisher)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, publisher)
 
 				wrpPub, ok := publisher.(*wrpkafka.Publisher)

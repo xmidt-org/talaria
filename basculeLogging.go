@@ -13,7 +13,6 @@ import (
 	"github.com/xmidt-org/candlelight"
 	"github.com/xmidt-org/sallust"
 	"go.uber.org/zap"
-	// nolint:staticcheck
 )
 
 func sanitizeHeaders(headers http.Header) (filtered http.Header) {
@@ -35,7 +34,7 @@ func setLogger(logger *zap.Logger, lf ...LoggerFunc) func(delegate http.Handler)
 				kvs := []interface{}{"requestHeaders", sanitizeHeaders(r.Header), "requestURL", r.URL.EscapedPath(), "method", r.Method, "requestURI", r.RequestURI, "remoteAddr", r.RemoteAddr}
 				if len(lf) > 0 {
 					for _, l := range lf {
-						kvs = append(kvs, l(kvs, r))
+						kvs = l(kvs, r)
 					}
 				}
 				kvs, _ = candlelight.AppendTraceInfo(r.Context(), kvs)

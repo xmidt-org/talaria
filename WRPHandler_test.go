@@ -21,7 +21,6 @@ import (
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"go.uber.org/zap/zaptest"
 
-	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/xhttp"
 	"github.com/xmidt-org/wrp-go/v3"
 	"github.com/xmidt-org/wrp-go/v3/wrphttp"
@@ -57,7 +56,7 @@ func testWithDeviceAccessCheck(t *testing.T, authorized bool) {
 		}
 		wrpRouterHandler = func(w wrphttp.ResponseWriter, _ *wrphttp.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("success"))
+			_, _ = w.Write([]byte("success"))
 		}
 	)
 
@@ -111,7 +110,7 @@ func testMessageHandlerServeHTTPEncodeError(t *testing.T) {
 
 	var (
 		response = httptest.NewRecorder()
-		request  = httptest.NewRequest("POST", "/foo", bytes.NewReader(requestContents))
+		request  = httptest.NewRequest(http.MethodPost, "/foo", bytes.NewReader(requestContents))
 
 		router  = new(mockRouter)
 		d       = new(device.MockDevice)
@@ -164,7 +163,7 @@ func testMessageHandlerServeHTTPRouteError(t *testing.T, routeError error, expec
 
 	var (
 		response           = httptest.NewRecorder()
-		request            = httptest.NewRequest("POST", "/foo", bytes.NewReader(requestContents))
+		request            = httptest.NewRequest(http.MethodPost, "/foo", bytes.NewReader(requestContents))
 		actualResponseBody map[string]interface{}
 
 		router  = new(mockRouter)
@@ -215,7 +214,7 @@ func testMessageHandlerServeHTTPEvent(t *testing.T, requestFormat wrp.Format) {
 
 	var (
 		response = httptest.NewRecorder()
-		request  = httptest.NewRequest("POST", "/foo", bytes.NewReader(requestContents))
+		request  = httptest.NewRequest(http.MethodPost, "/foo", bytes.NewReader(requestContents))
 
 		router  = new(mockRouter)
 		handler = wrphttp.NewHTTPHandler(wrpRouterHandler(zaptest.NewLogger(t), router, nil, InboundMeasures{}), wrphttp.WithDecoder(decorateRequestDecoder(wrphttp.DefaultDecoder())))
@@ -278,7 +277,7 @@ func testMessageHandlerServeHTTPRequestResponse(t *testing.T, responseFormat, re
 
 	var (
 		response = httptest.NewRecorder()
-		request  = httptest.NewRequest("POST", "/foo", bytes.NewReader(requestContents))
+		request  = httptest.NewRequest(http.MethodPost, "/foo", bytes.NewReader(requestContents))
 
 		router  = new(mockRouter)
 		d       = new(device.MockDevice)
@@ -311,7 +310,7 @@ func testMessageHandlerServeHTTPRequestResponse(t *testing.T, responseFormat, re
 	assert.Equal(http.StatusOK, response.Code)
 	assert.Equal(responseFormat.ContentType(), response.Header().Get("Content-Type"))
 	require.NotNil(actualDeviceRequest)
-	assert.NoError(wrp.NewDecoder(response.Body, responseFormat).Decode(new(wrp.Message)))
+	require.NoError(wrp.NewDecoder(response.Body, responseFormat).Decode(new(wrp.Message)))
 
 	router.AssertExpectations(t)
 	d.AssertExpectations(t)
@@ -335,7 +334,7 @@ func testWRPRouterHandlerErrorCounter(t *testing.T, routeError error, expectedCo
 
 	var (
 		response = httptest.NewRecorder()
-		request  = httptest.NewRequest("POST", "/foo", bytes.NewReader(requestContents))
+		request  = httptest.NewRequest(http.MethodPost, "/foo", bytes.NewReader(requestContents))
 		router   = new(mockRouter)
 		counter  = new(mockCounter)
 		handler  = wrphttp.NewHTTPHandler(
@@ -385,7 +384,7 @@ func testWRPRouterHandlerNoCounterOnSuccess(t *testing.T) {
 
 	var (
 		response = httptest.NewRecorder()
-		request  = httptest.NewRequest("POST", "/foo", bytes.NewReader(requestContents))
+		request  = httptest.NewRequest(http.MethodPost, "/foo", bytes.NewReader(requestContents))
 		router   = new(mockRouter)
 		counter  = new(mockCounter)
 		handler  = wrphttp.NewHTTPHandler(

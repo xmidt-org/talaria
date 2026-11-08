@@ -33,7 +33,7 @@ func testWorkerPoolTransactHTTPSuccess(t *testing.T) {
 				}), zapcore.AddSync(&b), zapcore.ErrorLevel),
 		)
 		target          = "http://localhost/foo"
-		expectedRequest = httptest.NewRequest("POST", target, nil).WithContext(context.WithValue(context.Background(), schemeContextKey{}, wrp.SchemeEvent))
+		expectedRequest = httptest.NewRequest(http.MethodPost, target, nil).WithContext(context.WithValue(context.Background(), schemeContextKey{}, wrp.SchemeEvent))
 		envelope        = outboundEnvelope{expectedRequest, func() {}}
 		dm              = new(mockCounter)
 		wp              = &WorkerPool{
@@ -44,7 +44,7 @@ func testWorkerPoolTransactHTTPSuccess(t *testing.T) {
 					Status:     "202 Accepted",
 					StatusCode: http.StatusAccepted,
 					Body:       io.NopCloser(new(bytes.Buffer)),
-					Request:    httptest.NewRequest("POST", target, nil),
+					Request:    httptest.NewRequest(http.MethodPost, target, nil),
 				}, nil
 			},
 			droppedMessages: dm,
@@ -54,14 +54,14 @@ func testWorkerPoolTransactHTTPSuccess(t *testing.T) {
 	dm.On("With", prometheus.Labels{schemeLabel: wrp.SchemeEvent, codeLabel: strconv.Itoa(http.StatusAccepted), reasonLabel: non202CodeReason}).Panic("Func dm.With should have not been called")
 	dm.On("Add", 1.).Panic("Func dm.Add should have not been called")
 	require.NotPanics(func() { wp.transact(envelope) })
-	assert.Equal(b.Len(), 0)
+	assert.Equal(0, b.Len())
 }
 
 func testWorkerPoolTransactHTTPError(t *testing.T) {
 	var (
 		assert          = assert.New(t)
 		target          = "http://localhost/foo"
-		expectedRequest = httptest.NewRequest("POST", target, nil).WithContext(context.WithValue(context.Background(), schemeContextKey{}, wrp.SchemeEvent))
+		expectedRequest = httptest.NewRequest(http.MethodPost, target, nil).WithContext(context.WithValue(context.Background(), schemeContextKey{}, wrp.SchemeEvent))
 		envelope        = outboundEnvelope{expectedRequest, func() {}}
 		tests           = []struct {
 			description    string
@@ -78,7 +78,7 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 							Status:     "500 It Burns!",
 							StatusCode: http.StatusInternalServerError,
 							Body:       io.NopCloser(new(bytes.Buffer)),
-							Request:    httptest.NewRequest("POST", target, nil),
+							Request:    httptest.NewRequest(http.MethodPost, target, nil),
 						}, nil
 					},
 				},
@@ -94,7 +94,7 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 							Status:     "415",
 							StatusCode: http.StatusUnsupportedMediaType,
 							Body:       io.NopCloser(new(bytes.Buffer)),
-							Request:    httptest.NewRequest("POST", target, nil),
+							Request:    httptest.NewRequest(http.MethodPost, target, nil),
 						}, nil
 					},
 				},
@@ -110,7 +110,7 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 							Status:     "503",
 							StatusCode: http.StatusServiceUnavailable,
 							Body:       io.NopCloser(new(bytes.Buffer)),
-							Request:    httptest.NewRequest("POST", target, nil),
+							Request:    httptest.NewRequest(http.MethodPost, target, nil),
 						}, nil
 					},
 				},
@@ -126,7 +126,7 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 							Status:     "400",
 							StatusCode: http.StatusBadRequest,
 							Body:       io.NopCloser(new(bytes.Buffer)),
-							Request:    httptest.NewRequest("POST", target, nil),
+							Request:    httptest.NewRequest(http.MethodPost, target, nil),
 						}, nil
 					},
 				},
@@ -142,7 +142,7 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 							Status:     "408",
 							StatusCode: http.StatusRequestTimeout,
 							Body:       io.NopCloser(new(bytes.Buffer)),
-							Request:    httptest.NewRequest("POST", target, nil),
+							Request:    httptest.NewRequest(http.MethodPost, target, nil),
 						}, context.DeadlineExceeded
 					},
 				},
@@ -166,7 +166,7 @@ func testWorkerPoolTransactHTTPError(t *testing.T) {
 			dm.On("With", prometheus.Labels{schemeLabel: wrp.SchemeEvent, codeLabel: strconv.Itoa(tc.expectedCode), reasonLabel: tc.expectedReason}).Return().Once()
 			dm.On("Add", 1.).Return().Once()
 			tc.wp.transact(envelope)
-			assert.Greater(b.Len(), 0)
+			assert.Positive(b.Len())
 			dm.AssertExpectations(t)
 		})
 	}

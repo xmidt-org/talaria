@@ -152,11 +152,11 @@ func iterable(e interface{}) ([]interface{}, bool) {
 		n := v.Len()
 
 		elements := make([]interface{}, n)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			elements[i] = v.Index(i).Interface()
 		}
 		return elements, true
+	default:
+		return nil, false
 	}
-
-	return nil, false
 }

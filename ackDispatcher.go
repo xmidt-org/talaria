@@ -11,7 +11,6 @@ import (
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"go.uber.org/zap"
 
-	// nolint:staticcheck
 	"github.com/xmidt-org/wrp-go/v3"
 )
 

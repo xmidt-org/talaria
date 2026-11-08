@@ -20,7 +20,6 @@ import (
 	"github.com/xmidt-org/webpa-common/v2/device/devicegate"
 	"github.com/xmidt-org/webpa-common/v2/device/drain"
 
-	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/xhttp"
 	"github.com/xmidt-org/webpa-common/v2/xhttp/gate"
 )

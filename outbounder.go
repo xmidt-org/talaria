@@ -13,7 +13,6 @@ import (
 	"github.com/xmidt-org/webpa-common/v2/event"
 	"go.uber.org/zap"
 
-	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/xresolver"
 	"github.com/xmidt-org/webpa-common/v2/xresolver/consul"
 )
@@ -98,7 +97,7 @@ func NewOutbounder(logger *zap.Logger, v *viper.Viper) (o *Outbounder, watcher *
 
 // String emits a JSON string representing this outbounder, primarily useful for debugging.
 func (o *Outbounder) String() string {
-	// nolint: staticcheck, gosec
+	//nolint:staticcheck,gosec
 	if data, err := json.Marshal(o); err != nil {
 		return err.Error()
 	} else {
@@ -196,7 +195,7 @@ func (o *Outbounder) workerPoolSize() uint {
 func (o *Outbounder) transport() *http.Transport {
 	if o != nil {
 		copyOf := new(http.Transport)
-		// nolint:govet
+		//nolint:govet
 		*copyOf = o.Transport
 
 		if copyOf.MaxIdleConns <= 0 {

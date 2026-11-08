@@ -3,21 +3,44 @@
 version: "2"
 linters:
   enable:
+    - asasalint
+    - asciicheck
+    - bidichk
     - bodyclose
-    - dupl
+    - canonicalheader
+    - copyloopvar
+    - durationcheck
+    - errname
     - errorlint
+    - exhaustive
+    - fatcontext
+    - gocheckcompilerdirectives
+    - gocritic
     - gosec
+    - intrange
+    - makezero
     - misspell
+    - nilerr
+    - noctx
+    - nolintlint
+    - perfsprint
     - prealloc
+    - predeclared
+    - reassign
+    - testifylint
     - unconvert
-  disable:
-    - errcheck
-    - ineffassign
+    - usestdlibvars
+    - usetesting
+    - wastedassign
   settings:
     errorlint:
       errorf: false
+    exhaustive:
+      default-signifies-exhaustive: true
     misspell:
       locale: US
+    nolintlint:
+      require-specific: true
   exclusions:
     generated: lax
     presets:
@@ -27,13 +50,17 @@ linters:
       - std-error-handling
     rules:
       - linters:
-          - dupl
+          - gosec
+          - noctx
         path: _test.go
     paths:
       - third_party$
       - builtin$
       - examples$
 formatters:
+  enable:
+    - gofmt
+    - goimports
   exclusions:
     generated: lax
     paths:

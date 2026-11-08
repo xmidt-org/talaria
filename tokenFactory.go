@@ -4,7 +4,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/golang-jwt/jwt"
 	"github.com/goph/emperror"
@@ -120,15 +120,15 @@ func validateTimeClaimsWithLeeway(claims jwt.MapClaims, leeway Leeway) error {
 	now := jwt.TimeFunc().Unix()
 
 	if !claims.VerifyExpiresAt(now+leeway.EXP, false) {
-		return fmt.Errorf("token is expired")
+		return errors.New("token is expired")
 	}
 
 	if !claims.VerifyIssuedAt(now-leeway.IAT, false) {
-		return fmt.Errorf("token used before issued")
+		return errors.New("token used before issued")
 	}
 
 	if !claims.VerifyNotBefore(now-leeway.NBF, false) {
-		return fmt.Errorf("token is not valid yet")
+		return errors.New("token is not valid yet")
 	}
 
 	return nil
@@ -136,7 +136,7 @@ func validateTimeClaimsWithLeeway(claims jwt.MapClaims, leeway Leeway) error {
 
 func nonEmptyPrincipalValidator(token bascule.Token) error {
 	if token.Principal() == "" {
-		return fmt.Errorf("empty token principal")
+		return errors.New("empty token principal")
 	}
 
 	return nil
@@ -145,7 +145,7 @@ func nonEmptyPrincipalValidator(token bascule.Token) error {
 func validJWTTokenTypeValidator(token bascule.Token) error {
 	tt, ok := token.(tokenType)
 	if !ok || tt.TokenType() != jwtTokenType {
-		return fmt.Errorf("unexpected token type")
+		return errors.New("unexpected token type")
 	}
 
 	return nil

@@ -16,8 +16,6 @@ import (
 	"github.com/xmidt-org/webpa-common/v2/adapter"
 	"github.com/xmidt-org/webpa-common/v2/device"
 
-	// nolint:staticcheck
-
 	"github.com/xmidt-org/webpa-common/v2/xhttp"
 	"github.com/xmidt-org/wrp-go/v3/wrphttp"
 )
@@ -72,7 +70,7 @@ func wrpRouterHandler(logger *zap.Logger, router device.Router, ctxlogger func(c
 		if err != nil {
 			code := http.StatusGatewayTimeout
 			errorMsg := normalizeDeviceError(err)
-			// nolint:errorlint
+			//nolint:errorlint
 			switch err {
 			case device.ErrorInvalidDeviceName:
 				code = http.StatusBadRequest
@@ -94,7 +92,7 @@ func wrpRouterHandler(logger *zap.Logger, router device.Router, ctxlogger func(c
 				}).Inc()
 			}
 			w.Header().Set("X-Xmidt-Message-Error", err.Error())
-			xhttp.WriteErrorf(
+			_, _ = xhttp.WriteErrorf(
 				w,
 				code,
 				"Could not process device request: %s",
@@ -152,7 +150,6 @@ func decorateRequestDecoder(decode wrphttp.Decoder) wrphttp.Decoder {
 func talariaWRPErrorEncoder(errorLogger *zap.Logger) gokithttp.ErrorEncoder {
 	return func(_ context.Context, err error, w http.ResponseWriter) {
 		code := http.StatusInternalServerError
-		// nolint errorlint
 		if sc, ok := err.(gokithttp.StatusCoder); ok {
 			code = sc.StatusCode()
 		}

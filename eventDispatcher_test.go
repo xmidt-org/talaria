@@ -78,7 +78,7 @@ func testEventDispatcherOnDeviceEventConnectEvent(t *testing.T) {
 	d.On("Convey").Return(convey.C(nil))
 
 	dispatcher.OnDeviceEvent(&device.Event{Type: device.Connect, Device: d})
-	assert.Equal(1, len(outbounds))
+	assert.Len(outbounds, 1)
 	d.AssertExpectations(t)
 
 	// Verify the outbound event contains the expected online event metadata/contents.
@@ -86,7 +86,7 @@ func testEventDispatcherOnDeviceEventConnectEvent(t *testing.T) {
 	e.cancel()
 	<-e.request.Context().Done()
 	actual := new(wrp.Message)
-	assert.NoError(wrp.NewDecoder(e.request.Body, wrp.Msgpack).Decode(actual))
+	require.NoError(wrp.NewDecoder(e.request.Body, wrp.Msgpack).Decode(actual))
 	mTime, err := time.Parse(time.RFC3339Nano, actual.Metadata[device.WRPTimestampMetadataKey])
 	require.NoError(err)
 	expected := wrp.Message{
@@ -135,7 +135,7 @@ func testEventDispatcherOnDeviceEventDisconnectEvent(t *testing.T) {
 	d.On("CloseReason").Return(device.CloseReason{})
 
 	dispatcher.OnDeviceEvent(&device.Event{Type: device.Disconnect, Device: d})
-	assert.Equal(1, len(outbounds))
+	assert.Len(outbounds, 1)
 	d.AssertExpectations(t)
 
 	// Verify the outbound event contains the expected offline event metadata/contents.
@@ -143,7 +143,7 @@ func testEventDispatcherOnDeviceEventDisconnectEvent(t *testing.T) {
 	e.cancel()
 	<-e.request.Context().Done()
 	actual := new(wrp.Message)
-	assert.NoError(wrp.NewDecoder(e.request.Body, wrp.Msgpack).Decode(actual))
+	require.NoError(wrp.NewDecoder(e.request.Body, wrp.Msgpack).Decode(actual))
 	mTime, err := time.Parse(time.RFC3339Nano, actual.Metadata[device.WRPTimestampMetadataKey])
 	require.NoError(err)
 	expected := wrp.Message{
@@ -183,7 +183,7 @@ func testEventDispatcherOnDeviceEventUnroutable(t *testing.T) {
 		Message: &wrp.Message{Destination: "this is not a routable destination"},
 	})
 
-	assert.Equal(0, len(outbounds))
+	assert.Empty(outbounds)
 }
 
 func testEventDispatcherOnDeviceEventBadURLFilter(t *testing.T) {
@@ -297,7 +297,7 @@ func testEventDispatcherOnDeviceEventDispatchEvent(t *testing.T) {
 					Contents: expectedContents,
 				})
 
-				assert.Equal(len(record.expectedEndpoints), len(outbounds), "incorrect envelope count")
+				assert.Len(outbounds, len(record.expectedEndpoints), "incorrect envelope count")
 				actualEndpoints := make(map[string]bool, len(record.expectedEndpoints))
 				for len(outbounds) > 0 {
 					select {
@@ -313,7 +313,7 @@ func testEventDispatcherOnDeviceEventDispatchEvent(t *testing.T) {
 						actualEndpoints[urlString] = true
 
 						actualContents, err := io.ReadAll(e.request.Body)
-						assert.NoError(err)
+						require.NoError(err)
 						assert.Equal(expectedContents, actualContents)
 
 					default:
@@ -363,7 +363,7 @@ func testEventDispatcherOnDeviceEventFullQueue(t *testing.T) {
 		Message:  &wrp.Message{Destination: fmt.Sprintf("event:%s/mac:11:22:33:44:55:66/Online/unknown/deb2eb69999", expectedEventType)},
 		Contents: []byte{1, 2},
 	})
-	assert.Greater(b.Len(), 0)
+	assert.Positive(b.Len())
 	dm.AssertExpectations(t)
 }
 
@@ -437,6 +437,7 @@ func testEventDispatcherEventTypes(t *testing.T) {
 					d.On("Statistics").Return(device.NewStatistics(nil, time.Now()))
 					d.On("CloseReason").Return(device.CloseReason{})
 				}
+			default:
 			}
 
 			om, err := NewTestOutboundMeasures()
@@ -449,7 +450,7 @@ func testEventDispatcherEventTypes(t *testing.T) {
 			tc.event.Device = d
 			dispatcher.OnDeviceEvent(&tc.event)
 
-			require.Equal(1, len(outbounds))
+			require.Len(outbounds, 1)
 			e := <-outbounds
 			e.cancel()
 			<-e.request.Context().Done()
@@ -497,7 +498,7 @@ func testEventDispatcherOnDeviceEventFilterError(t *testing.T) {
 		Message: &wrp.Message{Destination: "dns:doesnotmatter.com"},
 	})
 
-	assert.Equal(0, len(outbounds))
+	assert.Empty(outbounds)
 	assert.NotZero(b)
 	urlFilter.AssertExpectations(t)
 }
@@ -586,7 +587,7 @@ func testEventDispatcherOnDeviceEventDispatchTo(t *testing.T) {
 			})
 
 			if !record.expectsEnvelope {
-				assert.Equal(0, len(outbounds))
+				assert.Empty(outbounds)
 				continue
 			}
 
@@ -599,7 +600,7 @@ func testEventDispatcherOnDeviceEventDispatchTo(t *testing.T) {
 			assert.Equal(record.expectedEndpoint, e.request.URL.String())
 
 			actualContents, err := io.ReadAll(e.request.Body)
-			assert.NoError(err)
+			require.NoError(err)
 			assert.Equal(expectedContents, actualContents)
 
 			urlFilter.AssertExpectations(t)
@@ -633,7 +634,7 @@ func testEventDispatcherOnDeviceEventNilEventError(t *testing.T) {
 
 	dp.OnDeviceEvent(e)
 	// Errors should have been logged
-	assert.Greater(b.Len(), 0)
+	assert.Positive(b.Len())
 }
 
 func testEventDispatcherOnDeviceEventEventMapError(t *testing.T) {
@@ -767,6 +768,7 @@ func testEventDispatcherMetrics(t *testing.T) {
 					d.On("Statistics").Return(device.NewStatistics(nil, time.Now()))
 					d.On("CloseReason").Return(device.CloseReason{})
 				}
+			default:
 			}
 
 			if tc.unsupportedEventType {
@@ -785,7 +787,7 @@ func testEventDispatcherMetrics(t *testing.T) {
 
 			tc.event.Device = d
 			dispatcher.OnDeviceEvent(&tc.event)
-			assert.Equal(tc.expectedOutboundTotal, len(outbounds))
+			assert.Len(outbounds, tc.expectedOutboundTotal)
 			assert.Zero(b)
 
 			d.AssertExpectations(t)
@@ -875,7 +877,7 @@ func testEventDispatcherKafkaIntegration(t *testing.T) {
 				Type: device.Connect,
 			},
 			kafkaEnabled:         true,
-			kafkaPublishErr:      fmt.Errorf("kafka error"),
+			kafkaPublishErr:      errors.New("kafka error"),
 			expectKafkaPublish:   true,
 			expectedKafkaDropped: true,
 		},
@@ -935,6 +937,7 @@ func testEventDispatcherKafkaIntegration(t *testing.T) {
 						d.On("Metadata").Return(deviceMetadata)
 					}
 				}
+			default:
 			}
 
 			// Setup Kafka publisher mock
@@ -1037,7 +1040,7 @@ func testEventDispatcherSendToKafka(t *testing.T) {
 		},
 		{
 			description:         "Failed Kafka publish",
-			publishErr:          fmt.Errorf("kafka connection failed"),
+			publishErr:          errors.New("kafka connection failed"),
 			expectDroppedMetric: true,
 			expectedDroppedLabels: prometheus.Labels{
 				schemeLabel: wrp.SchemeEvent,

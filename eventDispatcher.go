@@ -18,16 +18,15 @@ import (
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/webpa-common/v2/event"
 
-	// nolint:staticcheck
 	"github.com/xmidt-org/wrp-go/v3"
 )
 
 var (
-	ErrorEncodingFailed               = errors.New("encoding failed")
-	ErrorNoEndpointConfiguredForEvent = errors.New("no endpoints configured for event")
-	ErrorMalformedHttpRequest         = errors.New("malformed http request")
-	ErrorUnroutableDestination        = errors.New("unroutable destination")
-	ErrorUnsupportedEvent             = errors.New("unsupported event")
+	ErrEncodingFailed               = errors.New("encoding failed")
+	ErrNoEndpointConfiguredForEvent = errors.New("no endpoints configured for event")
+	ErrMalformedHTTPRequest         = errors.New("malformed http request")
+	ErrUnroutableDestination        = errors.New("unroutable destination")
+	ErrUnsupportedEvent             = errors.New("unsupported event")
 )
 
 // eventDispatcher is an internal Dispatcher implementation that sends envelopes
@@ -111,6 +110,7 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 				d.droppedMessages.With(prometheus.Labels{schemeLabel: scheme, codeLabel: messageDroppedCode, reasonLabel: panicReason}).Add(1.0)
 				d.kafkaDroppedMessages.With(prometheus.Labels{schemeLabel: scheme, codeLabel: messageDroppedCode, reasonLabel: panicReason}).Add(1.0)
 				d.outboundEvents.With(prometheus.Labels{schemeLabel: scheme, reasonLabel: panicReason, outcomeLabel: failureOutcome}).Add(1.0)
+			default:
 			}
 		}
 	}()
@@ -169,14 +169,14 @@ func (d *eventDispatcher) OnDeviceEvent(event *device.Event) {
 			}
 		}
 	default:
-		err = ErrorUnsupportedEvent
+		err = ErrUnsupportedEvent
 	}
 
 	var outboundEventsLabels prometheus.Labels
 	if err != nil {
 		reason := getDroppedMessageReason(err)
 		outboundEventsLabels = prometheus.Labels{schemeLabel: scheme, reasonLabel: reason, outcomeLabel: failureOutcome}
-		if errors.Is(err, ErrorUnsupportedEvent) {
+		if errors.Is(err, ErrUnsupportedEvent) {
 			d.logger.Debug("Dropped message, event not sent", zap.String(schemeLabel, scheme), zap.String(codeLabel, messageDroppedCode), zap.String(reasonLabel, reason), zap.Error(err))
 		} else {
 			d.logger.Error("Dropped message, event not sent", zap.String(schemeLabel, scheme), zap.String(codeLabel, messageDroppedCode), zap.String(reasonLabel, reason), zap.Error(err))
@@ -208,7 +208,7 @@ func (d *eventDispatcher) routeMessageReceivedEvent(event *device.Event) (scheme
 		_, err = d.dispatchTo(url, contentType, event.Contents)
 	default:
 		scheme = unknown
-		err = ErrorUnroutableDestination
+		err = ErrUnroutableDestination
 	}
 
 	if err != nil {
@@ -241,7 +241,6 @@ func (d *eventDispatcher) send(parent context.Context, request *http.Request) er
 	// increment the queue size first, so that we always keep a positive queue size
 	d.queueSize.Add(1.0)
 	// `cancel` is called once the event is picked up by the worker pool.
-	// nolint: gosec
 	ctx, cancel := context.WithTimeout(parent, d.timeout)
 	select {
 	case d.outbounds <- outboundEnvelope{request.WithContext(ctx), cancel}:
@@ -256,9 +255,9 @@ func (d *eventDispatcher) send(parent context.Context, request *http.Request) er
 
 // newRequest creates a basic HTTP request appropriate for this eventDispatcher.
 func (d *eventDispatcher) newRequest(url, contentType string, body io.Reader) (*http.Request, error) {
-	request, err := http.NewRequest(d.method, url, body)
+	request, err := http.NewRequestWithContext(context.Background(), d.method, url, body)
 	if err != nil {
-		return request, fmt.Errorf("%w: %s", ErrorMalformedHttpRequest, err)
+		return request, fmt.Errorf("%w: %s", ErrMalformedHTTPRequest, err)
 	}
 
 	request.Header.Set("Content-Type", contentType)
@@ -276,7 +275,7 @@ func (d *eventDispatcher) dispatchEvent(eventType, contentType string, contents 
 	if !ok {
 		// allow no endpoints, but log an error since this means that we're dropping
 		// traffic explicitly because of configuration
-		return url, fmt.Errorf("%w: %s", ErrorNoEndpointConfiguredForEvent, eventType)
+		return url, fmt.Errorf("%w: %s", ErrNoEndpointConfiguredForEvent, eventType)
 	}
 
 	ctx := context.WithValue(
@@ -310,7 +309,7 @@ func (d *eventDispatcher) encodeAndDispatchEvent(eventType string, format wrp.Fo
 	)
 
 	if err = encoder.Encode(message); err != nil {
-		return url, fmt.Errorf("%w; %s", ErrorEncodingFailed, err)
+		return url, fmt.Errorf("%w; %s", ErrEncodingFailed, err)
 	}
 
 	if url, err = d.dispatchEvent(eventType, format.ContentType(), contents); err != nil {
@@ -321,12 +320,7 @@ func (d *eventDispatcher) encodeAndDispatchEvent(eventType string, format wrp.Fo
 }
 
 func (d *eventDispatcher) dispatchTo(unfiltered string, contentType string, contents []byte) (string, error) {
-	var (
-		err error
-		url = unfiltered
-	)
-
-	url, err = d.urlFilter.Filter(unfiltered)
+	url, err := d.urlFilter.Filter(unfiltered)
 	if err != nil {
 		return url, err
 	}
@@ -344,21 +338,22 @@ func (d *eventDispatcher) dispatchTo(unfiltered string, contentType string, cont
 }
 
 func getDroppedMessageReason(err error) string {
-	if err == nil {
+	switch {
+	case err == nil:
 		return noErrReason
-	} else if errors.Is(err, ErrorEncodingFailed) {
+	case errors.Is(err, ErrEncodingFailed):
 		return encodeErrReason
-	} else if errors.Is(err, ErrorNoEndpointConfiguredForEvent) {
+	case errors.Is(err, ErrNoEndpointConfiguredForEvent):
 		return noEndpointConfiguredForEventReason
-	} else if errors.Is(err, ErrorURLSchemeNotAllowed) {
+	case errors.Is(err, ErrURLSchemeNotAllowed):
 		return urlSchemeNotAllowedReason
-	} else if errors.Is(err, ErrorMalformedHttpRequest) {
+	case errors.Is(err, ErrMalformedHTTPRequest):
 		return malformedHTTPRequestReason
-	} else if errors.Is(err, ErrOutboundQueueFull) {
+	case errors.Is(err, ErrOutboundQueueFull):
 		return fullQueueReason
-	} else if errors.Is(err, ErrorUnroutableDestination) {
+	case errors.Is(err, ErrUnroutableDestination):
 		return unroutableDestinationReason
-	} else if errors.Is(err, ErrorUnsupportedEvent) {
+	case errors.Is(err, ErrUnsupportedEvent):
 		return notSupportedEventReason
 	}
 
