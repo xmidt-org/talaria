@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	// nolint:gosec
+	//nolint:gosec
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
@@ -22,26 +22,24 @@ import (
 	"github.com/xmidt-org/candlelight"
 	"github.com/xmidt-org/touchstone"
 
-	// nolint:staticcheck
+	//nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/xmetrics"
 
 	"github.com/xmidt-org/webpa-common/v2/adapter"
-	// nolint:staticcheck
+	//nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/concurrent"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"github.com/xmidt-org/webpa-common/v2/device/devicegate"
 	"github.com/xmidt-org/webpa-common/v2/device/devicehealth"
 	"github.com/xmidt-org/webpa-common/v2/device/rehasher"
 
-	// nolint:staticcheck
+	//nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/server"
-	// nolint:staticcheck
+	//nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/service"
-	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/service/accessor"
 	"github.com/xmidt-org/webpa-common/v2/service/monitor"
 
-	// nolint:staticcheck
 	"github.com/xmidt-org/webpa-common/v2/service/servicecfg"
 	"github.com/xmidt-org/webpa-common/v2/xresolver/consul"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
@@ -181,7 +179,7 @@ func talaria(arguments []string) int {
 
 	var tsConfig touchstone.Config
 	// Get touchstone & zap configurations
-	v.UnmarshalKey("touchstone", &tsConfig)
+	_ = v.UnmarshalKey("touchstone", &tsConfig)
 	tf := touchstone.NewFactory(tsConfig, logger, promReg)
 
 	manager, filterGate, watcher, err := newDeviceManager(logger, metricsRegistry, tf, v, promReg)

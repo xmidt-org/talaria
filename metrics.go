@@ -12,7 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	// TODO replace httpaux/retry with github.com/xmidt-org/retry
-	// nolint:staticcheck
+	//nolint:staticcheck
 	"github.com/xmidt-org/httpaux/retry"
 	"github.com/xmidt-org/touchstone"
 )
@@ -82,7 +82,7 @@ const (
 	invalidWRPDest = "invalid_wrp_dest"
 
 	missingDeviceCredential = "missing_device_cred"
-	// nolint:gosec
+	//nolint:gosec
 	missingWRPCredential = "missing_wrp_cred"
 	incompleteCheck      = "incomplete_check"
 	denied               = "denied"
@@ -405,11 +405,11 @@ func NewOutboundMeasures(tf *touchstone.Factory) (om OutboundMeasures, errs erro
 			if om.kafkaBufferRecordsFunc == nil {
 				return 0.0
 			}
-			current, max, _, _ := om.kafkaBufferRecordsFunc()
-			if max == 0 {
+			current, maxRecords, _, _ := om.kafkaBufferRecordsFunc()
+			if maxRecords == 0 {
 				return 0.0
 			}
-			return float64(current) / float64(max)
+			return float64(current) / float64(maxRecords)
 		},
 	)
 	errs = errors.Join(errs, err)
@@ -526,7 +526,6 @@ func InstrumentOutboundCounter(counter CounterVec, next http.RoundTripper) promh
 // that is also decorated with appropriate metrics.
 func NewOutboundRoundTripper(om OutboundMeasures, o *Outbounder) http.RoundTripper {
 	// TODO add tests for NewOutboundRoundTripper
-	// nolint:bodyclose
 	return promhttp.RoundTripperFunc(
 		retry.New(
 			retry.Config{

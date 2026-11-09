@@ -140,7 +140,7 @@ func testOutbounderDefaults(t *testing.T) {
 
 		m, err := o.eventMap()
 		assert.Empty(m)
-		assert.NoError(err)
+		require.NoError(err)
 
 		assert.Equal(DefaultOutboundQueueSize, o.outboundQueueSize())
 		assert.Equal(DefaultWorkerPoolSize, o.workerPoolSize())
@@ -197,7 +197,7 @@ func testOutbounderConfiguration(t *testing.T) {
 	assert.Equal(map[string]bool{"nntp": true, testOutboundFTP: true}, o.allowedSchemes())
 
 	m, err := o.eventMap()
-	assert.NoError(err)
+	require.NoError(err)
 	assert.Equal(
 		event.MultiMap{
 			testIot:     {"https://endpoint1.com", "https://endpoint2.com"},

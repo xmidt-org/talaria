@@ -7,8 +7,6 @@ import (
 	"github.com/xmidt-org/touchstone"
 )
 
-// nolint:staticcheck
-
 // NewTestOutboundMeasures creates an OutboundMeasures appropriate for a testing environment
 func NewTestOutboundMeasures() (OutboundMeasures, error) {
 	cfg := touchstone.Config{

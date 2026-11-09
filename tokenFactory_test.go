@@ -12,6 +12,7 @@ import (
 	"github.com/golang-jwt/jwt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/xmidt-org/bascule"
 	"github.com/xmidt-org/bascule/basculehttp"
 )
@@ -182,9 +183,7 @@ func TestRawAttributesBearerTokenParser(t *testing.T) {
 
 			token, err := parser.Parse(context.Background(), value)
 			if tc.expectedErr == nil {
-				if !assert.NoError(err) {
-					return
-				}
+				require.NoError(t, err)
 				if assert.NotNil(token) {
 					assert.Equal(tc.expectedPrincipal, token.Principal())
 					accessor, ok := token.(bascule.AttributesAccessor)
@@ -196,7 +195,7 @@ func TestRawAttributesBearerTokenParser(t *testing.T) {
 				}
 			} else {
 				assert.Nil(token)
-				assert.ErrorIs(err, tc.expectedErr)
+				require.ErrorIs(t, err, tc.expectedErr)
 			}
 
 			resolver.AssertExpectations(t)
@@ -313,9 +312,9 @@ func TestDefaultKeyFunc(t *testing.T) {
 
 			assert.Equal(tc.expectedPublicKey, publicKey)
 			if tc.expectedErr == nil {
-				assert.NoError(err)
+				require.NoError(t, err)
 			} else {
-				assert.Error(err)
+				require.Error(t, err)
 				assert.Contains(err.Error(), tc.expectedErr.Error())
 			}
 		})

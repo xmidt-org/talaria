@@ -10,10 +10,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/xmidt-org/webpa-common/v2/device"
 	"go.uber.org/zap/zaptest"
 
-	// nolint:staticcheck
 	"github.com/xmidt-org/wrp-go/v3"
 )
 
@@ -63,13 +63,14 @@ func testAuthorizeWRP(t *testing.T, testCases []deviceAccessTestCase, strict boo
 			mockBinOp.On("name").Return("mockBinOP")
 
 			var checks []*parsedCheck
-			if testCase.MissingDeviceCredential {
+			switch {
+			case testCase.MissingDeviceCredential:
 				checks = getFirstMissingDeviceCredentialChecks(t, mockBinOp)
-			} else if testCase.MissingWRPCredential {
+			case testCase.MissingWRPCredential:
 				checks = getSecondCheckMissingWRPCredentiaChecks(t, mockBinOp)
-			} else if testCase.InputValueCheck {
+			case testCase.InputValueCheck:
 				checks = getSecondCheckWithInputValueChecks(t, mockBinOp)
-			} else {
+			default:
 				checks = getChecks(t, mockBinOp, testCase.IncompleteCheck, testCase.Authorized)
 			}
 
@@ -88,9 +89,9 @@ func testAuthorizeWRP(t *testing.T, testCases []deviceAccessTestCase, strict boo
 			if strict || testCase.IsFatal {
 				assert.Equal(testCase.ExpectedError, err)
 			} else {
-				assert.Nil(err)
+				require.NoError(t, err)
 			}
-			assert.Equal(float64(1), counter.count)
+			assert.InDelta(float64(1), counter.count, 0)
 			assert.Equal(expectedLabels, counter.labelPairs)
 		})
 	}

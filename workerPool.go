@@ -49,7 +49,7 @@ func NewWorkerPool(om OutboundMeasures, o *Outbounder, outbounds <-chan outbound
 // This method is idempotent.
 func (wp *WorkerPool) Run() {
 	wp.runOnce.Do(func() {
-		for repeat := uint(0); repeat < wp.workerPoolSize; repeat++ {
+		for range wp.workerPoolSize {
 			go wp.worker()
 		}
 	})
@@ -97,8 +97,8 @@ func (wp *WorkerPool) transact(e outboundEnvelope) {
 		wp.logger.Warn("HTTP response", zap.String(schemeLabel, scheme), zap.String(codeLabel, code), zap.String(reasonLabel, non202CodeReason))
 	}
 
-	io.Copy(io.Discard, response.Body)
-	response.Body.Close()
+	_, _ = io.Copy(io.Discard, response.Body)
+	_ = response.Body.Close()
 }
 
 // worker represents a single goroutine that processes the outbounds channel.
@@ -112,32 +112,33 @@ func (wp *WorkerPool) worker() {
 
 func getDoErrReason(err error) string {
 	var d *net.DNSError
-	if err == nil {
+	switch {
+	case err == nil:
 		return noErrReason
-	} else if errors.Is(err, context.DeadlineExceeded) {
+	case errors.Is(err, context.DeadlineExceeded):
 		return deadlineExceededReason
-	} else if errors.Is(err, context.Canceled) {
+	case errors.Is(err, context.Canceled):
 		return contextCanceledReason
-	} else if errors.Is(err, &net.AddrError{}) {
+	case errors.Is(err, &net.AddrError{}):
 		return addressErrReason
-	} else if errors.Is(err, &net.ParseError{}) {
+	case errors.Is(err, &net.ParseError{}):
 		return parseAddrErrReason
-	} else if errors.Is(err, net.InvalidAddrError("")) {
+	case errors.Is(err, net.InvalidAddrError("")):
 		return invalidAddrReason
-	} else if errors.As(err, &d) {
+	case errors.As(err, &d):
 		if d.IsNotFound {
 			return hostNotFoundReason
 		}
 		return dnsErrReason
-	} else if errors.Is(err, net.ErrClosed) {
+	case errors.Is(err, net.ErrClosed):
 		return connClosedReason
-	} else if errors.Is(err, &net.OpError{}) {
+	case errors.Is(err, &net.OpError{}):
 		return opErrReason
-	} else if errors.Is(err, net.UnknownNetworkError("")) {
+	case errors.Is(err, net.UnknownNetworkError("")):
 		return networkErrReason
 	}
 
-	// nolint: errorlint
+	//nolint:errorlint
 	if err, ok := err.(*url.Error); ok {
 		if strings.TrimSpace(strings.ToLower(err.Unwrap().Error())) == "eof" {
 			return connectionUnexpectedlyClosedEOFReason

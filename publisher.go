@@ -232,7 +232,7 @@ func publisherFactory(config *KafkaConfig, promReg prometheus.Registerer) (wrpKa
 				return nil, fmt.Errorf("failed to read CA certificate file: %w", err)
 			}
 			if !caCertPool.AppendCertsFromPEM(caCertPEM) {
-				return nil, fmt.Errorf("failed to append CA certificate to pool")
+				return nil, errors.New("failed to append CA certificate to pool")
 			}
 			publisher.TLS.RootCAs = caCertPool
 		}

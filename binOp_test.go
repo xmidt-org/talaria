@@ -29,7 +29,7 @@ type testCase struct {
 func testBinOp(testCases []testCase, operation string, t *testing.T) {
 	require := require.New(t)
 	op, err := newBinOp(operation)
-	require.Nil(err)
+	require.NoError(err)
 	require.Equal(op.name(), operation)
 
 	for _, testCase := range testCases {
@@ -111,7 +111,7 @@ func TestContains(t *testing.T) {
 		},
 		{
 			name:        "Type error",
-			left:        3, //not an iterable object
+			left:        3, // not an iterable object
 			right:       "three",
 			expectedErr: errIterableTypeOnly,
 		},

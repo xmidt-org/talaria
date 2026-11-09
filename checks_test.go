@@ -70,7 +70,6 @@ func TestParseDeviceAccessCheck(t *testing.T) {
 
 		{
 			name: "Happpy path",
-			// nolint: gosec
 			config: deviceAccessCheck{
 				Name:                 "    trimWhiteSpaces    ",
 				DeviceCredentialPath: "   dcp",
@@ -92,12 +91,12 @@ func TestParseDeviceAccessCheck(t *testing.T) {
 
 			parsedCheck, err := parseDeviceAccessCheck(testCase.config)
 			if testCase.fails {
-				require.NotNil(err)
+				require.Error(err)
 				require.Nil(parsedCheck)
 
 				assert.Equal(testCase.expectedErr, err)
 			} else {
-				require.Nil(err)
+				require.NoError(err)
 				require.NotNil(parsedCheck)
 				require.NotNil(parsedCheck.assertion)
 

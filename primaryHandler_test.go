@@ -232,10 +232,10 @@ func TestBuildDeviceAccessCheck(t *testing.T) {
 		t.Run(tc.description, func(t *testing.T) {
 			result, err := buildDeviceAccessCheck(tc.config, logger, counter, newTestDeviceManager())
 			if tc.expectErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Nil(t, result)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, result)
 			}
 		})
@@ -243,7 +243,7 @@ func TestBuildDeviceAccessCheck(t *testing.T) {
 }
 
 func TestNewPrimaryHandler(t *testing.T) {
-	newViper := func() *viper.Viper { return viper.New() }
+	newViper := viper.New
 
 	tests := []struct {
 		description string
@@ -296,10 +296,10 @@ func TestNewPrimaryHandler(t *testing.T) {
 
 			handler, err := NewPrimaryHandler(logger, manager, v, nil, nil, NoOpConstructor, tf, router)
 			if tc.expectErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Nil(t, handler)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, handler)
 			}
 		})
