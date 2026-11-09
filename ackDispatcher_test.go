@@ -132,8 +132,8 @@ func testAckDispatcherOnDeviceEventQOSDeviceFailure(t *testing.T) {
 					RequestDeliveryResponse: &expectedRequestDeliveryResponse,
 					Headers:                 []string{testAckHeader1, testAckHeader2},
 					Metadata:                map[string]string{testMetadataName: testMetadataValue},
-					Spans:                   [][]string{{"1", "2"}, {"3"}}, //nolint:staticcheck // deprecated field still under test
-					IncludeSpans:            &expectedIncludeSpans,         //nolint:staticcheck // deprecated field still under test
+					Spans:                   [][]string{{"1", "2"}, {"3"}},
+					IncludeSpans:            &expectedIncludeSpans,
 					Path:                    testPath,
 					Payload:                 []byte{1, 2, 3, 4, 0xff, 0xce},
 					ServiceName:             testServiceName,
@@ -160,8 +160,8 @@ func testAckDispatcherOnDeviceEventQOSDeviceFailure(t *testing.T) {
 					RequestDeliveryResponse: &expectedRequestDeliveryResponse,
 					Headers:                 []string{testAckHeader1, testAckHeader2},
 					Metadata:                map[string]string{testMetadataName: testMetadataValue},
-					Spans:                   [][]string{{"1", "2"}, {"3"}}, //nolint:staticcheck // deprecated field still under test
-					IncludeSpans:            &expectedIncludeSpans,         //nolint:staticcheck // deprecated field still under test
+					Spans:                   [][]string{{"1", "2"}, {"3"}},
+					IncludeSpans:            &expectedIncludeSpans,
 					Path:                    testPath,
 					Payload:                 []byte{1, 2, 3, 4, 0xff, 0xce},
 					ServiceName:             testServiceName,
@@ -294,8 +294,8 @@ func testAckDispatcherOnDeviceEventQOSSuccess(t *testing.T) {
 					RequestDeliveryResponse: &expectedRequestDeliveryResponse,
 					Headers:                 []string{testAckHeader1, testAckHeader2},
 					Metadata:                map[string]string{testMetadataName: testMetadataValue},
-					Spans:                   [][]string{{"1", "2"}, {"3"}}, //nolint:staticcheck // deprecated field still under test
-					IncludeSpans:            &expectedIncludeSpans,         //nolint:staticcheck // deprecated field still under test
+					Spans:                   [][]string{{"1", "2"}, {"3"}},
+					IncludeSpans:            &expectedIncludeSpans,
 					Path:                    testPath,
 					Payload:                 []byte{1, 2, 3, 4, 0xff, 0xce},
 					ServiceName:             testServiceName,
@@ -323,8 +323,8 @@ func testAckDispatcherOnDeviceEventQOSSuccess(t *testing.T) {
 					RequestDeliveryResponse: &expectedRequestDeliveryResponse,
 					Headers:                 []string{testAckHeader1, testAckHeader2},
 					Metadata:                map[string]string{testMetadataName: testMetadataValue},
-					Spans:                   [][]string{{"1", "2"}, {"3"}}, //nolint:staticcheck // deprecated field still under test
-					IncludeSpans:            &expectedIncludeSpans,         //nolint:staticcheck // deprecated field still under test
+					Spans:                   [][]string{{"1", "2"}, {"3"}},
+					IncludeSpans:            &expectedIncludeSpans,
 					Path:                    testPath,
 					Payload:                 []byte{1, 2, 3, 4, 0xff, 0xce},
 					ServiceName:             testServiceName,
@@ -352,8 +352,8 @@ func testAckDispatcherOnDeviceEventQOSSuccess(t *testing.T) {
 					RequestDeliveryResponse: &expectedRequestDeliveryResponse,
 					Headers:                 []string{testAckHeader1, testAckHeader2},
 					Metadata:                map[string]string{testMetadataName: testMetadataValue},
-					Spans:                   [][]string{{"1", "2"}, {"3"}}, //nolint:staticcheck // deprecated field still under test
-					IncludeSpans:            &expectedIncludeSpans,         //nolint:staticcheck // deprecated field still under test
+					Spans:                   [][]string{{"1", "2"}, {"3"}},
+					IncludeSpans:            &expectedIncludeSpans,
 					Path:                    testPath,
 					Payload:                 []byte{1, 2, 3, 4, 0xff, 0xce},
 					ServiceName:             testServiceName,
@@ -409,8 +409,8 @@ func testAckDispatcherOnDeviceEventQOSSuccess(t *testing.T) {
 					RequestDeliveryResponse: &expectedRequestDeliveryResponse,
 					Headers:                 []string{testAckHeader1, testAckHeader2},
 					Metadata:                map[string]string{testMetadataName: testMetadataValue},
-					Spans:                   [][]string{{"1", "2"}, {"3"}}, //nolint:staticcheck // deprecated field still under test
-					IncludeSpans:            &expectedIncludeSpans,         //nolint:staticcheck // deprecated field still under test
+					Spans:                   [][]string{{"1", "2"}, {"3"}},
+					IncludeSpans:            &expectedIncludeSpans,
 					Path:                    testPath,
 					Payload:                 []byte{1, 2, 3, 4, 0xff, 0xce},
 					ServiceName:             testServiceName,
@@ -437,8 +437,8 @@ func testAckDispatcherOnDeviceEventQOSSuccess(t *testing.T) {
 					RequestDeliveryResponse: &expectedRequestDeliveryResponse,
 					Headers:                 []string{testAckHeader1, testAckHeader2},
 					Metadata:                map[string]string{testMetadataName: testMetadataValue},
-					Spans:                   [][]string{{"1", "2"}, {"3"}}, //nolint:staticcheck // deprecated field still under test
-					IncludeSpans:            &expectedIncludeSpans,         //nolint:staticcheck // deprecated field still under test
+					Spans:                   [][]string{{"1", "2"}, {"3"}},
+					IncludeSpans:            &expectedIncludeSpans,
 					Path:                    testPath,
 					Payload:                 []byte{1, 2, 3, 4, 0xff, 0xce},
 					ServiceName:             testServiceName,
