@@ -20,7 +20,7 @@ require (
 	github.com/testcontainers/testcontainers-go v0.45.0
 	github.com/testcontainers/testcontainers-go/modules/kafka v0.45.0
 	github.com/thedevsaddam/gojsonq/v2 v2.5.2
-	github.com/twmb/franz-go v1.22.2
+	github.com/twmb/franz-go v1.22.3
 	github.com/xmidt-org/bascule v1.8.3
 	github.com/xmidt-org/candlelight v0.4.2
 	github.com/xmidt-org/clortho v0.1.18
@@ -127,7 +127,7 @@ require (
 	github.com/tinylib/msgp v1.6.5 // indirect
 	github.com/tklauser/go-sysconf v0.4.0 // indirect
 	github.com/tklauser/numcpus v0.12.0 // indirect
-	github.com/twmb/franz-go/pkg/kmsg v1.15.0 // indirect
+	github.com/twmb/franz-go/pkg/kmsg v1.15.1 // indirect
 	github.com/twmb/franz-go/plugin/kprom v1.5.0 // indirect
 	github.com/ugorji/go/codec v1.2.14 // indirect
 	github.com/xmidt-org/chronon v0.1.15 // indirect
